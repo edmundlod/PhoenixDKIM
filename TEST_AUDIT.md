@@ -98,18 +98,22 @@ Source file: `libopendkim/tests/t-conformance.c`
 
 | Classification | Count |
 |---|---|
-| **KEEP** | 15 |
-| **REVISE** | 26 (24 tests + 2 global GnuTLS blocks) |
+| **KEEP** | 15 tests |
+| **REVISE** | 30 (28 tests + 2 global GnuTLS blocks) |
 | **REMOVE** | 0 |
+
+Total tests in file: 43 (15 KEEP + 28 REVISE).
 
 No tests reference out-of-scope subsystems (VBR, RBL, stats, BerkeleyDB,
 LDAP, SQL/OpenDBX, reputation, GnuTLS-specific logic, AWS-LC, tre/diffheaders,
 ATPS). The file is clean of deleted-subsystem contamination.
 
-The dominant revision theme is mechanical: 22 of 24 test revisions are the
+The dominant revision theme is mechanical: 27 of 28 test revisions are the
 same change — replace `DKIM_SIGN_RSASHA1` with `DKIM_SIGN_RSASHA256` in
-signing calls. The RSA-SHA1 round-trip test requires a structural change
-to become a verify-only test.
+signing calls (note: the 4 canonicalization combo tests all call through
+`test_canon_combo`, so the actual code change is in one place for those 4).
+The RSA-SHA1 round-trip test requires a structural change to become a
+verify-only test.
 
 ---
 
