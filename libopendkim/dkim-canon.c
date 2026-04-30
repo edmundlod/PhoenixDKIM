@@ -89,32 +89,6 @@ dkim_canon_free(DKIM *dkim, DKIM_CANON *canon)
 	{
 		switch (canon->canon_hashtype)
 		{
-#ifdef USE_GNUTLS
-		  case DKIM_HASHTYPE_SHA1:
-		  case DKIM_HASHTYPE_SHA256:
-		  {
-			struct dkim_sha *sha;
-
-			sha = (struct dkim_sha *) canon->canon_hash;
-
-			if (sha->sha_tmpfd != -1)
-			{
-				close(sha->sha_tmpfd);
-				sha->sha_tmpfd = -1;
-			}
-
-			gnutls_hash_deinit(sha->sha_hd, NULL);
-
-			if (sha->sha_out != NULL)
-			{
-				DKIM_FREE(dkim, sha->sha_out);
-				sha->sha_out = NULL;
-			}
-
-			break;
-		  }
-
-#else /* USE_GNUTLS */
 		  case DKIM_HASHTYPE_SHA1:
 		  case DKIM_HASHTYPE_SHA256:
 		  {
@@ -137,7 +111,6 @@ dkim_canon_free(DKIM *dkim, DKIM_CANON *canon)
 
 			break;
 		  }
-#endif /* USE_GNUTLS */
 
 		  default:
 			assert(0);
@@ -189,22 +162,6 @@ dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
 
 	switch (canon->canon_hashtype)
 	{
-#ifdef USE_GNUTLS
-	  case DKIM_HASHTYPE_SHA1:
-	  case DKIM_HASHTYPE_SHA256:
-	  {
-		struct dkim_sha *sha;
-
-		sha = (struct dkim_sha *) canon->canon_hash;
-
-		gnutls_hash(sha->sha_hd, buf, buflen);
-
-		if (sha->sha_tmpfd != -1)
-			(void) write(sha->sha_tmpfd, buf, buflen);
-
-		break;
-	  }
-#else /* USE_GNUTLS */
 	  case DKIM_HASHTYPE_SHA1:
 	  case DKIM_HASHTYPE_SHA256:
 	  {
@@ -218,7 +175,6 @@ dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
 
 		break;
 	  }
-#endif /* USE_GNUTLS */
 	}
 
 	if (canon->canon_remain != (ssize_t) -1)
@@ -620,60 +576,6 @@ dkim_canon_init(DKIM *dkim, _Bool tmp, _Bool keep)
 
 		switch (cur->canon_hashtype)
 		{
-#ifdef USE_GNUTLS
-		  case DKIM_HASHTYPE_SHA1:
-		  case DKIM_HASHTYPE_SHA256:
-		  {
-			struct dkim_sha *sha;
-
-			sha = (struct dkim_sha *) DKIM_MALLOC(dkim,
-			                                      sizeof(struct dkim_sha));
-			if (sha == NULL)
-			{
-				dkim_error(dkim,
-				           "unable to allocate %d byte(s)",
-				           sizeof(struct dkim_sha));
-				return DKIM_STAT_NORESOURCE;
-			}
-
-			memset(sha, '\0', sizeof(struct dkim_sha));
-			sha->sha_tmpfd = -1;
-
-			/* XXX -- test for errors */
-			if (cur->canon_hashtype == DKIM_HASHTYPE_SHA1)
-			{
-				(void) gnutls_hash_init(&sha->sha_hd,
-				                        GNUTLS_DIG_SHA1);
-			}
-			else
-			{
-				(void) gnutls_hash_init(&sha->sha_hd,
-				                        GNUTLS_DIG_SHA256);
-			}
-
-			if (sha->sha_hd == NULL)
-			{
-				DKIM_FREE(dkim, sha);
-				return DKIM_STAT_INTERNAL;
-			}
-				
-			if (tmp)
-			{
-				status = dkim_tmpfile(dkim, &fd, keep);
-				if (status != DKIM_STAT_OK)
-				{
-					DKIM_FREE(dkim, sha);
-					return status;
-				}
-
-				sha->sha_tmpfd = fd;
-			}
-
-			cur->canon_hash = sha;
-
-		  	break;
-		  }
-#else /* USE_GNUTLS */
 		  case DKIM_HASHTYPE_SHA1:
 		  case DKIM_HASHTYPE_SHA256:
 		  {
@@ -734,7 +636,6 @@ dkim_canon_init(DKIM *dkim, _Bool tmp, _Bool keep)
 
 		  	break;
 		  }
-#endif /* USE_GNUTLS */
 
 		  default:
 			assert(0);
@@ -1353,36 +1254,6 @@ dkim_canon_runheaders(DKIM *dkim)
 		/* finalize */
 		switch (cur->canon_hashtype)
 		{
-#ifdef USE_GNUTLS
-		  case DKIM_HASHTYPE_SHA1:
-		  case DKIM_HASHTYPE_SHA256:
-		  {
-			int alg;
-			struct dkim_sha *sha;
-
-			sha = (struct dkim_sha *) cur->canon_hash;
-
-			if (cur->canon_hashtype == DKIM_HASHTYPE_SHA1)
-				alg = GNUTLS_DIG_SHA1;
-			else
-				alg = GNUTLS_DIG_SHA256;
-
-			sha->sha_outlen = gnutls_hash_get_len(alg);
-
-			sha->sha_out = DKIM_MALLOC(dkim, sha->sha_outlen);
-			if (sha->sha_out == NULL)
-			{
-				dkim_error(dkim, "unable to allocate %u bytes",
-				           sha->sha_outlen);
-				return DKIM_STAT_NORESOURCE;
-			}
-
-			gnutls_hash_output(sha->sha_hd, sha->sha_out);
-
-			break;
-		  }
-
-#else /* USE_GNUTLS */
 		  case DKIM_HASHTYPE_SHA1:
 		  case DKIM_HASHTYPE_SHA256:
 		  {
@@ -1397,7 +1268,6 @@ dkim_canon_runheaders(DKIM *dkim)
 
 			break;
 		  }
-#endif /* USE_GNUTLS */
 
 		  default:
 			assert(0);
@@ -1473,41 +1343,6 @@ dkim_canon_signature(DKIM *dkim, struct dkim_header *hdr)
 		/* now close it */
 		switch (cur->canon_hashtype)
 		{
-#ifdef USE_GNUTLS
-		  case DKIM_HASHTYPE_SHA1:
-		  case DKIM_HASHTYPE_SHA256:
-		  {
-			int alg;
-			struct dkim_sha *sha;
-
-			sha = (struct dkim_sha *) cur->canon_hash;
-
-			if (cur->canon_hashtype == DKIM_HASHTYPE_SHA1)
-				alg = GNUTLS_DIG_SHA1;
-			else
-				alg = GNUTLS_DIG_SHA256;
-
-			sha->sha_outlen = gnutls_hash_get_len(alg);
-
-			sha->sha_out = DKIM_MALLOC(dkim, sha->sha_outlen);
-			if (sha->sha_out == NULL)
-			{
-				dkim_error(dkim, "unable to allocate %u bytes",
-				           sha->sha_outlen);
-				return DKIM_STAT_NORESOURCE;
-			}
-
-			gnutls_hash_output(sha->sha_hd, sha->sha_out);
-
-			if (sha->sha_tmpfd != -1)
-			{
-				close(sha->sha_tmpfd);
-				sha->sha_tmpfd = -1;
-			}
-
-			break;
-		  }
-#else /* USE_GNUTLS */
 		  case DKIM_HASHTYPE_SHA1:
 		  case DKIM_HASHTYPE_SHA256:
 		  {
@@ -1522,7 +1357,6 @@ dkim_canon_signature(DKIM *dkim, struct dkim_header *hdr)
 
 			break;
 		  }
-#endif /* USE_GNUTLS */
 
 		  default:
 			assert(0);
@@ -1899,37 +1733,6 @@ dkim_canon_closebody(DKIM *dkim)
 		/* finalize */
 		switch (cur->canon_hashtype)
 		{
-#ifdef USE_GNUTLS
-		  case DKIM_HASHTYPE_SHA1:
-		  case DKIM_HASHTYPE_SHA256:
-		  {
-			int alg;
-			u_int diglen;
-			struct dkim_sha *sha;
-
-			sha = (struct dkim_sha *) cur->canon_hash;
-
-			if (cur->canon_hashtype == DKIM_HASHTYPE_SHA1)
-				alg = GNUTLS_DIG_SHA1;
-			else
-				alg = GNUTLS_DIG_SHA256;
-
-			diglen = gnutls_hash_get_len(alg);
-
-			sha->sha_out = DKIM_MALLOC(dkim, diglen);
-			if (sha->sha_out == NULL)
-			{
-				dkim_error(dkim, "unable to allocate %u bytes",
-				           diglen);
-				return DKIM_STAT_NORESOURCE;
-			}
-
-			gnutls_hash_output(sha->sha_hd, sha->sha_out);
-			sha->sha_outlen = diglen;
-
-			break;
-		  }
-#else /* USE_GNUTLS */
 		  case DKIM_HASHTYPE_SHA1:
 		  case DKIM_HASHTYPE_SHA256:
 		  {
@@ -1944,7 +1747,6 @@ dkim_canon_closebody(DKIM *dkim)
 
 			break;
 		  }
-#endif /* USE_GNUTLS */
 
 		  default:
 			assert(0);
@@ -1981,7 +1783,6 @@ dkim_canon_getfinal(DKIM_CANON *canon, u_char **digest, size_t *dlen)
 
 	switch (canon->canon_hashtype)
 	{
-#ifdef USE_GNUTLS
 	  case DKIM_HASHTYPE_SHA1:
 	  case DKIM_HASHTYPE_SHA256:
 	  {
@@ -1993,19 +1794,6 @@ dkim_canon_getfinal(DKIM_CANON *canon, u_char **digest, size_t *dlen)
 
 		return DKIM_STAT_OK;
 	  }
-#else /* USE_GNUTLS */
-	  case DKIM_HASHTYPE_SHA1:
-	  case DKIM_HASHTYPE_SHA256:
-	  {
-		struct dkim_sha *sha;
-
-		sha = (struct dkim_sha *) canon->canon_hash;
-		*digest = sha->sha_out;
-		*dlen = sha->sha_outlen;
-
-		return DKIM_STAT_OK;
-	  }
-#endif /* USE_GNUTLS */
 
 	  default:
 		assert(0);

@@ -25,17 +25,11 @@
 # include <regex.h>
 #endif /* USE_TRE */
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-# include <gnutls/crypto.h>
-# include <gnutls/abstract.h>
-#else /* USE_GNUTLS */
 /* OpenSSL includes */
 # include <openssl/pem.h>
 # include <openssl/bio.h>
 # include <openssl/err.h>
 # include <openssl/evp.h>
-#endif /* USE_GNUTLS */
 
 #ifdef QUERY_CACHE
 /* libdb includes */
@@ -146,16 +140,6 @@ struct dkim_siginfo
 	struct dkim_dstring *	sig_sslerrbuf;
 };
 
-#ifdef USE_GNUTLS
-/* struct dkim_sha -- stuff needed to do a sha hash */
-struct dkim_sha
-{
-	int			sha_tmpfd;
-	u_int			sha_outlen;
-	gnutls_hash_hd_t	sha_hd;
-	u_char *		sha_out;
-};
-#else /* USE_GNUTLS */
 /* struct dkim_sha -- stuff needed to do a sha hash (sha1 or sha256) */
 struct dkim_sha
 {
@@ -165,7 +149,6 @@ struct dkim_sha
 	u_int			sha_outlen;
 	u_char			sha_out[EVP_MAX_MD_SIZE];
 };
-#endif /* USE_GNUTLS */
 
 /* struct dkim_canon -- a canonicalization status handle */
 struct dkim_canon
@@ -194,17 +177,6 @@ struct dkim_canon
 /* struct dkim_rsa -- stuff needed to do RSA sign/verify */
 struct dkim_rsa
 {
-#ifdef USE_GNUTLS
-	size_t			rsa_rsaoutlen;
-	unsigned int		rsa_keysize;
-	gnutls_x509_privkey_t	rsa_key;
-	gnutls_privkey_t	rsa_privkey;
-	gnutls_pubkey_t		rsa_pubkey;
-	gnutls_datum_t		rsa_sig;
-	gnutls_datum_t		rsa_digest;
-	gnutls_datum_t 		rsa_rsaout;
-	gnutls_datum_t 		rsa_keydata;
-#else /* USE_GNUTLS */
 	int			rsa_keysize;
 	size_t			rsa_rsainlen;
 	size_t			rsa_rsaoutlen;
@@ -212,7 +184,6 @@ struct dkim_rsa
 	BIO *			rsa_keydata;
 	u_char *		rsa_rsain;
 	u_char *		rsa_rsaout;
-#endif /* USE_GNUTLS */
 };
 
 /* struct dkim_test_dns_data -- simulated DNS replies */
