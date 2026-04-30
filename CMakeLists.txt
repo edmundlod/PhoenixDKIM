@@ -7,6 +7,7 @@ project(opendkim-ng
 )
 
 add_compile_definitions(_GNU_SOURCE)
+enable_testing()
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)

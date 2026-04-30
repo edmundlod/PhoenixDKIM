@@ -5,8 +5,6 @@
 # their .c files are written.  Tests skipped by Makefile.am itself (t-test75,
 # t-test95, t-test124) remain skipped.
 
-enable_testing()
-
 # ── Setup / teardown / perf ───────────────────────────────────────────────────
 
 set(LIBOPENDKIM_TEST_PROGRAMS
@@ -83,9 +81,11 @@ if(TARGET t-cleanup)
     set_tests_properties(t-cleanup PROPERTIES FIXTURES_CLEANUP libopendkim_fixtures)
 endif()
 
-foreach(num IN LISTS LIBOPENDKIM_NUMBERED_TESTS)
-    if(TARGET "t-test${num}")
-        set_tests_properties("t-test${num}" PROPERTIES
+# Apply the fixture requirement to EVERYTHING in LIBOPENDKIM_TEST_PROGRAMS
+# EXCEPT for setup and cleanup themselves.
+foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
+    if(TARGET ${test_name} AND NOT "${test_name}" STREQUAL "t-setup" AND NOT "${test_name}" STREQUAL "t-cleanup")
+        set_tests_properties(${test_name} PROPERTIES
             FIXTURES_REQUIRED libopendkim_fixtures
         )
     endif()
