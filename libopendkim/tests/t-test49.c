@@ -20,9 +20,6 @@
 # include <db.h>
 #endif /* QUERY_CACHE */
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libopendkim includes */
 #include "../dkim.h"

@@ -14,9 +14,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libopendkim includes */
 #include "../dkim.h"
@@ -69,9 +66,6 @@ main(int argc, char **argv)
 
 	printf("*** relaxed/relaxed rsa-sha1 signing with message-specifc header sign list\n");
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
 
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);
@@ -88,7 +82,7 @@ main(int argc, char **argv)
 
 	dkim = dkim_sign(lib, JOBID, NULL, key, SELECTOR, DOMAIN,
 	                 DKIM_CANON_RELAXED, DKIM_CANON_RELAXED,
-	                 DKIM_SIGN_RSASHA1, -1L, &status);
+	                 DKIM_SIGN_RSASHA256, -1L, &status);
 	assert(dkim != NULL);
 
 	/* fix signing time */

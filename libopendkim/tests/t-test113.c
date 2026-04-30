@@ -15,9 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 struct dkim_dstring;
 
@@ -52,9 +49,6 @@ main(int argc, char **argv)
 
 	printf("*** exercise dstring functions\n");
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
 
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);

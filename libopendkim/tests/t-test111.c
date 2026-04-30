@@ -13,9 +13,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libopendkim includes */
 #include "../dkim.h"

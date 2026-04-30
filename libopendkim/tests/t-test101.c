@@ -14,9 +14,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libopendkim includes */
 #include "../dkim.h"
@@ -57,9 +54,6 @@ main(int argc, char **argv)
 
 	printf("*** exercise dkim_sig_*() utility functions\n");
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
 
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);
@@ -182,7 +176,7 @@ main(int argc, char **argv)
 
 	status = dkim_sig_getsignalg(sig, &signalg);
 	assert(status == DKIM_STAT_OK);
-	assert(signalg == DKIM_SIGN_RSASHA1);
+	assert(signalg == DKIM_SIGN_RSASHA256);
 
 	status = dkim_sig_getsigntime(sig, &signtime);
 	assert(status == DKIM_STAT_OK);

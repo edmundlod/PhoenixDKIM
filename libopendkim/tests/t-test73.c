@@ -19,9 +19,6 @@
 #include <resolv.h>
 #include <stdio.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libopendkim includes */
 #include "../dkim.h"
@@ -178,9 +175,6 @@ main(int argc, char **argv)
 	unsigned char opts[BUFRSZ];
 	unsigned char smtp[BUFRSZ];
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
 
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);

@@ -14,9 +14,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
 
 /* libbsd if found */
 #ifdef USE_BSD_H
@@ -59,9 +56,6 @@ main(int argc, char **argv)
 
 	printf("*** simple/simple rsa-sha1 verifying with chunking, FIXCRLF, and \"b=...;\"\n");
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
 
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);
