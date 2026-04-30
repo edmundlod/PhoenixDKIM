@@ -431,21 +431,7 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 			return -1;
 		}
 
-		rsa->rsa_rsa = EVP_PKEY_get1_RSA(rsa->rsa_pkey);
-		if (rsa->rsa_rsa == NULL)
-		{
-			BIO_free(keybuf);
-			(void) dkim_free(dkim);
-			if (err != NULL)
-			{
-				strlcpy(err, "EVP_PKEY_get1_RSA() failed",
-				        errlen);
-			}
-			return -1;
-		}
-	
-		rsa->rsa_keysize = RSA_size(rsa->rsa_rsa);
-		rsa->rsa_pad = RSA_PKCS1_PADDING;
+		rsa->rsa_keysize = EVP_PKEY_get_size(rsa->rsa_pkey);
 
 		outkey = BIO_new(BIO_s_mem());
 		if (outkey == NULL)
@@ -457,7 +443,7 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 			return -1;
 		}
 
-		status = i2d_RSA_PUBKEY_bio(outkey, rsa->rsa_rsa);
+		status = i2d_PUBKEY_bio(outkey, rsa->rsa_pkey);
 		if (status == 0)
 		{
 			BIO_free(keybuf);
@@ -465,7 +451,7 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 			(void) dkim_free(dkim);
 			if (err != NULL)
 			{
-				strlcpy(err, "i2d_RSA_PUBKEY_bio() failed",
+				strlcpy(err, "i2d_PUBKEY_bio() failed",
 				           errlen);
 			}
 			return -1;

@@ -32,10 +32,9 @@
 #else /* USE_GNUTLS */
 /* OpenSSL includes */
 # include <openssl/pem.h>
-# include <openssl/rsa.h>
 # include <openssl/bio.h>
 # include <openssl/err.h>
-# include <openssl/sha.h>
+# include <openssl/evp.h>
 #endif /* USE_GNUTLS */
 
 #ifdef QUERY_CACHE
@@ -157,25 +156,15 @@ struct dkim_sha
 	u_char *		sha_out;
 };
 #else /* USE_GNUTLS */
-/* struct dkim_sha1 -- stuff needed to do a sha1 hash */
-struct dkim_sha1
+/* struct dkim_sha -- stuff needed to do a sha hash (sha1 or sha256) */
+struct dkim_sha
 {
-	int			sha1_tmpfd;
-	BIO *			sha1_tmpbio;
-	SHA_CTX			sha1_ctx;
-	u_char			sha1_out[SHA_DIGEST_LENGTH];
+	int			sha_tmpfd;
+	BIO *			sha_tmpbio;
+	EVP_MD_CTX *		sha_mdctx;
+	u_int			sha_outlen;
+	u_char			sha_out[EVP_MAX_MD_SIZE];
 };
-
-# ifdef HAVE_SHA256
-/* struct dkim_sha256 -- stuff needed to do a sha256 hash */
-struct dkim_sha256
-{
-	int			sha256_tmpfd;
-	BIO *			sha256_tmpbio;
-	SHA256_CTX		sha256_ctx;
-	u_char			sha256_out[SHA256_DIGEST_LENGTH];
-};
-# endif /* HAVE_SHA256 */
 #endif /* USE_GNUTLS */
 
 /* struct dkim_canon -- a canonicalization status handle */
@@ -216,12 +205,10 @@ struct dkim_rsa
 	gnutls_datum_t 		rsa_rsaout;
 	gnutls_datum_t 		rsa_keydata;
 #else /* USE_GNUTLS */
-	u_char			rsa_pad;
 	int			rsa_keysize;
 	size_t			rsa_rsainlen;
 	size_t			rsa_rsaoutlen;
 	EVP_PKEY *		rsa_pkey;
-	RSA *			rsa_rsa;
 	BIO *			rsa_keydata;
 	u_char *		rsa_rsain;
 	u_char *		rsa_rsaout;
