@@ -1461,7 +1461,7 @@ dkim_sig_domainok(DKIM *dkim, DKIM_SET *set)
 	if (i == NULL)
 		snprintf((char *) addr, sizeof addr, "@%s", d);
 	else
-		dkim_qp_decode(i, addr, sizeof addr - 1);
+		dkim_qp_decode(i, addr, sizeof addr);
 
 	at = strchr((char *) addr, '@');
 	if (at == NULL)
@@ -6971,7 +6971,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(addr, '\0', addrlen);
-			(void) dkim_qp_decode(p, addr, addrlen - 1);
+			(void) dkim_qp_decode(p, addr, addrlen);
 			p = (u_char *) strchr((char *) addr, '@');
 			if (p != NULL)
 				*p = '\0';
@@ -6991,7 +6991,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(smtp, '\0', smtplen);
-			(void) dkim_qp_decode(p, smtp, smtplen - 1);
+			(void) dkim_qp_decode(p, smtp, smtplen);
 		}
 	}
 
@@ -7061,7 +7061,7 @@ dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 	else
 	{
 		len = dkim_qp_decode((u_char *) param, (u_char *) val,
-		                     vallen - 1);
+		                     vallen);
 
 		if (len == -1)
 		{
