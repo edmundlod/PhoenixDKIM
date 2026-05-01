@@ -47,7 +47,7 @@ main(int argc, char **argv)
 	dkim_sigkey_t key;
 	unsigned char hdr[MAXHEADER + 1];
 
-	printf("*** simple/simple rsa-sha1 signing with expiration times\n");
+	printf("*** simple/simple rsa-sha256 signing with expiration times\n");
 
 
 	/* instantiate the library */

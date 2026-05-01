@@ -64,7 +64,7 @@ main(int argc, char **argv)
 	dkim_sigkey_t key;
 	unsigned char hdr[MAXHEADER + 1];
 
-	printf("*** relaxed/relaxed rsa-sha1 signing with message-specifc header sign list\n");
+	printf("*** relaxed/relaxed rsa-sha256 signing with message-specifc header sign list\n");
 
 
 	/* instantiate the library */
