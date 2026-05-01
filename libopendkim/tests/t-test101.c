@@ -21,7 +21,7 @@
 
 #define	MAXHEADER	4096
 
-#define SIG2 "v=1; a=rsa-sha1; c=relaxed/relaxed; d=example.com; s=test;\r\n\tt=1172620939; bh=Z9ONHHsBrKN0pbfrOu025VfbdR4=; l=340; h=Received:\r\n\t Received:Received:From:To:Date:Subject:Message-ID; b=NiN+5WZz+O0jY\r\n\t+OH1mCVhv3zM+SrJ6i0wTrhoaDOawOTwW10dF/ZTaMdFmrjJkQfxQenKQN0hmxRNm0Q\r\n\tabHoiaaO1N5owKY0/cUV78U5Z05bNjGl9P9goSgNsLGukRgjb+ellUI8U97Xi9mFjOG\r\n\tWm1iJ2FIq31Bh1mybmvlveKA="
+#define SIG2 "v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=test; t=1172620939; bh=M/SdHqgHW+5oSTDvtcXZAz24K8xxJWs4lBHS3cTPuHQ=; l=366; h=Received:Received:Received:Received:From:To:Date:Subject:Message-ID; b=rbusjurkgQInVblVX+ztpRCvEYqh+lpW0aEbhdHzkxyCeCpAZrsCAvM5iqt8Lm36UmFu5ct7hWufzE2GkIGD/yQGFpBOzJ6NvPiZ+GMLIBaV4bFBJalh3biJejjyVvh1WjeCSjYEEAmu2/+enhteL/0yd98eEspKb9sdAmXGaxc="
 
 /*
 **  MAIN -- program mainline
@@ -167,8 +167,8 @@ main(int argc, char **argv)
 	status = dkim_sig_getcanonlen(dkim, sig, &msglen, &canonlen, &signlen);
 	assert(status == DKIM_STAT_OK);
 	assert(msglen == 369);
-	assert(canonlen == 340);
-	assert(signlen == 340);
+	assert(canonlen == 366);
+	assert(signlen == 366);
 
 	status = dkim_sig_getkeysize(sig, &bits);
 	assert(status == DKIM_STAT_OK);
