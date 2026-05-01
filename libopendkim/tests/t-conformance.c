@@ -1221,8 +1221,8 @@ test_rfc6376_s3_6_key_bad_hash(void)
 
 	sig = dkim_getsignature(vrfy_dkim);
 	CHECK(sig != NULL, "no signature handle returned");
-	CHECK(dkim_sig_geterror(sig) == DKIM_SIGERROR_KEYHASHMISMATCH,
-	      "bad key hash must produce SIGERROR_KEYHASHMISMATCH");
+	CHECK(dkim_sig_geterror(sig) == DKIM_SIGERROR_KEYUNKNOWNHASH,
+	      "bad key hash must produce SIGERROR_KEYUNKNOWNHASH");
 
 	dkim_free(vrfy_dkim);
 	dkim_close(lib);
