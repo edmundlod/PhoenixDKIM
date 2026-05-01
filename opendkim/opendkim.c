@@ -54,13 +54,8 @@
 #include <signal.h>
 #include <regex.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-# include <gnutls/crypto.h>
-#else /* USE_GNUTLS */
-# include <openssl/sha.h>
-# include <openssl/err.h>
-#endif /* USE_GNUTLS */
+#include <openssl/sha.h>
+#include <openssl/err.h>
 
 #ifndef SHA_DIGEST_LENGTH
 # define SHA_DIGEST_LENGTH 20
@@ -102,15 +97,6 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-#ifdef _FFR_REPUTATION
-/* reputation includes */
-# include <repute.h>
-#endif /* _FFR_REPUTATION */
-
-#ifdef _FFR_REPRRD
-# include <reprrd.h>
-#endif /* _FFR_REPRRD */
-
 /* opendkim includes */
 #include "config.h"
 #ifdef _FFR_RATE_LIMIT
@@ -128,12 +114,6 @@
 #endif /* USE_LUA */
 #include "util.h"
 #include "test.h"
-#ifdef _FFR_STATS
-# include "stats.h"
-#endif /* _FFR_STATS */
-#ifdef _FFR_REPUTATION
-# include "reputation.h"
-#endif /* _FFR_REPUTATION */
 
 /* macros */
 #define CMDLINEOPTS	"Ab:c:d:De:fF:k:lL:no:p:P:Qrs:S:t:T:u:vVWx:X?"
@@ -169,9 +149,6 @@ struct handling
 	int		hndl_nokey;		/* no key in DNS */
 	int		hndl_dnserr;		/* DNS error */
 	int		hndl_internal;		/* internal error */
-#if defined(_FFR_REPUTATION) || defined(_FFR_REPRRD)
-	int		hndl_reperr;		/* reputation error */
-#endif /* _FFR_REPUTATION || _FFR_REPRRD */
 	int		hndl_security;		/* security concerns */
 	int		hndl_siggen;		/* sig generation errors */
 };
@@ -183,9 +160,6 @@ struct handling defaults =
 	DKIMF_MILTER_ACCEPT,			/* nokey */
 	DKIMF_MILTER_TEMPFAIL,			/* dnserr */
 	DKIMF_MILTER_TEMPFAIL,			/* internal */
-#ifdef _FFR_REPUTATION
-	DKIMF_MILTER_ACCEPT,			/* reperror */
-#endif /* _FFR_REPUTATION */
 	DKIMF_MILTER_TEMPFAIL,			/* security */
 	DKIMF_MILTER_REJECT			/* siggen */
 };
@@ -257,22 +231,12 @@ struct dkimf_config
 	_Bool		conf_vbr_purge;		/* purge X-VBR-* fields */
 	_Bool		conf_vbr_trustedonly;	/* trusted certifiers only */
 #endif /* _FFR_VBR */
-#if defined(_FFR_REPUTATION) || defined(_FFR_REPRRD)
-	_Bool		conf_reptest;		/* reputation test mode */
-	_Bool		conf_repverbose;	/* verbose reputation logs */
-#endif /* _FFR_REPUTATION || _FFR_REPRRD */
 	unsigned int	conf_mode;		/* operating mode */
 	unsigned int	conf_refcnt;		/* reference count */
 	unsigned int	conf_dnstimeout;	/* DNS timeout */
 	unsigned int	conf_maxhdrsz;		/* max header bytes */
 	unsigned int	conf_maxverify;		/* max sigs to verify */
 	unsigned int	conf_minkeybits;	/* min key size (bits) */
-#ifdef _FFR_REPUTATION
-	unsigned int	conf_repfactor;		/* reputation factor */
-	unsigned int	conf_repminimum;	/* reputation minimum */
-	unsigned int	conf_repcachettl;	/* reputation cache TTL */
-	unsigned int	conf_reptimeout;	/* reputation query timeout */
-#endif /* _FFR_REPUTATION */
 #ifdef USE_UNBOUND
 	unsigned int	conf_boguskey;		/* bogus key action */
 	unsigned int	conf_unprotectedkey;	/* unprotected key action */
@@ -288,9 +252,6 @@ struct dkimf_config
 #ifdef USE_LUA
 	size_t		conf_screenfuncsz;	/* screening function size */
 	size_t		conf_setupfuncsz;	/* setup function size */
-# ifdef _FFR_STATS
-	size_t		conf_statsfuncsz;	/* stats function size */
-# endif /* _FFR_STATS */
 	size_t		conf_finalfuncsz;	/* final function size */
 #endif /* USE_LUA */
 	ssize_t		conf_signbytes;		/* bytes to sign */
@@ -335,11 +296,6 @@ struct dkimf_config
 	_Bool		conf_rmidentityhdr;	/* remove identity header */
 #endif /* _FFR_IDENTITY_HEADER */
 	char *		conf_diagdir;		/* diagnostics directory */
-#ifdef _FFR_STATS
-	char *		conf_statspath;		/* path for stats file */
-	char *		conf_reporthost;	/* reporter name */
-	char *		conf_reportprefix;	/* stats data prefix */
-#endif /* _FFR_STATS */
 	char *		conf_reportaddr;	/* report sender address */
 	char *		conf_reportaddrbcc;	/* report repcipient address as bcc */
 	char *		conf_mtacommand;	/* MTA command (reports) */
@@ -363,10 +319,6 @@ struct dkimf_config
 	void *		conf_screenfunc;	/* Lua function: screening */
 	char *		conf_setupscript;	/* Lua script: setup */
 	void *		conf_setupfunc;		/* Lua function: setup */
-# ifdef _FFR_STATSEXT
-	char *		conf_statsscript;	/* Lua script: stats */
-	void *		conf_statsfunc;		/* Lua function: stats */
-# endif /* _FFR_STATSEXT */
 	char *		conf_finalscript;	/* Lua script: final */
 	void *		conf_finalfunc;		/* Lua function: final */
 #endif /* USE_LUA */
@@ -403,10 +355,6 @@ struct dkimf_config
 	DKIMF_DB	conf_oversigndb;	/* fields to over-sign (DB) */
 	char **		conf_oversignhdrs;	/*   "    "     "    (array) */
 	DKIMF_DB	conf_dontsigntodb;	/* don't-sign-to addrs (DB) */
-#ifdef _FFR_ATPS
-	DKIMF_DB	conf_atpsdb;		/* ATPS domains */
-	char *		conf_atpshash;		/* ATPS hash algorithm */
-#endif /* _FFR_ATPS */
 	DKIMF_DB	conf_thirdpartydb;	/* trustsigsfrom DB */
 	DKIMF_DB	conf_macrosdb;		/* macros/values (DB) */
 	char **		conf_macros;		/* macros/values to check */
@@ -417,9 +365,6 @@ struct dkimf_config
 	DKIMF_DB	conf_exemptdb;		/* exempt domains DB */
 	DKIMF_DB	conf_keytabledb;	/* key table DB */
 	DKIMF_DB	conf_signtabledb;	/* signing table DB */
-#ifdef _FFR_STATS
-	DKIMF_DB	conf_anondb;		/* anonymized domains DB */
-#endif /* _FFR_STATS */
 #ifdef _FFR_RESIGN
 	DKIMF_DB	conf_resigndb;		/* resigning addresses */
 #endif /* _FFR_RESIGN */
@@ -427,24 +372,6 @@ struct dkimf_config
 	DKIMF_DB	conf_ratelimitdb;	/* domain rate limits */
 	DKIMF_DB	conf_flowdatadb;	/* domain flow data */
 #endif /* _FFR_RATE_LIMIT */
-#ifdef _FFR_REPUTATION
-	char *		conf_repratios;		/* reputed ratios */
-	DKIMF_DB	conf_repratiosdb;	/* reputed ratios DB */
-	char *		conf_replimits;		/* reputed limits */
-	DKIMF_DB	conf_replimitsdb;	/* reputed limits DB */
-	char *		conf_replimitmods;	/* reputed limit modifiers */
-	DKIMF_DB	conf_replimitmodsdb;	/* reputed limit mods DB */
-	char *		conf_replowtime;	/* reputed low timers */
-	DKIMF_DB	conf_replowtimedb;	/* reputed low timers DB */
-	DKIMF_REP	conf_rep;		/* reputation subsystem */
-	char *		conf_repcache;		/* reputation cache DB */
-	char *		conf_repdups;		/* reputation duplicates DB */
-	char *		conf_repspamcheck;	/* reputation spam RE string */
-	regex_t		conf_repspamre;		/* reputation spam RE */
-#endif /* _FFR_REPUTATION */
-#ifdef _FFR_REPRRD
-	REPRRD		conf_reprrd;		/* reputation RRD handle */
-#endif /* _FFR_REPRRD */
 	DKIM_LIB *	conf_libopendkim;	/* DKIM library handle */
 	struct handling	conf_handling;		/* message handling */
 };
@@ -470,12 +397,6 @@ struct msgctx
 #ifdef _FFR_VBR
 	_Bool		mctx_vbrpurge;		/* purge X-VBR-* headers */
 #endif /* _FFR_VBR */
-#ifdef _FFR_REPUTATION
-	_Bool		mctx_spam;		/* is spam? */
-#endif /* _FFR_REPUTATION */
-#ifdef _FFR_ATPS
-	int		mctx_atps;		/* ATPS */
-#endif /* _FFR_ATPS */
 #ifdef USE_LUA
 	int		mctx_mresult;		/* SMFI status code */
 #endif /* USE_LUA */
@@ -501,18 +422,8 @@ struct msgctx
 	struct signreq * mctx_srhead;		/* signature request head */
 	struct signreq * mctx_srtail;		/* signature request tail */
 	struct addrlist * mctx_rcptlist;	/* recipient list */
-#ifdef _FFR_STATSEXT
-	struct statsext * mctx_statsext;	/* extension stats list */
-#endif /* _FFR_STATSEXT */
 	struct lua_global * mctx_luaglobalh;	/* Lua global list */
 	struct lua_global * mctx_luaglobalt;	/* Lua global list */
-#ifdef _FFR_REPUTATION
-# ifdef USE_GNUTLS
-	gnutls_hash_hd_t mctx_hash;			/* hash, for dup detection */
-# else /* USE_GNUTLS */
-	SHA_CTX		mctx_hash;		/* hash, for dup detection */
-# endif /* USE_GNUTLS */
-#endif /* _FFR_REPUTATION */
 	unsigned char	mctx_envfrom[MAXADDRESS + 1];
 						/* envelope sender */
 	unsigned char	mctx_domain[DKIM_MAXHOSTNAMELEN + 1];
@@ -555,7 +466,6 @@ struct lookup
 #define	HNDL_SECURITY		5
 #define	HNDL_NOKEY		6
 #define	HNDL_POLICYERROR	7
-#define	HNDL_REPERROR		8
 #define	HNDL_SIGGEN		9
 
 #define	DKIMF_MODE_SIGNER	0x01
@@ -576,12 +486,6 @@ struct lookup
 #define SIGMIN_PERCENT		1
 #define SIGMIN_MAXADD		2
 
-#if defined(_FFR_REPUTATION) || defined(_FFR_REPRRD)
-# define REPDENYSMTP		"450"
-# define REPDENYESC		"4.7.1"
-# define REPDENYTXT		"Message deferred for policy reasons"
-#endif /* _FFR_REPUTATION || _FFR_REPRRD */
-
 #define	DELIMITER		"\001"
 
 struct lookup dkimf_params[] =
@@ -592,9 +496,6 @@ struct lookup dkimf_params[] =
 	{ "internalerror",	HNDL_INTERNAL },
 	{ "keynotfound",	HNDL_NOKEY },
 	{ "nosignature",	HNDL_NOSIGNATURE },
-#ifdef _FFR_REPUTATION
-	{ "reputationerror",	HNDL_REPERROR },
-#endif /* _FFR_REPUTATION */
 	{ "security",		HNDL_SECURITY },
 	{ "signatureerror",	HNDL_SIGGEN },
 	{ NULL,			-1 },
@@ -628,16 +529,6 @@ struct lookup dkimf_sign[] =
 {
 	{ "rsa-sha1",		DKIM_SIGN_RSASHA1 },
 	{ "rsa-sha256",		DKIM_SIGN_RSASHA256 },
-	{ NULL,			-1 },
-};
-
-struct lookup dkimf_atpshash[] =
-{
-#ifdef HAVE_SHA256
-	{ "sha256",		1 },
-#endif /* HAVE_SHA256 */
-	{ "sha1",		1 },
-	{ "none",		1 },
 	{ NULL,			-1 },
 };
 
@@ -1881,55 +1772,6 @@ dkimf_xs_clientip(lua_State *l)
 
 	return 1;
 }
-
-#ifdef _FFR_REPUTATION
-/*
-**  DKIMF_XS_SPAM -- tag message as spam
-**
-**  Parameters:
-**  	l -- Lua state
-**
-**  Return value:
-**  	Number of stack items pushed.
-*/
-
-int
-dkimf_xs_spam(lua_State *l)
-{
-	SMFICTX *ctx;
-	const char *keyname = NULL;
-	const char *ident = NULL;
-	struct connctx *cc;
-	struct msgctx *dfc;
-	struct dkimf_config *conf;
-
-	assert(l != NULL);
-
-	if (lua_gettop(l) != 1)
-	{
-		lua_pushstring(l, "odkim.spam(): incorrect argument count");
-		lua_error(l);
-	}
-	else if (!lua_islightuserdata(l, 1))
-	{
-		lua_pushstring(l, "odkim.spam(): incorrect argument type");
-		lua_error(l);
-	}
-
-	ctx = (SMFICTX *) lua_touserdata(l, 1);
-	if (ctx != NULL)
-	{
-		cc = (struct connctx *) dkimf_getpriv(ctx);
-		dfc = cc->cctx_msg;
-
-		dfc->mctx_spam = TRUE;
-	}
-
-	lua_pop(l, 1);
-
-	return 0;
-}
-#endif /* _FFR_REPUTATION */
 
 /*
 **  DKIMF_XS_REQUESTSIG -- request a signature
@@ -4082,75 +3924,6 @@ dkimf_xs_setresult(lua_State *l)
 	return 1;
 }
 
-# ifdef _FFR_STATSEXT
-/*
-**  DKIMF_XS_STATSEXT -- record extended statistics
-**
-**  Parameters:
-**  	l -- Lua state
-**
-**  Return value:
-**  	Number of stack items pushed.
-*/
-
-int
-dkimf_xs_statsext(lua_State *l)
-{
-	char *name;
-	char *value;
-	SMFICTX *ctx;
-
-	assert(l != NULL);
-
-	if (lua_gettop(l) != 3)
-	{
-		lua_pushstring(l,
-		               "odkim.stats(): incorrect argument count");
-		lua_error(l);
-	}
-	else if (!lua_islightuserdata(l, 1) ||
-	         !lua_isstring(l, 2) ||
-	         !lua_isstring(l, 3))
-	{
-		lua_pushstring(l,
-		               "odkim.stats(): incorrect argument type");
-		lua_error(l);
-	}
-
-	ctx = (SMFICTX *) lua_touserdata(l, 1);
-	name = (char *) lua_tostring(l, 2);
-	value = (char *) lua_tostring(l, 3);
-	lua_pop(l, 3);
-
-	if (ctx != NULL)
-	{
-		struct statsext *se;
-		struct connctx *cc;
-		struct msgctx *dfc;
-
-		cc = (struct connctx *) dkimf_getpriv(ctx);
-		dfc = cc->cctx_msg;
-
-		se = (struct statsext *) malloc(sizeof(struct statsext));
-		if (se == NULL)
-		{
-			lua_pushfstring(l, "odkim.stats(): malloc(): %s",
-			                strerror(errno));
-			lua_error(l);
-		}
-
-		se->se_next = dfc->mctx_statsext;
-		dfc->mctx_statsext = se;
-
-		strlcpy(se->se_name, name, sizeof se->se_name);
-		strlcpy(se->se_value, value, sizeof se->se_value);
-	}
-
-	lua_pushnil(l);
-
-	return 1;
-}
-# endif /* _FFR_STATSEXT */
 #endif /* USE_LUA */
 
 #ifdef _FFR_VBR
@@ -5861,22 +5634,12 @@ dkimf_config_new(void)
 	new->conf_maxhdrsz = DEFMAXHDRSZ;
 	new->conf_signbytes = -1L;
 	new->conf_sigmintype = SIGMIN_BYTES;
-#ifdef _FFR_REPUTATION
-	new->conf_repfactor = DKIMF_REP_DEFFACTOR;
-	new->conf_repcachettl = DKIMF_REP_DEFCACHETTL;
-#endif /* _FFR_REPUTATION */
 	new->conf_safekeys = TRUE;
-#ifdef _FFR_STATS
-	new->conf_reporthost = myhostname;
-#endif /* _FFR_STATS */
 #ifdef _FFR_RATE_LIMIT
 	new->conf_flowdatattl = DEFFLOWDATATTL;
 	new->conf_flowfactor = 1;
 #endif /* _FFR_RATE_LIMIT */
 	new->conf_mtacommand = SENDMAIL_PATH;
-#ifdef _FFR_ATPS
-	new->conf_atpshash = dkimf_atpshash[0].str;
-#endif /* _FFR_ATPS */
 	new->conf_selectcanonhdr = SELECTCANONHDR;
 
 	memcpy(&new->conf_handling, &defaults, sizeof new->conf_handling);
@@ -5944,11 +5707,6 @@ dkimf_config_free(struct dkimf_config *conf)
 	if (conf->conf_dontsigntodb != NULL)
 		dkimf_db_close(conf->conf_dontsigntodb);
 
-#ifdef _FFR_ATPS
-	if (conf->conf_atpsdb != NULL)
-		dkimf_db_close(conf->conf_atpsdb);
-#endif /* _FFR_ATPS */
-
 	if (conf->conf_authservid != NULL)
 		free(conf->conf_authservid);
 
@@ -5998,24 +5756,6 @@ dkimf_config_free(struct dkimf_config *conf)
 		dkimf_db_close(conf->conf_flowdatadb);
 #endif /* _FFR_RATE_LIMIT */
 
-#ifdef _FFR_REPUTATION
-	if (conf->conf_repratiosdb != NULL)
-		dkimf_db_close(conf->conf_repratiosdb);
-	if (conf->conf_replimitsdb != NULL)
-		dkimf_db_close(conf->conf_replimitsdb);
-	if (conf->conf_replimitmodsdb != NULL)
-		dkimf_db_close(conf->conf_replimitmodsdb);
-	if (conf->conf_repspamcheck != NULL)
-		regfree(&conf->conf_repspamre);
-	if (conf->conf_rep != NULL)
-		dkimf_rep_close(conf->conf_rep);
-#endif /* _FFR_REPUTATION */
-
-#ifdef _FFR_REPRRD
-	if (conf->conf_reprrd != NULL)
-		reprrd_close(conf->conf_reprrd);
-#endif /* _FFR_REPRRD */
-
 #ifdef USE_LUA
 	if (conf->conf_setupscript != NULL)
 		free(conf->conf_setupscript);
@@ -6025,12 +5765,6 @@ dkimf_config_free(struct dkimf_config *conf)
 		free(conf->conf_screenscript);
 	if (conf->conf_screenfunc != NULL)
 		free(conf->conf_screenfunc);
-# ifdef _FFR_STATSEXT
-	if (conf->conf_statsscript != NULL)
-		free(conf->conf_statsscript);
-	if (conf->conf_statsfunc != NULL)
-		free(conf->conf_statsfunc);
-# endif /* _FFR_STATSEXT */
 	if (conf->conf_finalscript != NULL)
 		free(conf->conf_finalscript);
 	if (conf->conf_finalfunc != NULL)
@@ -6097,9 +5831,6 @@ dkimf_parsehandler(struct config *cfg, char *name, struct handling *hndl,
 		hndl->hndl_internal = action;
 		hndl->hndl_security = action;
 		hndl->hndl_nokey = action;
-#if defined(_FFR_REPUTATION) || defined(_FFR_REPRRD)
-		hndl->hndl_reperr = action;
-#endif /* _FFR_REPUTATION || defined(_FFR_REPRRD) */
 		hndl->hndl_siggen = action;
 		return TRUE;
 
@@ -6126,12 +5857,6 @@ dkimf_parsehandler(struct config *cfg, char *name, struct handling *hndl,
 	  case HNDL_NOKEY:
 		hndl->hndl_nokey = action;
 		return TRUE;
-
-#if defined(_FFR_REPUTATION) || defined(_FFR_REPRRD)
-	  case HNDL_REPERROR:
-		hndl->hndl_reperr = action;
-		return TRUE;
-#endif /* _FFR_REPUTATION || defined(_FFR_REPRRD) */
 
 	  case HNDL_SIGGEN:
 		hndl->hndl_siggen = action;
@@ -6352,10 +6077,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                        &conf->conf_handling, err, errlen) ||
 		    !dkimf_parsehandler(data, "On-PolicyError",
 		                        &conf->conf_handling, err, errlen) ||
-#ifdef _FFR_REPUTATION
-		    !dkimf_parsehandler(data, "On-ReptuationError",
-		                        &conf->conf_handling, err, errlen) ||
-#endif /* _FFR_REPUTATION */
 		    !dkimf_parsehandler(data, "On-Security",
 		                        &conf->conf_handling, err, errlen) ||
 		    !dkimf_parsehandler(data, "On-SignatureError",
@@ -6425,20 +6146,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  sizeof tmpint);
 		if (tmpint != 0)
 			conf->conf_sigttl = (unsigned long) tmpint;
-
-#ifdef _FFR_STATS
-		(void) config_get(data, "Statistics", &conf->conf_statspath,
-		                  sizeof conf->conf_statspath);
-
-		(void) config_get(data, "StatisticsPrefix",
-		                  &conf->conf_reportprefix,
-		                  sizeof conf->conf_reportprefix);
-
-		str = NULL;
-		(void) config_get(data, "StatisticsName", &str, sizeof str);
-		if (str != NULL)
-			conf->conf_reporthost = str;
-#endif /* _FFR_STATS */
 
 		if (!conf->conf_subdomains)
 		{
@@ -6820,74 +6527,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			}
 		}
 
-# ifdef _FFR_STATSEXT
-		str = NULL;
-		(void) config_get(data, "StatisticsPolicyScript", &str,
-		                  sizeof str);
-		if (str != NULL)
-		{
-			int fd;
-			ssize_t rlen;
-			struct stat s;
-			struct dkimf_lua_script_result lres;
-
-			fd = open(str, O_RDONLY, 0);
-			if (fd < 0)
-			{
-				snprintf(err, errlen, "%s: open(): %s", str,
-				         strerror(errno));
-				return -1;
-			}
-
-			if (fstat(fd, &s) == -1)
-			{
-				snprintf(err, errlen, "%s: fstat(): %s", str,
-				         strerror(errno));
-				close(fd);
-				return -1;
-			}
-
-			conf->conf_statsscript = malloc(s.st_size + 1);
-			if (conf->conf_statsscript == NULL)
-			{
-				snprintf(err, errlen, "malloc(): %s",
-				         strerror(errno));
-				close(fd);
-				return -1;
-			}
-
-			memset(conf->conf_statsscript, '\0', s.st_size + 1);
-			rlen = read(fd, conf->conf_statsscript, s.st_size);
-			if (rlen == -1)
-			{
-				snprintf(err, errlen, "%s: read(): %s",
-				         str, strerror(errno));
-				close(fd);
-				return -1;
-			}
-			else if (rlen < s.st_size)
-			{
-				snprintf(err, errlen, "%s: early EOF",
-				         str);
-				close(fd);
-				return -1;
-			}
-
-			close(fd);
-
-			memset(&lres, '\0', sizeof lres);
-			if (dkimf_lua_stats_hook(NULL, conf->conf_statsscript,
-			                         0, str, &lres,
-			                         &conf->conf_statsfunc,
-			                         &conf->conf_statsfuncsz) != 0)
-			{
-				strlcpy(err, lres.lrs_error, errlen);
-				free(lres.lrs_error);
-				return -1;
-			}
-		}
-# endif /* _FFR_STATSEXT */
-
 		str = NULL;
 		(void) config_get(data, "FinalPolicyScript", &str, sizeof str);
 		if (str != NULL)
@@ -7187,42 +6826,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			return -1;
 		}
 	}
-
-#ifdef _FFR_ATPS
-	str = NULL;
-	if (data != NULL)
-	{
-		(void) config_get(data, "ATPSHashAlgorithm",
-		                  &conf->conf_atpshash,
-		                  sizeof conf->conf_atpshash);
-		(void) config_get(data, "ATPSDomains", &str, sizeof str);
-	}
-
-	if (dkimf_lookup_strtoint(conf->conf_atpshash, dkimf_atpshash) != 1)
-	{
-		snprintf(err, errlen, "unknown ATPS hash \"%s\"",
-		         conf->conf_atpshash);
-		return -1;
-	}
-
-	if (str != NULL)
-	{
-		int status;
-		char *dberr = NULL;
-
-		status = dkimf_db_open(&conf->conf_atpsdb, str,
-		                       (dbflags | 
-		                        DKIMF_DB_FLAG_ICASE |
-		                        DKIMF_DB_FLAG_READONLY),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         str, dberr);
-			return -1;
-		}
-	}
-#endif /* _FFR_ATPS */
 
 	str = NULL;
 	if (data != NULL)
@@ -7869,201 +7472,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		fclose(f);
 	}
 #endif /* _FFR_REPLACE_RULES */
-
-#ifdef _FFR_REPUTATION
-	if (data != NULL)
-	{
-		(void) config_get(data, "ReputationTest",
-		                  &conf->conf_reptest,
-		                  sizeof conf->conf_reptest);
-
-		(void) config_get(data, "ReputationVerbose",
-		                  &conf->conf_repverbose,
-		                  sizeof conf->conf_repverbose);
-
-		(void) config_get(data, "ReputationLimits",
-		                  &conf->conf_replimits,
-		                  sizeof conf->conf_replimits);
-
-		(void) config_get(data, "ReputationLimitModifiers",
-		                  &conf->conf_replimitmods,
-		                  sizeof conf->conf_replimitmods);
-
-		(void) config_get(data, "ReputationCache",
-		                  &conf->conf_repcache,
-		                  sizeof conf->conf_repcache);
-
-		(void) config_get(data, "ReputationCacheTTL",
-		                  &conf->conf_repcachettl,
-		                  sizeof conf->conf_repcachettl);
-
-		(void) config_get(data, "ReputationDuplicates",
-		                  &conf->conf_repdups,
-		                  sizeof conf->conf_repdups);
-
-		(void) config_get(data, "ReputationRatios",
-		                  &conf->conf_repratios,
-		                  sizeof conf->conf_repratios);
-
-		(void) config_get(data, "ReputationLowTime",
-		                  &conf->conf_replowtime,
-		                  sizeof conf->conf_replowtime);
-
-		(void) config_get(data, "ReputationTimeFactor",
-		                  &conf->conf_repfactor,
-		                  sizeof conf->conf_repfactor);
-
-		(void) config_get(data, "ReputationTimeout",
-		                  &conf->conf_reptimeout,
-		                  sizeof conf->conf_reptimeout);
-
-		(void) config_get(data, "ReputationSpamCheck",
-		                  &conf->conf_repspamcheck,
-		                  sizeof conf->conf_repspamcheck);
-
-		(void) config_get(data, "ReputationMinimum",
-		                  &conf->conf_repminimum,
-		                  sizeof conf->conf_repminimum);
-	}
-
-	if (conf->conf_repspamcheck != NULL)
-	{
-		size_t tmplen;
-		char tmpre[BUFRSZ + 1];
-
-		tmplen = strlen(conf->conf_repspamcheck);
-		if (tmplen < 3 ||
-		    conf->conf_repspamcheck[0] != '/' ||
-		    conf->conf_repspamcheck[tmplen - 1] != '/')
-		{
-			snprintf(err, errlen,
-			         "invalid value for ReputationSpamCheck");
-			return -1;
-		}
-
-		strlcpy(tmpre, conf->conf_repspamcheck + 1, sizeof tmpre);
-		tmpre[tmplen - 2] = '\0';
-
-		if (regcomp(&conf->conf_repspamre, tmpre, REG_EXTENDED) != 0)
-		{
-			snprintf(err, errlen,
-			         "unusable value for ReputationSpamCheck");
-			return -1;
-		}
-	}
-
-	if (conf->conf_replowtime != NULL)
-	{
-		int status;
-		char *dberr = NULL;
-
-		status = dkimf_db_open(&conf->conf_replowtimedb,
-		                       conf->conf_replowtime,
-		                       (dbflags | DKIMF_DB_FLAG_READONLY),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         conf->conf_replowtime, dberr);
-			return -1;
-		}
-	}
-
-	if (conf->conf_repratios != NULL)
-	{
-		int status;
-		char *dberr = NULL;
-
-		if (conf->conf_replimits != NULL)
-		{
-			status = dkimf_db_open(&conf->conf_replimitsdb,
-			                       conf->conf_replimits,
-			                       (dbflags |
-			                        DKIMF_DB_FLAG_READONLY), NULL,
-			                       &dberr);
-			if (status != 0)
-			{
-				snprintf(err, errlen,
-				         "%s: dkimf_db_open(): %s",
-				         conf->conf_replimits, dberr);
-				return -1;
-			}
-		}
-
-		if (conf->conf_replimitmods != NULL)
-		{
-			status = dkimf_db_open(&conf->conf_replimitmodsdb,
-			                       conf->conf_replimitmods,
-			                       (dbflags |
-			                        DKIMF_DB_FLAG_READONLY), NULL,
-			                       &dberr);
-			if (status != 0)
-			{
-				snprintf(err, errlen,
-				         "%s: dkimf_db_open(): %s",
-				         conf->conf_replimitmods, dberr);
-				return -1;
-			}
-		}
-
-		status = dkimf_db_open(&conf->conf_repratiosdb,
-		                       conf->conf_repratios,
-		                       (dbflags | DKIMF_DB_FLAG_READONLY),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         conf->conf_repratios, dberr);
-			return -1;
-		}
-
-		if (dkimf_rep_init(&conf->conf_rep, conf->conf_repfactor,
-	                           conf->conf_repminimum,
-	                           conf->conf_repcachettl,
-	                           conf->conf_repcache,
-	                           conf->conf_repdups,
-	                           conf->conf_replimitsdb,
-	                           conf->conf_replimitmodsdb,
-	                           conf->conf_repratiosdb,
-		                   conf->conf_replowtimedb) != 0)
-		{
-			snprintf(err, errlen,
-			         "can't initialize reputation subsystem");
-			return -1;
-		}
-	}
-#endif /* _FFR_REPUTATION */
-
-#ifdef _FFR_REPRRD
-	if (data != NULL)
-	{
-		int hashdepth = REPRRD_DEFHASHDEPTH;
-		char *root = NULL;
-
-		(void) config_get(data, "ReputationTest",
-		                  &conf->conf_reptest,
-		                  sizeof conf->conf_reptest);
-		(void) config_get(data, "ReputationVerbose",
-		                  &conf->conf_repverbose,
-		                  sizeof conf->conf_repverbose);
-
-		(void) config_get(data, "ReputationRRDHashDepth",
-		                  &hashdepth, sizeof hashdepth);
-		(void) config_get(data, "ReputationRRDRoot",
-		                  &root, sizeof root);
-
-		if (hashdepth >= 0 && root != NULL)
-		{
-			conf->conf_reprrd = reprrd_init(root, hashdepth);
-			if (conf->conf_reprrd == NULL)
-			{
-				snprintf(err, errlen,
-				         "can't initialize reputation subsystem");
-				return -1;
-			}
-		}
-	}
-#endif /* _FFR_REPRRD */
 
 	dkimf_reportaddr(conf);
 
@@ -9078,16 +8486,6 @@ dkimf_initcontext(struct dkimf_config *conf)
 #ifdef USE_UNBOUND
 	ctx->mctx_dnssec_key = DKIM_DNSSEC_UNKNOWN;
 #endif /* USE_UNBOUND */
-#ifdef _FFR_ATPS
-	ctx->mctx_atps = DKIM_ATPS_UNKNOWN;
-#endif /* _FFR_ATPS */
-#ifdef _FFR_REPUTATION
-# ifdef USE_GNUTLS
-	(void) gnutls_hash_init(&ctx->mctx_hash, GNUTLS_DIG_SHA1);
-# else /* USE_GNUTLS */
-	SHA1_Init(&ctx->mctx_hash);
-# endif /* USE_GNUTLS */
-#endif /* _FFR_REPUTATION */
 
 	return ctx;
 }
@@ -9236,24 +8634,6 @@ dkimf_cleanup(SMFICTX *ctx)
 
 		if (dfc->mctx_tmpstr != NULL)
 			dkimf_dstring_free(dfc->mctx_tmpstr);
-
-#ifdef _FFR_STATSEXT
-		if (dfc->mctx_statsext != NULL)
-		{
-			struct statsext *cur;
-			struct statsext *next;
-
-			cur = dfc->mctx_statsext;
-			while (cur != NULL)
-			{
-				next = cur->se_next;
-	
-				free(cur);
-
-				cur = next;
-			}
-		}
-#endif /* _FFR_STATSEXT */
 
 #ifdef USE_LUA
 		if (dfc->mctx_luaglobalh != NULL)
@@ -11176,9 +10556,6 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 	    || conf->conf_setupscript != NULL
 	    || conf->conf_screenscript != NULL
 	    || conf->conf_finalscript != NULL
-# ifdef _FFR_STATSEXT
-	    || conf->conf_statsscript != NULL
-# endif /* _FFR_STATSEXT */
 #endif /* USE_LUA */
 	   )
 	{
@@ -11196,9 +10573,6 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 	    || conf->conf_setupscript != NULL
 	    || conf->conf_screenscript != NULL
 	    || conf->conf_finalscript != NULL
-# ifdef _FFR_STATSEXT
-	    || conf->conf_statsscript != NULL
-# endif /* _FFR_STATSEXT */
 #endif /* USE_LUA */
 	   )
 	{
@@ -11313,16 +10687,6 @@ mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 		dkimf_cleanup(ctx);
 		return SMFIS_TEMPFAIL;
 	}
-
-#ifdef _FFR_REPUTATION
-# ifdef USE_GNUTLS
-	(void) gnutls_hash(dfc->mctx_hash, headerf, strlen(headerf));
-	(void) gnutls_hash(dfc->mctx_hash, headerv, strlen(headerv));
-# else /* USE_GNUTLS */
-	SHA1_Update(&dfc->mctx_hash, headerf, strlen(headerf));
-	SHA1_Update(&dfc->mctx_hash, headerv, strlen(headerv));
-# endif /* USE_GNUTLS */
-#endif /* _FFR_REPUTATION */
 
 	(void) memset(newhdr, '\0', sizeof(struct Header));
 
@@ -12389,9 +11753,6 @@ mlfi_eoh(SMFICTX *ctx)
 	/* create all required signing handles */
 	if (dfc->mctx_srhead != NULL)
 	{
-#ifdef _FFR_ATPS
-		_Bool atps = FALSE;
-#endif /* _FFR_ATPS */
 		ssize_t signlen;
 		u_char *sdomain;
 		u_char *selector;
@@ -12404,20 +11765,6 @@ mlfi_eoh(SMFICTX *ctx)
 				"%s: BodyLengthDB matched %s, signing with l= requested",
 				dfc->mctx_jobid, dfc->mctx_laddr);
 		}
-
-#ifdef _FFR_ATPS
-		if (conf->conf_atpsdb != NULL)
-		{
-			status = dkimf_db_get(conf->conf_atpsdb,
-			                      dfc->mctx_domain, 0, NULL, 0,
-			                      &atps);
-			if (status != 0 && dolog)
-			{
-				dkimf_db_error(conf->conf_atpsdb,
-				               dfc->mctx_domain);
-			}
-		}
-#endif /* _FFR_ATPS */
 
 		for (sr = dfc->mctx_srhead; sr != NULL; sr = sr->srq_next)
 		{
@@ -12472,31 +11819,6 @@ mlfi_eoh(SMFICTX *ctx)
 					       DKIM_REPORTTAG);
 				}
 			}
-
-#ifdef _FFR_ATPS
-			if (atps)
-			{
-				status = dkim_add_xtag(sr->srq_dkim,
-				                       DKIM_ATPSTAG,
-				                       dfc->mctx_domain);
-				if (status != DKIM_STAT_OK && dolog)
-				{
-					syslog(LOG_ERR,
-					       "%s dkim_add_xtag() for \"%s\" failed",
-					       dfc->mctx_jobid, DKIM_ATPSTAG);
-				}
-
-				status = dkim_add_xtag(sr->srq_dkim,
-				                       DKIM_ATPSHTAG,
-				                       conf->conf_atpshash);
-				if (status != DKIM_STAT_OK && dolog)
-				{
-					syslog(LOG_ERR,
-					       "%s dkim_add_xtag() for \"%s\" failed",
-					       dfc->mctx_jobid, DKIM_ATPSHTAG);
-				}
-			}
-#endif /* _FFR_ATPS */
 
 			(void) dkim_set_user_context(sr->srq_dkim, ctx);
 
@@ -12939,15 +12261,6 @@ mlfi_eoh(SMFICTX *ctx)
 			last = *p;
 		}
 
-#ifdef _FFR_REPUTATION
-		/* check for spam flag */
-		if (conf->conf_repspamcheck != NULL &&
-		    regexec(&conf->conf_repspamre, 
-		            dkimf_dstring_get(dfc->mctx_tmpstr),
-		            0, NULL, 0) == 0)
-			dfc->mctx_spam = TRUE;
-#endif /* _FFR_REPUTATION */
-
 		if (dfc->mctx_srhead != NULL)
 		{
 			DKIM *dkim;
@@ -13128,14 +12441,6 @@ mlfi_body(SMFICTX *ctx, u_char *bodyp, size_t bodylen)
 
 	if (bodylen == 0)
 		return SMFIS_CONTINUE;
-
-#ifdef _FFR_REPUTATION
-# ifdef USE_GNUTLS
-	(void) gnutls_hash(dfc->mctx_hash, bodyp, bodylen);
-# else /* USE_GNUTLS */
-	SHA1_Update(&dfc->mctx_hash, bodyp, bodylen);
-# endif /* USE_GNUTLS */
-#endif /* _FFR_REPUTATION */
 
 	/*
 	**  Tell the filter to skip it if we don't care about the body.
@@ -13837,476 +13142,6 @@ mlfi_eom(SMFICTX *ctx)
 			dfc->mctx_dnssec_key = dkim_sig_getdnssec(sig);
 #endif /* USE_UNBOUND */
 
-#ifdef _FFR_ATPS
-		if (dfc->mctx_status != DKIMF_STATUS_UNKNOWN && !authorsig)
-		{
-			int nsigs;
-			dkim_atps_t atps = DKIM_ATPS_UNKNOWN;
-			DKIM_SIGINFO **sigs;
-
-			status = dkim_getsiglist(dfc->mctx_dkimv, &sigs, &nsigs);
-			if (status == DKIM_STAT_OK)
-			{
-				for (c = 0;
-				     c < nsigs && atps != DKIM_ATPS_FOUND;
-				     c++)
-				{
-					if ((dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) != 0 &&
-					    dkim_sig_getbh(sigs[c]) == DKIM_SIGBH_MATCH &&
-					    strcasecmp(dkim_sig_getdomain(sigs[c]),
-					               dfc->mctx_domain) != 0)
-					{
-						status = dkim_atps_check(dfc->mctx_dkimv,
-						                         sigs[c],
-						                         NULL,
-						                         &atps);
-
-						if (status != DKIM_STAT_OK)
-							break;
-					}
-				}
-
-				dfc->mctx_atps = atps;
-			}
-		}
-#endif /* _FFR_ATPS */
-
-#ifdef _FFR_STATS
-		if (conf->conf_statspath != NULL && dfc->mctx_dkimv != NULL)
-		{
-# ifdef USE_LUA
-#  ifdef _FFR_STATSEXT
-			if (conf->conf_statsscript != NULL)
-			{
-				_Bool dofree = TRUE;
-				struct dkimf_lua_script_result lres;
-
-				memset(&lres, '\0', sizeof lres);
-
-				status = dkimf_lua_stats_hook(ctx,
-				                              conf->conf_statsfunc,
-				                              conf->conf_statsfuncsz,
-				                              "stats script",
-				                              &lres,
-				                              NULL, NULL);
-
-				if (status != 0)
-				{
-					if (conf->conf_dolog)
-					{
-						if (lres.lrs_error == NULL)
-						{
-							dofree = FALSE;
-
-							switch (status)
-							{
-							  case 2:
-								lres.lrs_error = "processing error";
-								break;
-
-							  case 1:
-								lres.lrs_error = "syntax error";
-								break;
-
-							  case -1:
-								lres.lrs_error = "memory allocation error";
-								break;
-
-							  default:
-								lres.lrs_error = "unknown error";
-								break;
-							}
-						}
-
-						syslog(LOG_ERR,
-						       "%s: dkimf_lua_stats_hook() failed: %s",
-						       dfc->mctx_jobid,
-						       lres.lrs_error);
-					}
-
-					if (dofree)
-						free(lres.lrs_error);
-
-					return SMFIS_TEMPFAIL;
-				}
-			}
-#  endif /* _FFR_STATSEXT */
-# endif /* USE_LUA */
-
-			if (dkimf_stats_record(conf->conf_statspath,
-			                       dfc->mctx_jobid,
-			                       conf->conf_reporthost,
-			                       conf->conf_reportprefix,
-			                       dfc->mctx_hqhead,
-			                       dfc->mctx_dkimv,
-# ifdef _FFR_STATSEXT
-			                       dfc->mctx_statsext,
-# endif /* _FFR_STATSEXT */
-# ifdef _FFR_ATPS
-			                       dfc->mctx_atps,
-# else /* _FFR_ATPS */
-			                       -1,
-# endif /* _FFR_ATPS */
-# ifdef _FFR_REPUTATION
-			                       dfc->mctx_spam,
-# else /* _FFR_REPUTATION */
-			                       -1,
-# endif /* _FFR_REPUTATION */
-			                       (struct sockaddr *) &cc->cctx_ip) != 0)
-			{
-				if (dolog)
-				{
-					syslog(LOG_WARNING,
-					       "statistics recording failed");
-				}
-			}
-		}
-#endif /* _FFR_STATS */
-
-#ifdef _FFR_REPRRD
-		if (dfc->mctx_dkimv != NULL && conf->conf_reprrd != NULL)
-		{
-			DKIM_SIGINFO **sigs;
-			int nsigs;
-
-			status = dkim_getsiglist(dfc->mctx_dkimv,
-			                         &sigs, &nsigs);
-
-			if (status == DKIM_STAT_OK)
-			{
-				int c;
-				int ret;
-				const char *cd;
-				const char *domain = NULL;
-
-				for (c = 0; c < nsigs && domain == NULL; c++)
-				{
-					if ((dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) == 0 ||
-					    (dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_TESTKEY) != 0 ||
-					     dkim_sig_getbh(sigs[c]) != DKIM_SIGBH_MATCH)
-						continue;
-
-					cd = dkim_sig_getdomain(sigs[c]);
-
-					ret = 0;
-
-					status = reprrd_query(conf->conf_reprrd,
-					                      cd,
-					                      REPRRD_TYPE_MESSAGES,
-					                      &ret, NULL, 0);
-					if (status == 0 && ret == 0)
-					{
-						status = reprrd_query(conf->conf_reprrd,
-						                      cd,
-						                      REPRRD_TYPE_SPAM,
-						                      &ret,
-						                      NULL, 0);
-					}
-
-					if (status == 0 && ret == 0)
-					{
-						status = reprrd_query(conf->conf_reprrd,
-						                      cd,
-						                      REPRRD_TYPE_LIMIT,
-						                      &ret,
-						                      NULL, 0);
-					}
-
-					if (status == 0)
-					{
-						if (ret == 1)
-						{
-							domain = cd;
-							break;
-						}
-						else if (conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: allowed by reputation of %s",
-							       dfc->mctx_jobid,
-							       cd);
-						}
-					}
-					else if (status != REPRRD_STAT_NODATA)
-					{
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: reputation query for \"%s\" failed (%d)",
-							       dfc->mctx_jobid,
-							       cd, status);
-						}
-
-						return dkimf_miltercode(ctx,
-						                        conf->conf_handling.hndl_reperr,
-						                        NULL);
-					}
-					else if (conf->conf_dolog)
-					{
-						syslog(LOG_NOTICE,
-						       "%s: no reputation data available for \"%s\"",
-						       dfc->mctx_jobid, cd);
-					}
-				}
-
-				if (domain == NULL)
-				{
-					cd = "unsigned";
-
-					status = reprrd_query(conf->conf_reprrd,
-					                      cd,
-					                      REPRRD_TYPE_MESSAGES,
-					                      &ret, NULL, 0);
-					if (status == 0 && ret == 0)
-					{
-						status = reprrd_query(conf->conf_reprrd,
-						                      cd,
-						                      REPRRD_TYPE_SPAM,
-						                      &ret,
-						                      NULL, 0);
-					}
-
-					if (status == 0 && ret == 0)
-					{
-						status = reprrd_query(conf->conf_reprrd,
-						                      cd,
-						                      REPRRD_TYPE_LIMIT,
-						                      &ret,
-						                      NULL, 0);
-					}
-
-					if (status == 1)
-					{
-						domain = "NULL domain";
-					}
-					else if (status == -1)
-					{
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: reputation query for NULL domain failed (%d)",
-							       dfc->mctx_jobid,
-							       status);
-						}
-
-						return dkimf_miltercode(ctx,
-						                        conf->conf_handling.hndl_reperr,
-						                        NULL);
-					}
-				}
-
-				if (domain != NULL)
-				{
-					if (dolog)
-					{
-						syslog(LOG_NOTICE,
-						       "%s: %sblocked by reputation of %s",
-						       dfc->mctx_jobid,
-						       conf->conf_reptest ? "would be " : "",
-						       domain);
-					}
-
-					if (!conf->conf_reptest)
-					{
-						if (dkimf_setreply(ctx,
-						                   REPDENYSMTP,
-						                   REPDENYESC,
-						                   REPDENYTXT) != MI_SUCCESS &&
-						    conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: smfi_setreply() failed",
-							       dfc->mctx_jobid);
-						}
-
-						dkimf_cleanup(ctx);
-						return SMFIS_TEMPFAIL;
-					}
-				}
-			}
-		}
-#endif /* _FFR_REPRRD */
-
-#ifdef _FFR_REPUTATION
-		if (dfc->mctx_dkimv != NULL && conf->conf_rep != NULL &&
-		    !dfc->mctx_internal)
-		{
-			float ratio;
-			unsigned long count;
-			unsigned long limit;
-			unsigned long spam;
-			DKIM_SIGINFO **sigs;
-			int nsigs;
-
-			status = dkim_getsiglist(dfc->mctx_dkimv,
-			                         &sigs, &nsigs);
-
-			if (status == DKIM_STAT_OK)
-			{
-				int c;
-				_Bool checked = FALSE;
-				const char *cd;
-				const char *domain = NULL;
-				unsigned char digest[SHA_DIGEST_LENGTH];
-				char errbuf[BUFRSZ + 1];
-
-# ifdef USE_GNUTLS
-				(void) gnutls_hash_deinit(dfc->mctx_hash, digest);
-# else /* USE_GNUTLS */
-				SHA1_Final(digest, &dfc->mctx_hash);
-# endif /* USE_GNUTLS */
-
-				for (c = 0; c < nsigs; c++)
-				{
-					if ((dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) == 0 ||
-					    (dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_TESTKEY) != 0 ||
-					    dkim_sig_getbh(sigs[c]) != DKIM_SIGBH_MATCH)
-						continue;
-
-					checked = TRUE;
-
-					cd = dkim_sig_getdomain(sigs[c]);
-
-					status = dkimf_rep_check(conf->conf_rep,
-					                         sigs[c],
-					                         dfc->mctx_spam,
-					                         digest,
-					                         SHA_DIGEST_LENGTH,
-					                         &limit,
-					                         &ratio,
-					                         &count,
-					                         &spam,
-					                         errbuf,
-					                         sizeof errbuf);
-
-					if (status == 1)
-					{
-						domain = cd;
-						break;
-					}
-					else if (status == -1)
-					{
-						if (conf->conf_dolog)
-						{
-							cd = dkim_sig_getdomain(sigs[c]);
-							syslog(LOG_NOTICE,
-							       "%s: reputation query for \"%s\" failed: %s",
-							       dfc->mctx_jobid,
-							       cd, errbuf);
-						}
-
-						return dkimf_miltercode(ctx,
-						                        conf->conf_handling.hndl_reperr,
-						                        NULL);
-					}
-					else if (conf->conf_repverbose &&
-					         conf->conf_dolog)
-					{
-						if (status == 2)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: no reputation data available for \"%s\"",
-							       dfc->mctx_jobid,
-							       cd);
-						}
-						else
-						{
-							syslog(LOG_INFO,
-							       "%s: allowed by reputation of %s (%f, count %lu, spam %lu, limit %lu)",
-							       dfc->mctx_jobid,
-							       cd, ratio,
-							       count,
-						               spam, limit);
-						}
-					}
-				}
-
-				if (domain == NULL && !checked)
-				{
-					status = dkimf_rep_check(conf->conf_rep,
-					                         NULL,
-					                         dfc->mctx_spam,
-					                         digest,
-					                         SHA_DIGEST_LENGTH,
-					                         &limit,
-					                         &ratio,
-					                         &count,
-					                         &spam,
-					                         errbuf,
-					                         sizeof errbuf);
-
-					if (status == 1)
-					{
-						domain = "NULL domain";
-					}
-					else if (status == -1)
-					{
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: reputation query for NULL domain failed: %s",
-							       dfc->mctx_jobid,
-							       errbuf);
-						}
-
-						return dkimf_miltercode(ctx,
-						                        conf->conf_handling.hndl_reperr,
-						                        NULL);
-					}
-					else if (conf->conf_repverbose &&
-					         conf->conf_dolog)
-					{
-						if (status == 2)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: no reputation data available for NULL domain",
-							       dfc->mctx_jobid);
-						}
-						else
-						{
-							syslog(LOG_INFO,
-							       "%s: allowed by reputation of NULL domain (%f, count %lu, spam %lu, limit %lu)",
-							       dfc->mctx_jobid,
-							       ratio,
-							       count,
-						               spam, limit);
-						}
-					}
-				}
-
-				if (domain != NULL)
-				{
-					if (dolog)
-					{
-						syslog(LOG_NOTICE,
-						       "%s: %sblocked by reputation of %s (%f, count %lu, spam %lu, limit %lu)",
-						       dfc->mctx_jobid,
-						       conf->conf_reptest ? "would be " : "",
-						       domain, ratio, count,
-					               spam, limit);
-					}
-
-					if (!conf->conf_reptest)
-					{
-						if (dkimf_setreply(ctx,
-						                   REPDENYSMTP,
-						                   REPDENYESC,
-						                   REPDENYTXT) != MI_SUCCESS &&
-						    conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: smfi_setreply() failed",
-							       dfc->mctx_jobid);
-						}
-
-						dkimf_cleanup(ctx);
-						return SMFIS_TEMPFAIL;
-					}
-				}
-			}
-		}
-#endif /* _FFR_REPUTATION */
-
 		if (dfc->mctx_addheader)
 		{
 			u_char val[MAXADDRESS + 1];
@@ -14351,36 +13186,6 @@ mlfi_eom(SMFICTX *ctx)
 				strlcat((char *) header, "dkim=none",
 				        sizeof header);
 			}
-
-#ifdef _FFR_ATPS
-			strlcat((char *) header, ";", sizeof header);
-			strlcat((char *) header, DELIMITER,
-			        sizeof header);
-
-			strlcat((char *) header, "dkim-atps=",
-			        sizeof header);
-
-			switch (dfc->mctx_atps)
-			{
-			  case DKIM_ATPS_UNKNOWN:
-				strlcat((char *) header, "neutral",
-				        sizeof header);
-				break;
-
-			  case DKIM_ATPS_NOTFOUND:
-				strlcat((char *) header, "fail",
-				        sizeof header);
-				break;
-
-			  case DKIM_ATPS_FOUND:
-				strlcat((char *) header, "pass",
-				        sizeof header);
-				break;
-
-			  default:
-				assert(0);
-			}
-#endif /* _FFR_ATPS */
 
 			/* if we generated either, pretty it up */
 			if (header[0] != '\0')
@@ -15536,12 +14341,8 @@ main(int argc, char **argv)
 
 			printf("%s: %s v%s\n", progname, DKIMF_PRODUCT,
 			       VERSION);
-#ifdef USE_GNUTLS
-			printf("\tCompiled with GnuTLS %s\n", GNUTLS_VERSION);
-#else /* USE_GNUTLS */
 			printf("\tCompiled with %s\n",
 			       SSLeay_version(SSLEAY_VERSION));
-#endif /* USE_GNUTLS */
 			printf("\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
 #ifdef HAVE_SMFI_VERSION
 			(void) smfi_version(&mvmajor, &mvminor, &mvrelease);
@@ -15585,20 +14386,12 @@ main(int argc, char **argv)
 	if (optind != argc)
 		return usage();
 
-#ifdef USE_GNUTLS
-	if (dkim_ssl_version() != GNUTLS_VERSION_NUMBER * 256)
-#else /* USE_GNUTLS */
 	if (dkim_ssl_version() != OPENSSL_VERSION_NUMBER)
-#endif /* USE_GNUTLS */
 	{
 		fprintf(stderr,
 		        "%s: incompatible SSL versions (library = 0x%09lx, filter = %09lx)\n",
 		        progname, dkim_ssl_version(),
-#ifdef USE_GNUTLS
-		        (unsigned long) GNUTLS_VERSION_NUMBER * 256);
-#else /* USE_GNUTLS */
 		        (unsigned long) OPENSSL_VERSION_NUMBER);
-#endif /* USE_GNUTLS */
 
 		return EX_SOFTWARE;
 	}
@@ -15704,14 +14497,6 @@ main(int argc, char **argv)
 	dolog = curconf->conf_dolog;
 	curconf->conf_data = cfg;
 
-#ifdef _FFR_REPUTATION
-	/* power up the reputation code */
-	repute_init();
-
-	if (curconf->conf_reptimeout != 0L)
-		repute_set_timeout(curconf->conf_reptimeout);
-#endif /* _FFR_REPUTATION */
-
 	if (querytest)
 	{
 		_Bool exists = FALSE;
@@ -15742,9 +14527,6 @@ main(int argc, char **argv)
 #ifdef USE_LIBMEMCACHED
 			                "\tmemcache:host[:port][,...]/prefix\n"
 #endif /* USE_LIBMEMCACHED */
-#ifdef _FFR_REPUTATION
-			                "\trepute:server[:reporter]\n"
-#endif /* _FFR_REPUTATION */
 #ifdef _FFR_SOCKETDB
 			                "\tsocket:{ port@host | path}\n"
 #endif /* _FFR_SOCKETDB */
@@ -16169,15 +14951,6 @@ main(int argc, char **argv)
 			gid = gr->gr_gid;
 
 		(void) endpwent();
-
-#ifdef _FFR_REPUTATION
-		/* chown things that need chowning */
-		if (curconf->conf_rep != NULL)
-		{
-			(void) dkimf_rep_chown_cache(curconf->conf_rep,
-			                             pw->pw_uid);
-		}
-#endif /* _FFR_REPUTATION */
 	}
 
 	/* change root if requested */
@@ -16862,10 +15635,6 @@ main(int argc, char **argv)
 		}
 	}
 #endif /* POPAUTH */
-
-#ifdef _FFR_STATS
-	dkimf_stats_init();
-#endif /* _FFR_STATS */
 
 	if (curconf->conf_dolog)
 	{

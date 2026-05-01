@@ -24,13 +24,8 @@
 #include <unistd.h>
 #include <assert.h>
 
-#ifdef USE_GNUTLS
-/* gcrypt includes */
-# include <gnutls/gnutls.h>
-#else /* USE_GNUTLS */
 /* openssl includes */
-# include <openssl/err.h>
-#endif /* USE_GNUTLS */
+#include <openssl/err.h>
 
 /* libopendkim includes */
 #include <dkim.h>
@@ -86,13 +81,6 @@ struct dkimf_unbound *unbound;			/* libunbound handle */
 void
 dkimf_log_ssl_errors(void)
 {
-#ifdef USE_GNUTLS
-	const char *err;
-
-	err = dkimf_crypto_geterror();
-	if (err != NULL)
-		fprintf(stderr, "%s\n", err);
-#else /* USE_GNUTLS */
 	/* log any queued SSL error messages */
 	if (ERR_peek_error() != 0)
 	{
@@ -122,7 +110,6 @@ dkimf_log_ssl_errors(void)
 
 		errno = saveerr;
 	}
-#endif /* ! USE_GNUTLS */
 }
 
 /*
@@ -451,9 +438,7 @@ main(int argc, char **argv)
 
 	memset(err, '\0', sizeof err);
 
-#ifndef USE_GNUTLS
 	ERR_load_crypto_strings();
-#endif /* ! USE_GNUTLS */
 
 	/* process a KeyTable if specified and not overridden */
 	if (dataset != NULL && argv_d == 0 && argv_k == 0 && argv_s == 0)

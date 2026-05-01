@@ -20,17 +20,12 @@
 #include <assert.h>
 #include <errno.h>
 
-#ifdef USE_GNUTLS
-/* libgnutls includes */
-# include <gnutls/gnutls.h>
-#else /* USE_GNUTLS */
 /* openssl includes */
-# include <openssl/crypto.h>
-# include <openssl/evp.h>
-# include <openssl/err.h>
-# include <openssl/ssl.h>
-# include <openssl/conf.h>
-#endif /* USE_GNUTLS */
+#include <openssl/crypto.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/conf.h>
 
 /* opendkim includes */
 #include "opendkim-crypto.h"
@@ -38,100 +33,6 @@
 
 /* globals */
 static _Bool crypto_init_done = FALSE;
-
-#ifdef USE_GNUTLS
-
-static pthread_key_t logkey;
-
-/*
-**  DKIMF_CRYPTO_LOG -- log something from inside GnuTLS
-**
-**  Parameters:
-**  	sev -- log level
-**   	str -- string to log
-**
-**  Return value:
-**  	None.
-*/
-
-static void
-dkimf_crypto_log(int sev, const char *str)
-{
-	char *buf;
-
-	buf = pthread_getspecific(logkey);
-	if (buf == NULL)
-	{
-		buf = malloc(BUFRSZ);
-		pthread_setspecific(logkey, buf);
-	}
-
-	if (buf != NULL)
-		snprintf(buf, BUFRSZ, "%s", str);
-}
-
-/*
-**  DKIMF_CRYPTO_GETERROR -- return any logged error
-**
-**  Parameters:
-**  	None.
-**
-**  Return value:
-**  	Pointer to the most recently logged error, or NULL if none.
-*/
-
-const char *
-dkimf_crypto_geterror(void)
-{
-	return (const char *) pthread_getspecific(logkey);
-}
-
-/*
-**  DKIMF_CRYPTO_INIT -- set up GnuTLS dependencies
-**
-**  Parameters:
-**  	None.
-**
-**  Return value:
-**  	0 -- success
-**  	!0 -- an error code (a la errno)
-*/
-
-int
-dkimf_crypto_init(void)
-{
-	(void) gnutls_global_set_log_function(dkimf_crypto_log);
-	(void) gnutls_global_init();
-
-	(void) pthread_key_create(&logkey, free);
-
-	return 0;
-}
-
-/*
-**  DKIMF_CRYPTO_FREE -- tear down libGnuTLS dependencies
-**
-**  Parameters:
-**  	None.
-**
-**  Return value:
-**  	None.
-*/
-
-void
-dkimf_crypto_free(void)
-{
-	if (crypto_init_done)
-	{
-		(void) gnutls_global_deinit();
-
-		(void) pthread_key_delete(logkey);
-	}
-
-	return;
-}
-
-#else /* USE_GNUTLS */
 
 static pthread_mutex_t id_lock;
 static pthread_key_t id_key;
@@ -413,5 +314,3 @@ dkimf_crypto_free(void)
 		crypto_init_done = FALSE;
 	}
 }
-
-#endif /* USE_GNUTLS */
