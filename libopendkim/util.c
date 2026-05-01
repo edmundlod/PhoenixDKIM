@@ -506,6 +506,12 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			}
 		}
 	}
+	
+	/* NUL-terminate the output */
+	if (q < end)
+	    *q = '\0';
+	else
+	    *(end - 1) = '\0';  /* truncate safely if buffer full */
 
 	return decode;
 }
