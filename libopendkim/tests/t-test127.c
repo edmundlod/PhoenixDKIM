@@ -33,7 +33,7 @@
 
 #define	MAXMSGSIZE	16384
 
-#define SIG2 "v=1; a=rsa-sha1; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=NYK+FZAKLNXv1Oj/E6kV0EOStBU=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Message-ID;\r\n\tb=G9BZ+aZqLU7j3DnHe1s/qgrJagml7UDFUxOEQ/uCwWGvOgrDn3PBE/Nb1OwpGzuFJ\r\n\t AOCTpNGrK2sw4pfEAk+/uOBGjZsMTBe9uqIA7w3tQFkF3yIRv6zqa/rccbWa5d0wYn\r\n\t S534UHVEyPXjXQ5x/yspDXF+v3geyISQ+oHf9hro="
+#define SIG2 "v=1; a=rsa-sha256; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=OCXOe+Z5vwn9kEzMbHxToJr2eQHe7JAAMerEaJikDtw=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Message-ID;\r\n\tb=R7SiFSnOPtMXYV2dGvxtORYlCrW/vd7HxSBVxlVnN8IeszRPztAhR2/h4EeVEEpzl\r\n\t QOKgzyPK8YMp3HnYInre8uWweyuSdhRMUogFAj9qSdkHry4CzG7jUZiJz1jcjqlcxF\r\n\t 5+PwHwyxfMdUV40VLUhO0fLX96VXL+veWlb/u2sw="
 
 #define	CRLFBODY00	"test\r\n"
 
@@ -140,8 +140,8 @@ main(int argc, char **argv)
 	status = dkim_getsighdr(dkim, hdr, sizeof hdr,
 	                        strlen(DKIM_SIGNHEADER) + 2);
 	assert(status == DKIM_STAT_OK);
-	assert(strcmp(SIG2, hdr) == 0);
-
+	fprintf(stderr, "ACTUAL: %s\n", hdr); fflush(stderr); assert(strcmp(SIG2, hdr) == 0);
+	
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);
 

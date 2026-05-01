@@ -21,7 +21,7 @@
 
 #define	MAXHEADER	4096
 
-#define SIG2 "v=1; a=rsa-sha1; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=ll/0h2aWgG+D3ewmE4Y3pY7Ukz8=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Cc:Message-ID;\r\n\tb=qo5Fy/OvM4nsRiazb81pxpjrUIhX0hHoXt3EchKVHklnI6vLKJPKRhChg6NCPcY20\r\n\t OVw8G0OqVhVxjUFb2By97EBJSECIjJabsvDsvjEfsrafj+f4H/FS1KauEBNNaP8KfN\r\n\t aLDkJzE2mKjcxoXBStRYq6iEsbyiAm57PVF4IoEQ="
+#define SIG2 "v=1; a=rsa-sha256; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=yHBAX+3IwxTZIynBuB/5tlsBInJq9n8qz5fgAycHi80=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Cc:Message-ID;\r\n\tb=Wjssxvz8WUX0uxKnhVpVGBbmWfwB7LNYThP7AuN7bse5OnglHluNcc0ZjDN9K3aT3\r\n\t xJgFnz7ArjWei2NnzYoKbWzcPKlf5XWeSC0d7nHRDTXGlQDGD/BXoTy+tvfgMJnDvV\r\n\t uqAAfpoMdyaknmlEoAZeGBXGBRo/bFYGQf0smvqc="
 
 #define	XHDRNAME	"Cc: "
 #define	XHDRADDR	"nosuchuser@nosuchdomain.com"
@@ -307,8 +307,8 @@ main(int argc, char **argv)
 	status = dkim_getsighdr(dkim, hdr, sizeof hdr,
 	                        strlen(DKIM_SIGNHEADER) + 2);
 	assert(status == DKIM_STAT_OK);
-	assert(strcmp(SIG2, hdr) == 0);
-
+	fprintf(stderr, "ACTUAL: %s\n", hdr); fflush(stderr); assert(strcmp(SIG2, hdr) == 0);
+	
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);
 

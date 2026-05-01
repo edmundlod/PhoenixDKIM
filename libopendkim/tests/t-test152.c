@@ -21,7 +21,7 @@
 
 #define	MAXHEADER	4096
 
-#define SIG2 "v=1; a=rsa-sha1; c=relaxed/relaxed; d=example.com; s=test;\r\n\tt=1172620939; bh=Z9ONHHsBrKN0pbfrOu025VfbdR4=; h=From:Subject;\r\n\tb=ZROo1yr1USMzkafTSZYD76oJeHNK6CccgAZtD0t/7lWmrj6WqxhSe00goRylK60+s\r\n\t DihLPzDDhCW2aQpx1BN/geTXuKetEUjQGzF9onEa2o8YERmPbheOTjEV1+UXfF2Nsf\r\n\t jvNr8aQo5t1wzpHfG2HW5oInsvFrgsNr+rmnow9o="
+#define SIG2 "v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=test;\r\n\tt=1172620939; bh=QVUr2KBvm7/Q/ustiYzOlFMN9G8IMqBzUX81BdpjSDI=;\r\n\th=From:Subject;\r\n\tb=dgNgiFfwK4L60rufWlDFYzBBP3E/8vOHpch4+HhNt6y8Jx/USoSLExiT90DHXZMFp\r\n\t 52Su7XdQUIcOklQFZU0HHx2hMn9VJoHtAWA8otBEJ2CwyvV1OKqgdr+AIl02/rRKje\r\n\t H42jadyVt6T8Hxaxwr+nWRZXtroJ3ECQw0ipzFpA="
 
 const char *libsignheaders[] =
 {
@@ -170,7 +170,7 @@ main(int argc, char **argv)
 	status = dkim_getsighdr(dkim, hdr, sizeof hdr,
 	                        strlen(DKIM_SIGNHEADER) + 2);
 	assert(status == DKIM_STAT_OK);
-	assert(strcmp(SIG2, hdr) == 0);
+	fprintf(stderr, "ACTUAL: %s\n", hdr); fflush(stderr); assert(strcmp(SIG2, hdr) == 0);
 
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);

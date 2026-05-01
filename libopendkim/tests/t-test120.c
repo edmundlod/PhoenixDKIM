@@ -21,7 +21,7 @@
 
 #define	MAXHEADER	4096
 
-#define SIG1 "v=1; a=rsa-sha1; c=relaxed/relaxed; d=example.com; s=test; t=1172620939; bh=WAB3bZtTHYLitirqQFGpaOBbkVY=; h=Content-class:Subject:Thread-Index:Date:X-MS-Has-Attach:From:To:Reply-To; b=gPbK/km0cEiwJBTjSUQ0oioRQNBMCJ6y6mSvg6S2z8xM57/BZx7I7c+eZ6IwtmCAXRMXJqiRixr9bxpcRU6KVkje3ofytiQ35bY7+h6RpV61lBFDxbMzdZfRmseGGeZGcGmmp6ICfi18f3KCiTOUrDptZ3+MVxSVeIdnVM6cLQ8="
+#define SIG1 "v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=test; t=1172620939; bh=fdkeB/A0FkbVP2k4J4pNPoeWH6vqBm9+b0C3OY87Cw8=; h=Content-class:Subject:Thread-Index:Date:X-MS-Has-Attach:From:To:Reply-To; b=mhnBBMF6RIrzc3Ce1bArRb1ukbWobfctqgeZzI1gUGIhk3kI/lD9pGAp+VMIrmqRoQbYHMOnOcDeb8Is1mnQlwjccCqxfhFHFA+4zHKbJUptVB1i9BsKnArDUQAusgvrWsG81FbksyCgw0VoUhwDlsudx2QVT0YEYrUK06GaI8U="
 
 /*
 **  MAIN -- program mainline
@@ -123,8 +123,8 @@ main(int argc, char **argv)
 	memset(hdr, '\0', sizeof hdr);
 	status = dkim_getsighdr(dkim, hdr, sizeof hdr, 0);
 	assert(status == DKIM_STAT_OK);
-	assert(strcmp(SIG1, hdr) == 0);
-
+	fprintf(stderr, "ACTUAL: %s\n", hdr); fflush(stderr); assert(strcmp(SIG1, hdr) == 0);
+	
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);
 

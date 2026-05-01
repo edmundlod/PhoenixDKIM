@@ -21,7 +21,7 @@
 
 #define	MAXHEADER	4096
 
-#define SIG2 "v=1; a=rsa-sha1; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=ll/0h2aWgG+D3ewmE4Y3pY7Ukz8=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Message-ID;\r\n\tb=Q4G/ki/5soDXGxs43JfV+qEKDr5X3GgTDNeZqWL3zLLC5DXWWzmnKRcU8NH4Wsfkh\r\n\t o5tMo4NRmqnB2eZtozsyXdHo2ekUPLxuAQJomM4JHaPTfsraHwkibQIkPpW5hf/Rc2\r\n\t 0QgP48iQBjxqcOSn/Vwk5QDup4Qj1vgOxBqTqwdg="
+#define SIG2 "v=1; a=rsa-sha256; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=yHBAX+3IwxTZIynBuB/5tlsBInJq9n8qz5fgAycHi80=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Message-ID;\r\n\tb=hNRIcA7ZG6mZL9GPr5E9rJPQBy0DNnPSNAqYmtpbHJjhzWj3fsUKXDCEl8vJki6Vu\r\n\t P0hDA4wRRJ6hkD0/u9iY2O+7xwAyuzkC3Z719CuGidnqlJt/1kJ4QW4KlcWJcj2v8S\r\n\t jD475GchVu0268Cz9PTJWSEqg/WZfWLQrji0gmy0="
 
 /*
 **  MAIN -- program mainline
@@ -149,8 +149,8 @@ main(int argc, char **argv)
 	status = dkim_getsighdr(dkim, hdr, sizeof hdr,
 	                        strlen(DKIM_SIGNHEADER) + 2);
 	assert(status == DKIM_STAT_OK);
-	assert(strcmp(SIG2, hdr) == 0);
-
+	fprintf(stderr, "ACTUAL: %s\n", hdr); fflush(stderr); assert(strcmp(SIG2, hdr) == 0);
+	
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);
 
