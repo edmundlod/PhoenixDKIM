@@ -354,8 +354,11 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			if (next1 == '\n' ||
 			    (next1 == '\r' && next2 == '\n'))
 			{
-				stop = p;
-				if (start != NULL)
+				/* 1. Set stop to the character BEFORE the '=' */
+				stop = p - 1;
+
+				/* 2. Only flush if there is actually content to flush */
+				if (start != NULL && start <= stop)
 				{
 					unsigned char const *x;
 
@@ -363,16 +366,18 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 					{
 						decode++;
 
-						if (q <= end)
+						if (q < end)
 						{
 							*q = *x;
 							q++;
 						}
 					}
 				}
+				/* Reset markers for the next line */
 				start = NULL;
 				stop = NULL;
 
+				/* Skip the '=' and the newline sequence */
 				p++;
 				if (next2 == '\n')
 					p++;
@@ -399,7 +404,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 				{
 					decode++;
 
-					if (q <= end)
+					if (q < end)
 					{
 						*q = *x;
 						q++;
@@ -409,7 +414,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			start = NULL;
 			stop = NULL;
 
-			if (q <= end)
+			if (q < end)
 			{
 				*q = xl;
 				q++;
@@ -441,7 +446,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 				{
 					decode++;
 
-					if (q <= end)
+					if (q < end)
 					{
 						*q = *x;
 						q++;
@@ -453,7 +458,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			{
 				decode++;
 
-				if (q <= end)
+				if (q < end)
 				{
 					*q = '\n';
 					q++;
@@ -462,12 +467,12 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			else
 			{
 				decode += 2;
-				if (q <= end)
+				if (q < end)
 				{
 					*q = '\r';
 					q++;
 				}
-				if (q <= end)
+				if (q < end)
 				{
 					*q = '\n';
 					q++;
@@ -494,7 +499,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 		{
 			decode++;
 
-			if (q <= end)
+			if (q < end)
 			{
 				*q = *x;
 				q++;
