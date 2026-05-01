@@ -1243,6 +1243,14 @@ dkim_canon_runheaders(DKIM *dkim)
 		tmphdr.hdr_namelen = cur->canon_sigheader->hdr_namelen;
 		tmphdr.hdr_colon = tmphdr.hdr_text + (cur->canon_sigheader->hdr_colon - cur->canon_sigheader->hdr_text);
 		tmphdr.hdr_textlen = dkim_dstring_len(dkim->dkim_hdrbuf);
+		/* Strip trailing CRLF before canonicalization (RFC 6376 §3.7) */
+		if (tmphdr.hdr_textlen >= 2 &&
+		    tmphdr.hdr_text[tmphdr.hdr_textlen - 2] == '\r' &&
+		    tmphdr.hdr_text[tmphdr.hdr_textlen - 1] == '\n')
+		{
+		    tmphdr.hdr_textlen -= 2;
+		    tmphdr.hdr_text[tmphdr.hdr_textlen] = '\0';
+		}
 		tmphdr.hdr_flags = 0;
 		tmphdr.hdr_next = NULL;
 
