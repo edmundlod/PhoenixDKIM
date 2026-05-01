@@ -22,6 +22,7 @@
 
 #define SIG2 "v=1; a=rsa-sha1; c=relaxed/simple; d=example.com;\r\n\ts=brisbane; t=1172620939; i=msk@sendmail.com; bh=ll/0h2aWgG+D3ewmE4\r\n\tY3pY7Ukz8=; h=subject:to:date; b=k1ZKkMnlh62VdAwa3umwZf6yhF9TWF4PERI5OXKoxU2TAtvwNZ6Q\r\n\tLMlELWHEG0Q1OORyb4cpQPfgGdOc6m38r0o/+k4rvlwnWsejpMWJgd4mD4e6U0b+pEt\r\n\txO704bDKUlzV83MAqIN/QdxW5dvwOyr1/1OrVu2fTUlUp6SWaa2o="
 #define	IDENT "msk@sendmail.com"
+#define	IDENT_SHORT "msk@sen"
 
 /*
 **  MAIN -- program mainline
@@ -154,7 +155,7 @@ main(int argc, char **argv)
 	memset(largebuf, '\0', sizeof largebuf);
 	status = dkim_sig_getidentity(dkim, sig, smallbuf, sizeof smallbuf);
 	assert(status == DKIM_STAT_NORESOURCE);
-	assert(memcmp(smallbuf, IDENT, sizeof smallbuf) == 0);
+	assert(memcmp(smallbuf, IDENT_SHORT, sizeof smallbuf) == 0);
 	status = dkim_sig_getidentity(dkim, sig, largebuf, sizeof largebuf);
 	assert(status == DKIM_STAT_OK);
 	assert(strcmp(largebuf, IDENT) == 0);
