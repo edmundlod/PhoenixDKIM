@@ -104,6 +104,19 @@ unset(CMAKE_REQUIRED_LIBRARIES)
 check_include_file(limits.h   HAVE_LIMITS_H)
 check_include_file(stdbool.h  HAVE_STDBOOL_H)
 
+
+# ── Daemon-specific configuration ────────────────────────────────────────────
+# Package version
+set(SENDMAIL_PATH "/usr/sbin/sendmail" CACHE STRING "Path to sendmail binary")
+set(CONFIG_BASE "/etc/opendkim" CACHE STRING "Base path for config files")
+
+# Check for smfi_version (milter version reporting)
+include(CheckSymbolExists)
+check_symbol_exists(smfi_version "libmilter/mfapi.h" HAVE_SMFI_VERSION)
+
+# Check for st_node in struct stat (BSD)
+include(CheckStructHasMember)
+check_struct_has_member("struct stat" "st_node" "sys/stat.h" HAVE_ST_NODE)
 # ── Generate build-config.h ───────────────────────────────────────────────────
 
 configure_file(

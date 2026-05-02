@@ -31,4 +31,21 @@
 #cmakedefine USE_BSD_H 1
 #cmakedefine USE_STRL_H 1
 
+
+/* Package version and feature string */
+#define LIBOPENDKIM_FEATURE_STRING "libopendkim @PROJECT_VERSION@:"
+#define VERSION "@PROJECT_VERSION@"
+#define PACKAGE_VERSION "@PROJECT_VERSION@"
+
+/* Sendmail path (used by opendkim daemon) */
+#cmakedefine SENDMAIL_PATH "@SENDMAIL_PATH@"
+
+/* Default config file base path */
+#cmakedefine CONFIG_BASE "@CONFIG_BASE@"
+
+/* smfi_version availability */
+#cmakedefine HAVE_SMFI_VERSION 1
+
+/* st_node field in struct stat (BSD-specific) */
+#cmakedefine HAVE_ST_NODE 1
 #endif /* _BUILD_CONFIG_H_ */

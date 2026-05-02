@@ -81,6 +81,7 @@ endif()
 function(configure_daemon_target tgt)
     target_include_directories(${tgt} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_BINARY_DIR}/libopendkim
     )
 
     target_compile_definitions(${tgt} PRIVATE

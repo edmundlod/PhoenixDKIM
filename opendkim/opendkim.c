@@ -4546,7 +4546,7 @@ dkimf_securefile(const char *path, ino_t *ino, uid_t myuid, char *err,
 		return 0;
 
 	/* world readable/writeable; bad */
-	if ((s.st_node & (S_IROTH|S_IWOTH)) != 0)
+	if ((s.st_mode & (S_IROTH|S_IWOTH)) != 0)
 		return 0;
 
 	/* group read/write is bad if others are in that group */
@@ -4574,7 +4574,7 @@ dkimf_securefile(const char *path, ino_t *ino, uid_t myuid, char *err,
 		}
 
 		setpwent();
-		while (pw = getpwent(); pw != NULL; pw = getpwent())
+		while ((pw = getpwent()) != NULL)
 		{
 			if (pw->pw_uid != myuid && pw->pw_gid == s.st_gid)
 			{
