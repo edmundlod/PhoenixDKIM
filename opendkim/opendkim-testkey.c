@@ -438,8 +438,6 @@ main(int argc, char **argv)
 
 	memset(err, '\0', sizeof err);
 
-	ERR_load_crypto_strings();
-
 	/* process a KeyTable if specified and not overridden */
 	if (dataset != NULL && argv_d == 0 && argv_k == 0 && argv_s == 0)
 	{

@@ -54,12 +54,7 @@
 #include <signal.h>
 #include <regex.h>
 
-#include <openssl/sha.h>
 #include <openssl/err.h>
-
-#ifndef SHA_DIGEST_LENGTH
-# define SHA_DIGEST_LENGTH 20
-#endif /* ! SHA_DIGEST_LENGTH */
 
 #ifdef HAVE_PATHS_H
 # include <paths.h>

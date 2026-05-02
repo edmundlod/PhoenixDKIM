@@ -20,7 +20,6 @@
 #include <pwd.h>
 
 /* openssl includes */
-#include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/bio.h>
@@ -247,7 +246,6 @@ main(int argc, char **argv)
 	BIO *private;
 	BIO *outbio = NULL;
 	EVP_PKEY *pkey;
-	RSA *rsa;
 	DKIMF_DB db;
 	char keyname[BUFRSZ + 1];
 	char domain[BUFRSZ + 1];
@@ -726,25 +724,12 @@ main(int argc, char **argv)
 			}
 		}
 
-		rsa = EVP_PKEY_get1_RSA(pkey);
-		if (rsa == NULL)
-		{
-			fprintf(stderr,
-			        "%s: EVP_PKEY_get1_RSA() failed\n",
-			        progname);
-			(void) dkimf_db_close(db);
-			(void) BIO_free(private);
-			(void) EVP_PKEY_free(pkey);
-			(void) BIO_free(outbio);
-			return 1;
-		}
-
 		/* convert private to public */
-		status = PEM_write_bio_RSA_PUBKEY(outbio, rsa);
+		status = PEM_write_bio_PUBKEY(outbio, pkey);
 		if (status == 0)
 		{
 			fprintf(stderr,
-			        "%s: PEM_write_bio_RSA_PUBKEY() failed\n",
+			        "%s: PEM_write_bio_PUBKEY() failed\n",
 			        progname);
 			(void) dkimf_db_close(db);
 			(void) BIO_free(private);
