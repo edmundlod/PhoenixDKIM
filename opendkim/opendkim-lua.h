@@ -53,11 +53,5 @@ extern int dkimf_lua_setup_hook __P((void *, const char *, size_t,
                                      const char *,
                                      struct dkimf_lua_script_result *,
                                      void **, size_t *));
-#ifdef _FFR_STATSEXT
-extern int dkimf_lua_stats_hook __P((void *, const char *, size_t,
-                                     const char *,
-                                     struct dkimf_lua_script_result *,
-                                     void **, size_t *));
-#endif /* _FFR_STATSEXT */
 
 #endif /* _OPENDKIM_LUA_H_ */

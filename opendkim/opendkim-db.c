@@ -46,11 +46,6 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* repute includes */
-#ifdef _FFR_REPUTATION
-# include <repute.h>
-#endif /* _FFR_REPUTATION */
-
 /* opendkim includes */
 #include "util.h"
 #ifdef OPENDKIM_DB_ONLY
@@ -311,9 +306,6 @@ struct dkimf_db_table dbtypes[] =
 #ifdef USE_LIBMEMCACHED
 	{ "memcache",		DKIMF_DB_TYPE_MEMCACHE },
 #endif /* USE_LIBMEMCACHED */
-#ifdef _FFR_REPUTATION
-	{ "repute",		DKIMF_DB_TYPE_REPUTE },
-#endif /* _FFR_REPUTATION */
 #ifdef _FFR_SOCKETDB
 	{ "socket",		DKIMF_DB_TYPE_SOCKET },
 #endif /* _FFR_SOCKETDB */
@@ -3148,43 +3140,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	  }
 #endif /* USE_LIBMEMCACHED */
 
-#ifdef _FFR_REPUTATION
-	  case DKIMF_DB_TYPE_REPUTE:
-	  {
-		unsigned int reporter = 0;
-		char *q;
-		REPUTE r;
-		char useragent[BUFRSZ + 1];
-
-		q = strchr(p, ':');
-		if (q != NULL)
-		{
-			char *s;
-
-			*q = '\0';
-			reporter = (unsigned int) strtoul(q + 1, &s, 10);
-			if (*s != '\0')
-			 	return -1;
-		}
-
-		r = repute_new(p, reporter);
-		if (r == NULL)
-			return -1;
-
-		q = (char *) repute_curlversion(r);
-		snprintf(useragent, sizeof useragent, "%s/%s %s%s%s",
-		         DKIMF_PRODUCTNS, VERSION,
-		         "libcurl",
-		         q == NULL ? "" : "/",
-		         q == NULL ? "" : q);
-		repute_useragent(r, useragent);
-
-		new->db_data = (void *) r;
-
-		break;
-	  }
-#endif /* _FFR_REPUTATION */
-
 #ifdef _FFR_SOCKETDB
 	  case DKIMF_DB_TYPE_SOCKET:
 	  {
@@ -5147,131 +5102,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 	  }
 #endif /* USE_LIBMEMCACHED */
 
-#ifdef _FFR_REPUTATION
-	  case DKIMF_DB_TYPE_REPUTE:
-	  {
-		_Bool found = FALSE;
-		int c;
-		float rep;
-		float conf;
-		unsigned long samp;
-		unsigned long limit;
-		time_t when;
-		REPUTE_STAT rstat;
-		REPUTE r;
-
-		r = (REPUTE) db->db_data;
-
-		if (!found)
-		{
-			rstat = repute_query(r, (char *) buf, &rep, &conf,
-			                     &samp, &limit, &when);
-
-			if (rstat == REPUTE_STAT_PARSE)
-				return 0;
-			else if (rstat != REPUTE_STAT_OK)
-				return -1;
-
-			if (exists != NULL)
-				*exists = TRUE;
-		}
-
-		if (reqnum >= 1 && req[0].dbdata_buffer != NULL &&
-		    req[0].dbdata_buflen != 0)
-		{
-			if ((req[0].dbdata_flags & DKIMF_DB_DATA_BINARY) != 0)
-			{
-				if (req[0].dbdata_buflen != sizeof rep)
-					return -1;
-				memcpy(req[0].dbdata_buffer, &rep, sizeof rep);
-			}
-			else
-			{
-				req[0].dbdata_buflen = snprintf(req[0].dbdata_buffer,
-				                                req[0].dbdata_buflen,
-				                                "%f", rep);
-			}
-		}
-
-		if (reqnum >= 2 && req[1].dbdata_buffer != NULL &&
-		    req[1].dbdata_buflen != 0)
-		{
-			if ((req[1].dbdata_flags & DKIMF_DB_DATA_BINARY) != 0)
-			{
-				if (req[1].dbdata_buflen != sizeof conf)
-					return -1;
-				memcpy(req[1].dbdata_buffer, &conf,
-				       sizeof conf);
-			}
-			else
-			{
-				req[1].dbdata_buflen = snprintf(req[1].dbdata_buffer,
-				                                req[1].dbdata_buflen,
-				                                "%f", conf);
-			}
-		}
-
-		if (reqnum >= 3 && req[2].dbdata_buffer != NULL &&
-		    req[2].dbdata_buflen != 0)
-		{
-			if ((req[2].dbdata_flags & DKIMF_DB_DATA_BINARY) != 0)
-			{
-				if (req[2].dbdata_buflen != sizeof samp)
-					return -1;
-				memcpy(req[2].dbdata_buffer, &samp,
-				       sizeof samp);
-			}
-			else
-			{
-				req[2].dbdata_buflen = snprintf(req[2].dbdata_buffer,
-				                                req[2].dbdata_buflen,
-				                                "%lu", samp);
-			}
-		}
-
-		if (reqnum >= 4 && req[3].dbdata_buffer != NULL &&
-		    req[3].dbdata_buflen != 0)
-		{
-			if ((req[3].dbdata_flags & DKIMF_DB_DATA_BINARY) != 0)
-			{
-				if (req[3].dbdata_buflen != sizeof when)
-					return -1;
-				memcpy(req[3].dbdata_buffer, &when,
-				       sizeof when);
-			}
-			else
-			{
-				req[3].dbdata_buflen = snprintf(req[3].dbdata_buffer,
-				                                req[3].dbdata_buflen,
-				                                "%lu", when);
-			}
-		}
-
-		if (reqnum >= 5 && req[4].dbdata_buffer != NULL &&
-		    req[4].dbdata_buflen != 0)
-		{
-			if ((req[4].dbdata_flags & DKIMF_DB_DATA_BINARY) != 0)
-			{
-				if (req[4].dbdata_buflen != sizeof limit)
-					return -1;
-				memcpy(req[4].dbdata_buffer, &limit,
-				       sizeof limit);
-			}
-			else
-			{
-				req[4].dbdata_buflen = snprintf(req[4].dbdata_buffer,
-				                                req[4].dbdata_buflen,
-				                                "%lu", limit);
-			}
-		}
-
-		/* tag requests that weren't fulfilled */
-		for (c = 5; c < reqnum; c++)
-			req[c].dbdata_buflen = 0;
-
-		return 0;
-	  }
-#endif /* _FFR_REPUTATION */
 
 #ifdef _FFR_SOCKETDB
 	  case DKIMF_DB_TYPE_SOCKET:
@@ -5639,14 +5469,6 @@ dkimf_db_close(DKIMF_DB db)
 	  }
 #endif /* USE_LIBMEMCACHED */
 
-#ifdef _FFR_REPUTATION
-	  case DKIMF_DB_TYPE_REPUTE:
-	  {
-		repute_close(db->db_data);
-		free(db);
-		return 0;
-	  }
-#endif /* _FFR_REPUTATION */
 
 #ifdef _FFR_SOCKETDB
 	  case DKIMF_DB_TYPE_SOCKET:
@@ -5773,15 +5595,6 @@ dkimf_db_strerror(DKIMF_DB db, char *err, size_t errlen)
 		                                  db->db_status), errlen);
 #endif /* USE_LIBMEMCACHED */
 
-#ifdef _FFR_REPUTATION
-	  case DKIMF_DB_TYPE_REPUTE:
-	  {
-		REPUTE rep;
-
-		rep = (REPUTE) db->db_data;
-		return strlcpy(err, repute_error(rep), errlen);
-	  }
-#endif /* _FFR_REPUTATION */
 
 #ifdef USE_MDB
 	  case DKIMF_DB_TYPE_MDB:

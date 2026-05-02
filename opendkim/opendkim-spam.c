@@ -37,7 +37,6 @@
 
 /* opendkim includes */
 #include "config.h"
-#include "stats.h"
 
 /* definitions, macros, etc. */
 #define	BUFRSZ		1024

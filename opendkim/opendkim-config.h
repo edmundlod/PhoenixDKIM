@@ -26,10 +26,6 @@ struct configdef dkimf_config[] =
 {
 	{ "AllowSHA1Only",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "AlwaysAddARHeader",		CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_ATPS
-	{ "ATPSDomains",		CONFIG_TYPE_STRING,	FALSE },
-	{ "ATPSHashAlgorithm",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_ATPS */
 	{ "AuthservID",			CONFIG_TYPE_STRING,	FALSE },
 	{ "AuthservIDWithJobID",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "AutoRestart",		CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -121,9 +117,6 @@ struct configdef dkimf_config[] =
 	{ "On-InternalError",		CONFIG_TYPE_STRING,	FALSE },
 	{ "On-KeyNotFound",		CONFIG_TYPE_STRING,	FALSE },
 	{ "On-NoSignature",		CONFIG_TYPE_STRING,	FALSE },
-#ifdef _FFR_REPUTATION
-	{ "On-ReputationError",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_REPUTATION */
 	{ "On-Security",		CONFIG_TYPE_STRING,	FALSE },
 	{ "On-SignatureError",		CONFIG_TYPE_STRING,	FALSE },
 	{ "OverSignHeaders",		CONFIG_TYPE_STRING,	FALSE },
@@ -148,29 +141,6 @@ struct configdef dkimf_config[] =
 #endif /* _FFR_REPLACE_RULES */
 	{ "ReportAddress",		CONFIG_TYPE_STRING,	FALSE },
 	{ "ReportBccAddress",		CONFIG_TYPE_STRING,	FALSE },
-#ifdef _FFR_REPUTATION
-	{ "ReputationCache",		CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationCacheTTL",		CONFIG_TYPE_INTEGER,	FALSE },
-	{ "ReputationDuplicates",	CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationLimits",		CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationLowTime",		CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationMinimum",		CONFIG_TYPE_INTEGER,	FALSE },
-	{ "ReputationLimitModifiers",	CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationRatios",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_REPUTATION */
-#ifdef _FFR_REPRRD
-	{ "ReputationRRDHashDepth",	CONFIG_TYPE_INTEGER,	FALSE },
-	{ "ReputationRRDRoot",		CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationTest", /* DUP */	CONFIG_TYPE_BOOLEAN,	FALSE },
-	{ "ReputationVerbose", /* DUP */ CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* _FFR_REPRRD */
-#ifdef _FFR_REPUTATION
-	{ "ReputationSpamCheck",	CONFIG_TYPE_STRING,	FALSE },
-	{ "ReputationTest", /* DUP */	CONFIG_TYPE_BOOLEAN,	FALSE },
-	{ "ReputationTimeFactor",	CONFIG_TYPE_INTEGER,	FALSE },
-	{ "ReputationTimeout",		CONFIG_TYPE_INTEGER,	FALSE },
-	{ "ReputationVerbose", /* DUP */ CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* _FFR_REPUTATION */
 	{ "RequestReports",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RequiredHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RequireSafeKeys",		CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -205,16 +175,6 @@ struct configdef dkimf_config[] =
 #if defined(USE_ODBX) || defined(USE_LDAP)
 	{ "SoftStart",			CONFIG_TYPE_BOOLEAN,	FALSE },
 #endif /* defined(USE_ODBX) || defined(USE_LDAP) */
-#ifdef _FFR_STATS
-	{ "Statistics",			CONFIG_TYPE_STRING,	FALSE },
-	{ "StatisticsName",		CONFIG_TYPE_STRING,	FALSE },
-# ifdef USE_LUA
-#  ifdef _FFR_STATSEXT
-	{ "StatisticsPolicyScript",	CONFIG_TYPE_STRING,	FALSE },
-#  endif /* _FFR_STATSEXT */
-# endif /* USE_LUA */
-	{ "StatisticsPrefix",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_STATS */
 	{ "StrictHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictTestMode",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "SubDomains",			CONFIG_TYPE_BOOLEAN,	FALSE },

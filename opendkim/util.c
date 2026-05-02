@@ -128,10 +128,6 @@ static char *optlist[] =
 	"_FFR_ADSP_LISTS",
 #endif /* _FFR_ADSP_LISTS */
 
-#ifdef _FFR_ATPS
-	"_FFR_ATPS",
-#endif /* _FFR_ATPS */
-
 #ifdef _FFR_DEFAULT_SENDER
 	"_FFR_DEFAULT_SENDER",
 #endif /* _FFR_DEFAULT_SENDER */
@@ -168,14 +164,6 @@ static char *optlist[] =
 	"_FFR_REPLACE_RULES",
 #endif /* _FFR_REPLACE_RULES */
 
-#if _FFR_REPRRD
-	"_FFR_REPRRD",
-#endif /* _FFR_REPRRD */
-
-#if _FFR_REPUTATION
-	"_FFR_REPUTATION",
-#endif /* _FFR_REPUTATION */
-
 #if _FFR_RESIGN
 	"_FFR_RESIGN",
 #endif /* _FFR_RESIGN */
@@ -187,14 +175,6 @@ static char *optlist[] =
 #ifdef _FFR_SOCKETDB
 	"_FFR_SOCKETDB",
 #endif /* _FFR_SOCKETDB */
-
-#if _FFR_STATS
-	"_FFR_STATS",
-#endif /* _FFR_STATS */
-
-#if _FFR_STATSEXT
-	"_FFR_STATSEXT",
-#endif /* _FFR_STATSEXT */
 
 #if _FFR_VBR
 	"_FFR_VBR",

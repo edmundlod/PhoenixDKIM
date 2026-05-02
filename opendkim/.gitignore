@@ -37,7 +37,6 @@ Makefile
 .deps
 opendkim-testadsp
 opendkim
-opendkim-stats
 opendkim-testmsg
 opendkim-testkey
 opendkim-genzone
@@ -48,7 +47,3 @@ core
 opendkim-lua.3
 opendkim.conf.simple-verify
 opendkim.conf.simple
-opendkim-atpszone
-opendkim-atpszone.8
-opendkim-spam
-opendkim-spam.1
