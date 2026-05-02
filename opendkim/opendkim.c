@@ -522,7 +522,6 @@ struct lookup dkimf_canon[] =
 
 struct lookup dkimf_sign[] =
 {
-	{ "rsa-sha1",		DKIM_SIGN_RSASHA1 },
 	{ "rsa-sha256",		DKIM_SIGN_RSASHA256 },
 	{ NULL,			-1 },
 };
