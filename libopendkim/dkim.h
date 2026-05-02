@@ -185,6 +185,7 @@ typedef int dkim_alg_t;
 #define DKIM_SIGN_DEFAULT	(-1)	/* use internal default */
 #define DKIM_SIGN_RSASHA1	0	/* an RSA-signed SHA1 digest */
 #define DKIM_SIGN_RSASHA256	1	/* an RSA-signed SHA256 digest */
+#define DKIM_SIGN_ED25519SHA256	2	/* an Ed25519-signed SHA256 digest */
 
 /*
 **  DKIM_QUERY -- query method

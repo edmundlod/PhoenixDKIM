@@ -186,6 +186,16 @@ struct dkim_rsa
 	u_char *		rsa_rsaout;
 };
 
+/* struct dkim_ed25519 -- stuff needed to do Ed25519 sign/verify */
+struct dkim_ed25519
+{
+	EVP_PKEY *		ed_pkey;
+	u_char *		ed_sig;
+	size_t			ed_siglen;
+	u_char *		ed_keydata;
+	size_t			ed_keylen;
+};
+
 /* struct dkim_test_dns_data -- simulated DNS replies */
 struct dkim_test_dns_data
 {
