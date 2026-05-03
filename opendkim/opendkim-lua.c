@@ -37,6 +37,23 @@ struct dkimf_lua_io
 	size_t		lua_io_alloc;
 };
 
+/* Lua 5.1 to 5.4 compatibility macros
+ * Added 2026/05/03
+ */
+#if LUA_VERSION_NUM >= 502
+#ifndef luaL_register
+#define luaL_register(L,n,l) (luaL_setfuncs(L,l,0))
+#endif
+
+#undef lua_load
+#define lua_load(L, reader, data, chunkname) \
+        lua_load(L, reader, data, chunkname, NULL)
+
+#undef lua_dump
+#define lua_dump(L, writer, data) \
+        lua_dump(L, writer, data, 0)
+#endif
+
 #ifdef DKIMF_LUA_CONTEXT_HOOKS
 /* libraries */
 static const luaL_Reg dkimf_lua_lib_setup[] =
