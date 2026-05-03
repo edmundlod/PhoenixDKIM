@@ -150,7 +150,6 @@ configure_file(
 
 # ── Library sources ───────────────────────────────────────────────────────────
 # Source list derived from libopendkim/Makefile.am.
-# NOTE: base32.c and dkim-atps.c have been removed (ATPS is out of scope).
 
 set(LIBOPENDKIM_SOURCES
     base64.c
@@ -172,11 +171,10 @@ set(LIBOPENDKIM_SOURCES
 
 add_library(opendkim SHARED ${LIBOPENDKIM_SOURCES})
 
-# libtool version-info 10:3:0 → soname version 10 (current − age), file 10.0.3
 set_target_properties(opendkim PROPERTIES
     OUTPUT_NAME   opendkim
-    VERSION       10.0.3
-    SOVERSION     10
+    VERSION       13.0.0
+    SOVERSION     13
 )
 
 # ── Static library ────────────────────────────────────────────────────────────
@@ -237,9 +235,8 @@ function(configure_opendkim_target tgt)
     endif()
 
     if(WITH_LUA)
+        target_link_libraries(${tgt} PRIVATE Lua::Lua) 
         target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
-        target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
-        target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
     endif()
 endfunction()
 

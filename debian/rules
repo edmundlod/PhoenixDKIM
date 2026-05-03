@@ -10,12 +10,11 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DSYSCONFDIR=/etc \
-		-DLOCALSTATEDIR=/var \
-		-DUSE_LMDB=ON \
-		-DUSE_LUA=ON \
+		-DWITH_LUA=ON \
 		-DBUILD_LIBOTEST=OFF \
-		-DENABLE_QUERY_CACHE=ON
+		-DENABLE_QUERY_CACHE=ON \
+		-DVERSION=13.0.0 \
+		-DSOVERSION=13
 
 # Test results on kfreebsd-* are inconsistent, but not due to package bugs.
 override_dh_auto_test:
