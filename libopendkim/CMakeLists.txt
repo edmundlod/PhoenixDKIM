@@ -111,8 +111,31 @@ set(SENDMAIL_PATH "/usr/sbin/sendmail" CACHE STRING "Path to sendmail binary")
 set(CONFIG_BASE "/etc/opendkim" CACHE STRING "Base path for config files")
 
 # Check for smfi_version (milter version reporting)
-include(CheckSymbolExists)
-check_symbol_exists(smfi_version "libmilter/mfapi.h" HAVE_SMFI_VERSION)
+# 1. Dynamically find the header and library paths
+find_path(MILTER_INCLUDE_DIR NAMES libmilter/mfapi.h mfapi.h)
+find_library(MILTER_LIBRARY NAMES milter)
+
+if(MILTER_INCLUDE_DIR AND MILTER_LIBRARY)
+    # 2. Use the discovered paths for the functional check
+    set(CMAKE_REQUIRED_INCLUDES "${MILTER_INCLUDE_DIR}")
+    set(CMAKE_REQUIRED_LIBRARIES "${MILTER_LIBRARY}")
+
+    include(CheckSymbolExists)
+
+    # Use a unique internal variable to avoid CMake's "sticky" cache issue
+    check_symbol_exists(smfi_version "libmilter/mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
+
+    if(NOT HAVE_SMFI_VERSION_INTERNAL)
+        # Fallback for systems where it's just <mfapi.h> without the libmilter/ prefix
+        check_symbol_exists(smfi_version "mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
+    endif()
+
+    # 3. Finalize the variable for your config.h
+    set(HAVE_SMFI_VERSION ${HAVE_SMFI_VERSION_INTERNAL} CACHE INTERNAL "smfi_version availability")
+
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+endif()
 
 # Check for st_node in struct stat (BSD)
 include(CheckStructHasMember)
