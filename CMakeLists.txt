@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(opendkim
-    VERSION 3.0.0-beta1
+    VERSION 3.0.0
     DESCRIPTION "Modernised OpenDKIM fork with OpenSSL3 and Ed25519"
     LANGUAGES C
 )
@@ -19,7 +19,9 @@ add_subdirectory(opendkim)
 # CPack for creating .deb files
 set(CPACK_PACKAGE_NAME "opendkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
-set(CPACK_PACKAGE_VERSION "3.0.0-beta1")
+set(CPACK_PACKAGE_VERSION "3.0.0")
+set(OPENDKIM_DISPLAY_VERSION "3.0.0-beta1")
+add_definitions(-DVERSION_STRING="${OPENDKIM_DISPLAY_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modernised OpenDKIM fork with OpenSSL3 and Ed25519")
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Edmund Lodewijks <edmund@proteamail.com>")
