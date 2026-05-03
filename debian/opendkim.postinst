@@ -1,0 +1,53 @@
+#!/bin/sh
+
+set -e
+
+RUNDIR=/run/opendkim
+USER=opendkim
+GROUP=opendkim
+
+pathfind() {
+  OLDIFS="$IFS"
+  IFS=:
+  for p in $PATH; do
+    if [ -x "$p/$*" ]; then
+      IFS="$OLDIFS"
+      return 0
+    fi
+  done
+  IFS="$OLDIFS"
+  return 1
+}
+
+if [ "$1" = "configure" ]; then
+	if ! id -u opendkim >/dev/null 2>&1; then
+		adduser --quiet --system --group --home /run/opendkim opendkim
+	fi
+
+        # Create the run directory if it doesn't exist
+        if [ ! -d "$RUNDIR" ]; then
+                install -o "$USER" -g "$GROUP" -m 755 -d "$RUNDIR" || exit 2
+                if pathfind restorecon; then restorecon "$RUNDIR"
+                fi
+        fi
+
+	# Set ownership if the admin has not overriden it.
+	if [ -d /run/opendkim ] && ! dpkg-statoverride --list /run/opendkim >/dev/null; then
+		chown opendkim:opendkim /run/opendkim
+	fi
+	if [ -d /etc/dkimkeys ] && ! dpkg-statoverride --list /etc/dkimkeys >/dev/null; then
+		chown opendkim:opendkim /etc/dkimkeys
+		chmod 0700 /etc/dkimkeys
+	fi
+
+	# Upgrade /etc/default to systemd override files
+	if [ -d /run/systemd/system ] && [ -f /etc/default/opendkim ]; then
+		if [ -f /etc/tmpfiles.d/opendkim.conf ]; then
+			systemd-tmpfiles --create /etc/tmpfiles.d/opendkim.conf
+		fi
+	fi
+fi
+
+#DEBHELPER#
+
+exit 0

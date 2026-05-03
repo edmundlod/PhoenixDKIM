@@ -1,0 +1,12 @@
+opendkim-ng (3.0.0~beta1-ng1) unstable; urgency=medium
+
+  * Initial release of the opendkim-ng modernisation fork.
+  * Updated library SOVERSION to 13 to reflect OpenSSL 3 EVP port.
+  * Migrated build system to CMake for improved maintainability.
+  * Implemented Ed25519-SHA256 signing and verification (RFC 8463).
+  * Hardened security: Removed RSA-SHA1 and deprecated GnuTLS code paths.
+  * Fixed critical memory safety bugs in dkim_qp_decode (buffer overflow/NUL).
+  * LMDB implemented as the primary high-performance backend.
+  * Cleaned and modernised test suite: SHA256 as default for all tests.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Sun, 03 May 2026 21:00:00 +0200

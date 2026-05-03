@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+# Enable full hardening
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Tell debhelper to use the CMake build system
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DSYSCONFDIR=/etc \
+		-DLOCALSTATEDIR=/var \
+		-DUSE_LMDB=ON \
+		-DUSE_LUA=ON \
+		-DBUILD_LIBOTEST=OFF \
+		-DENABLE_QUERY_CACHE=ON
+
+# Test results on kfreebsd-* are inconsistent, but not due to package bugs.
+override_dh_auto_test:
+	dh_auto_test -- args+="V"
+
+override_dh_installchangelogs:
+	dh_installchangelogs RELEASE_NOTES

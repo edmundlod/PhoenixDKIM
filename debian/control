@@ -1,0 +1,109 @@
+Source: opendkim-ng
+Section: mail
+Priority: optional
+Maintainer: Edmund Lodewijks <edmund@proteamail.com>
+Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
+ libmilter-dev, liblmdb-dev,  libunbound-dev [linux-any],
+ liblua5.4-dev, libssl-dev (>=3.0.0), dh-python
+Standards-Version: 4.6.2
+Homepage: http://github.org/edmundlod/opendkim-ng
+Vcs-Browser: https://github.com/edmundlod/opendkim-ng
+Vcs-Git: https://github.com/edmundlod/opendkim-ng
+Rules-Requires-Root: no
+Provides: opendkim
+Conflicts: opendkim
+Replaces: opendkim
+
+Package: opendkim-ng
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
+Depends: libopendkim13 (= ${binary:Version}), ${shlibs:Depends},
+ ${misc:Depends}, adduser, dns-root-data
+Recommends: opendkim-tools
+Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ DKIM provides a way for senders to confirm their identity when sending email
+ by adding a cryptographic signature to the headers of the message.
+ .
+ This package contains the OpenDKIM mail filter (Milter) for plugging into
+ Milter-aware MTAs. It implements both signing and verification.
+
+Package: opendkim-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${perl:Depends}, ${misc:Depends}
+Breaks: opendkim (<< 2.5.2+dfsg-2~)
+Replaces: opendkim (<< 2.5.2+dfsg-2~)
+Description: Utilities for administering the OpenDKIM milter
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ This package contains command line tools for the OpenDKIM mail filter
+ (Milter).  The following tools are included:
+   - opendkim-genkey
+   - opendkim-genzone
+   - opendkim-testkey
+   - opendkim-testmsg
+   - opendkim-spam
+
+Package: libopendkim13
+Section: libs
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: DomainKeys Identified Mail (DKIM) library
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ This package provides library for implementing signing and verification of the
+ DomainKeys Identified Mail (DKIM) standard. This library provides support for
+ signing and verifying signatures according to RFC 4871, and supports both
+ DomainKeys signing policy and DKIM ADSP.
+
+Package: libopendkim-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libopendkim13 (= ${binary:Version}), ${misc:Depends}
+Description: DomainKeys Identified Mail (DKIM) library (development files)
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ This package provides the required header files and development libraries for
+ developing against the OpenDKIM library.
+
+Package: miltertest
+Section: devel
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: opendkim-tools (<< 2.11.0~beta2-3)
+Replaces: opendkim-tools (<< 2.11.0~beta2-3)
+Description: Utility for testing milter applications
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ This package contains the miltertest program, a utility that serves as a test
+ driver for milter application tests. miltertest executes milter test scripts
+ written in the Lua programming language.
+
+Package: opendkim-keygen
+Architecture: all
+Depends: ${shlibs:Depends}, ${python3:Depends}, ${misc:Depends}
+Description: Utility for generating DKIM and ARC keys (RSA and Ed25519)
+ This is a fork of the original OpenDKIM Project. Support was added for
+ OpenSSL 3, and Ed25519 signing and verifying were added.
+ Some DKIM features that have since been abandoned or that were never fully
+ implemented have been removed.
+ .
+ This package contains a command line tool for generating DKIM and ARC keys.

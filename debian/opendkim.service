@@ -1,0 +1,21 @@
+[Unit]
+Description=opendkim-ng Milter
+Documentation=man:opendkim(8) man:opendkim.conf(5) man:opendkim-lua(3) man:opendkim-genkey(8) man:opendkim-genzone(8) man:opendkim-testkey(8)
+After=network-online.target nss-lookup.target syslog.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+RuntimeDirectory=opendkim
+RuntimeDirectoryMode=0750
+PIDFile=/run/opendkim/opendkim.pid
+ExecStart=/usr/sbin/opendkim
+ExecReload=/bin/kill -USR1 $MAINPID
+Restart=on-failure
+User=opendkim
+Group=opendkim
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
