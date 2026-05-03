@@ -3969,9 +3969,12 @@ dkim_eom_verify(DKIM *dkim, _Bool *testkey)
 				**  If the signature has fewer than the
 				**  minimum number of key bits required by
 				**  configuration, the signature is invalid.
+				*   This only applies to RSA keys. Ed25519 keys
+				*   are always 256 bits long.
 				*/
 
 				if (sig->sig_error == 0 &&
+				    sig->sig_signalg == DKIM_SIGN_RSASHA256 && // Check for RSA
 				    sig->sig_keybits < lib->dkiml_minkeybits)
 				{
 					sig->sig_error = DKIM_SIGERROR_KEYTOOSMALL;
