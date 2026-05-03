@@ -1,3 +1,3 @@
 usr/sbin/opendkim
 debian/opendkim.conf etc/
-debian/opendkim-ng.service lib/systemd/system/
+debian/opendkim.service lib/systemd/system/
