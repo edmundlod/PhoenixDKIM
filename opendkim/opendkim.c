@@ -523,6 +523,9 @@ struct lookup dkimf_canon[] =
 struct lookup dkimf_sign[] =
 {
 	{ "rsa-sha256",		DKIM_SIGN_RSASHA256 },
+	#ifdef DKIM_SIGN_ED25519SHA256
+	{ "ed25519-sha256",	DKIM_SIGN_ED25519SHA256 },
+	#endif
 	{ NULL,			-1 },
 };
 
