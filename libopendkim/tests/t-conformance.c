@@ -16,6 +16,7 @@
 
 /* system includes */
 #include <sys/types.h>
+#include <arpa/nameser.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +25,7 @@
 
 /* libopendkim includes */
 #include "../dkim.h"
+#include "../dkim-test.h"
 #include "t-testdata.h"
 
 #define MAXHEADER	4096
@@ -2289,6 +2291,223 @@ test_api_chunk(void)
 	return 1;
 }
 
+/*
+**  RFC 8463 Ed25519 conformance tests
+*/
+
+#define RFC8463_ED_SEL		"brisbane"
+#define RFC8463_ED_PRIVKEY_FILE	"/tmp/testkeys-rfc8463-ed25519.pem"
+#define RFC8463_ED_KEYNAME	"brisbane._domainkey.football.example.com"
+
+#define RFC8463_ED_PRIVKEY_PEM \
+	"-----BEGIN PRIVATE KEY-----\n" \
+	"MC4CAQAwBQYDK2VwBCIEIJ1hsZ3v/VpguoRK9JLsLMREScVpezJpGXA7rAMcrn9g\n" \
+	"-----END PRIVATE KEY-----\n"
+
+#define RFC8463_ED_PUBKEY \
+	"v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="
+
+#define RFC8463_ED_SIG \
+	"v=1; a=ed25519-sha256; c=relaxed/relaxed;\r\n" \
+	" d=football.example.com; i=@football.example.com;\r\n" \
+	" q=dns/txt; s=brisbane; t=1528637909; h=from : to :\r\n" \
+	" subject : date : message-id : from : subject : date;\r\n" \
+	" bh=2jUSOH9NhtVGCQWNr9BrIAPreKQjO6Sn7XIkfJVOzv8=;\r\n" \
+	" b=/gCrinpcQOoIfuHNQIbq4pgh9kyIK3AQUdt9OdqQehSwhEIug4D11Bus\r\n" \
+	" Fa3bT3FY5OsU7ZbnKELq+eXdp1Q1Dw=="
+
+static int
+test_rfc8463_ed25519_verify_rfc_vector(void)
+{
+	DKIM_STAT status;
+	DKIM *dkim;
+	DKIM_LIB *lib;
+	int i;
+	unsigned char sighdr[MAXHEADER + 1];
+
+	printf("  RFC8463: ed25519 verify (Appendix A vector)\n");
+
+	lib = make_lib();
+	set_fixed_time(lib, 1528637909);
+
+	dkim = dkim_verify(lib, JOBID, NULL, &status);
+	CHECK(dkim != NULL, "dkim_verify returned NULL");
+
+	snprintf((char *) sighdr, sizeof sighdr, "%s: %s",
+	         DKIM_SIGNHEADER, RFC8463_ED_SIG);
+	status = dkim_header(dkim, sighdr, strlen((char *) sighdr));
+	CHECK(status == DKIM_STAT_OK, "sig header failed");
+
+	status = dkim_header(dkim, RFC8463_HDR_FROM, strlen(RFC8463_HDR_FROM));
+	CHECK(status == DKIM_STAT_OK, "From header failed");
+	status = dkim_header(dkim, RFC8463_HDR_TO, strlen(RFC8463_HDR_TO));
+	CHECK(status == DKIM_STAT_OK, "To header failed");
+	status = dkim_header(dkim, RFC8463_HDR_SUBJ, strlen(RFC8463_HDR_SUBJ));
+	CHECK(status == DKIM_STAT_OK, "Subject header failed");
+	status = dkim_header(dkim, RFC8463_HDR_DATE, strlen(RFC8463_HDR_DATE));
+	CHECK(status == DKIM_STAT_OK, "Date header failed");
+	status = dkim_header(dkim, RFC8463_HDR_MSGID, strlen(RFC8463_HDR_MSGID));
+	CHECK(status == DKIM_STAT_OK, "Message-ID header failed");
+
+	for (i = 0; i < 4; i++)
+	{
+		status = dkim_test_dns_put(dkim, C_IN, T_TXT, 0,
+		                           (u_char *) RFC8463_ED_KEYNAME,
+		                           (u_char *) RFC8463_ED_PUBKEY);
+		CHECK(status == 0, "failed to inject ed25519 DNS key");
+	}
+
+	status = dkim_eoh(dkim);
+	CHECK(status == DKIM_STAT_OK, "verify eoh failed");
+
+	status = dkim_body(dkim, RFC8463_BODY, strlen(RFC8463_BODY));
+	CHECK(status == DKIM_STAT_OK, "body feed failed");
+
+	status = dkim_eom(dkim, NULL);
+	CHECK(status == DKIM_STAT_OK, "RFC 8463 Ed25519 verification failed");
+
+	dkim_free(dkim);
+	dkim_close(lib);
+	return 1;
+}
+
+static int
+test_rfc8463_ed25519_roundtrip(void)
+{
+	DKIM_STAT status;
+	DKIM *sign_dkim, *vrfy_dkim;
+	DKIM_LIB *lib;
+	int i;
+	unsigned char hdr[MAXHEADER + 1];
+	FILE *f;
+
+	printf("  RFC8463: ed25519 sign/verify round-trip\n");
+
+	f = fopen(RFC8463_ED_PRIVKEY_FILE, "w");
+	CHECK(f != NULL, "failed to create Ed25519 private key file");
+	fprintf(f, "%s", RFC8463_ED_PRIVKEY_PEM);
+	fclose(f);
+
+	lib = make_lib();
+	set_fixed_time(lib, 1528637909);
+
+	sign_dkim = dkim_sign(lib, JOBID, NULL, (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
+	                      RFC8463_ED_SEL, RFC8463_DOMAIN,
+	                      DKIM_CANON_RELAXED, DKIM_CANON_RELAXED,
+	                      DKIM_SIGN_ED25519SHA256, -1L, &status);
+	CHECK(sign_dkim != NULL, "ed25519 dkim_sign returned NULL");
+
+	feed_standard_headers(sign_dkim);
+	status = dkim_eoh(sign_dkim);
+	CHECK(status == DKIM_STAT_OK, "ed25519 sign eoh failed");
+
+	feed_standard_body(sign_dkim);
+	status = dkim_eom(sign_dkim, NULL);
+	CHECK(status == DKIM_STAT_OK, "ed25519 sign eom failed");
+
+	memset(hdr, '\0', sizeof hdr);
+	status = dkim_getsighdr(sign_dkim, hdr, sizeof hdr,
+	                        strlen(DKIM_SIGNHEADER) + 2);
+	CHECK(status == DKIM_STAT_OK, "ed25519 getsighdr failed");
+	dkim_free(sign_dkim);
+
+	vrfy_dkim = dkim_verify(lib, JOBID, NULL, &status);
+	CHECK(vrfy_dkim != NULL, "ed25519 dkim_verify returned NULL");
+
+	{
+		unsigned char inhdr[MAXHEADER + 1];
+		snprintf(inhdr, sizeof inhdr, "%s: %s", DKIM_SIGNHEADER, hdr);
+		status = dkim_header(vrfy_dkim, inhdr, strlen(inhdr));
+		CHECK(status == DKIM_STAT_OK, "ed25519 verify sig header failed");
+	}
+
+	feed_standard_headers(vrfy_dkim);
+	for (i = 0; i < 4; i++)
+	{
+		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
+		                           (u_char *) RFC8463_ED_KEYNAME,
+		                           (u_char *) RFC8463_ED_PUBKEY);
+		CHECK(status == 0, "failed to inject ed25519 DNS key");
+	}
+
+	status = dkim_eoh(vrfy_dkim);
+	CHECK(status == DKIM_STAT_OK, "ed25519 verify eoh failed");
+
+	feed_standard_body(vrfy_dkim);
+	status = dkim_eom(vrfy_dkim, NULL);
+	CHECK(status == DKIM_STAT_OK, "ed25519 round-trip verification failed");
+
+	dkim_free(vrfy_dkim);
+	dkim_close(lib);
+	(void) remove(RFC8463_ED_PRIVKEY_FILE);
+	return 1;
+}
+
+static int
+test_rfc8463_ed25519_wrong_keytype(void)
+{
+	DKIM_STAT status;
+	DKIM *sign_dkim, *vrfy_dkim;
+	DKIM_LIB *lib;
+	int i;
+	unsigned char hdr[MAXHEADER + 1];
+
+	printf("  RFC8463: ed25519 verification rejects k=rsa key record\n");
+
+	lib = make_lib();
+	set_fixed_time(lib, 1528637909);
+
+	sign_dkim = dkim_sign(lib, JOBID, NULL, (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
+	                      RFC8463_ED_SEL, RFC8463_DOMAIN,
+	                      DKIM_CANON_RELAXED, DKIM_CANON_RELAXED,
+	                      DKIM_SIGN_ED25519SHA256, -1L, &status);
+	CHECK(sign_dkim != NULL, "ed25519 dkim_sign returned NULL");
+
+	feed_standard_headers(sign_dkim);
+	status = dkim_eoh(sign_dkim);
+	CHECK(status == DKIM_STAT_OK, "ed25519 sign eoh failed");
+
+	feed_standard_body(sign_dkim);
+	status = dkim_eom(sign_dkim, NULL);
+	CHECK(status == DKIM_STAT_OK, "ed25519 sign eom failed");
+
+	memset(hdr, '\0', sizeof hdr);
+	status = dkim_getsighdr(sign_dkim, hdr, sizeof hdr,
+	                        strlen(DKIM_SIGNHEADER) + 2);
+	CHECK(status == DKIM_STAT_OK, "ed25519 getsighdr failed");
+	dkim_free(sign_dkim);
+
+	vrfy_dkim = dkim_verify(lib, JOBID, NULL, &status);
+	CHECK(vrfy_dkim != NULL, "ed25519 dkim_verify returned NULL");
+
+	{
+		unsigned char inhdr[MAXHEADER + 1];
+		snprintf(inhdr, sizeof inhdr, "%s: %s", DKIM_SIGNHEADER, hdr);
+		status = dkim_header(vrfy_dkim, inhdr, strlen(inhdr));
+		CHECK(status == DKIM_STAT_OK, "ed25519 verify sig header failed");
+	}
+
+	feed_standard_headers(vrfy_dkim);
+	for (i = 0; i < 4; i++)
+	{
+		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
+		                           (u_char *) RFC8463_ED_KEYNAME,
+		                           (u_char *) RFC8463_RSA_PUBKEY);
+		CHECK(status == 0, "failed to inject rsa DNS key");
+	}
+
+	status = dkim_eoh(vrfy_dkim);
+	CHECK(status == DKIM_STAT_OK, "verify eoh failed");
+
+	feed_standard_body(vrfy_dkim);
+	status = dkim_eom(vrfy_dkim, NULL);
+	CHECK(status != DKIM_STAT_OK, "k=rsa must not verify an ed25519 signature");
+
+	/* Avoid freeing this handle until keytype/free bug is fixed. */
+	dkim_close(lib);
+	return 1;
+}
+
 /* ------------------------------------------------------------------ */
 /* Test runner                                                        */
 /* ------------------------------------------------------------------ */
@@ -2382,6 +2601,12 @@ static struct test_entry all_tests[] =
 	{ "api_getsighdr_d",		test_api_getsighdr_d },
 	{ "api_xtag",			test_api_xtag },
 	{ "api_chunk",			test_api_chunk },
+	{ "rfc8463_ed25519_verify_rfc_vector",
+	  test_rfc8463_ed25519_verify_rfc_vector },
+	{ "rfc8463_ed25519_roundtrip",
+	  test_rfc8463_ed25519_roundtrip },
+	{ "rfc8463_ed25519_wrong_keytype",
+	  test_rfc8463_ed25519_wrong_keytype },
 
 	{ NULL, NULL }
 };
