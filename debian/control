@@ -10,15 +10,15 @@ Homepage: http://github.org/edmundlod/opendkim-ng
 Vcs-Browser: https://github.com/edmundlod/opendkim-ng
 Vcs-Git: https://github.com/edmundlod/opendkim-ng
 Rules-Requires-Root: no
-Provides: opendkim
-Conflicts: opendkim
-Replaces: opendkim
 
 Package: opendkim-ng
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
 Depends: libopendkim13 (= ${binary:Version}), ${shlibs:Depends},
  ${misc:Depends}, adduser, dns-root-data
+Provides: opendkim
+Conflicts: opendkim
+Replaces: opendkim
 Recommends: opendkim-tools
 Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
  This is a fork of the original OpenDKIM Project. Support was added for
