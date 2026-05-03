@@ -18,6 +18,7 @@
 #define	SELECTOR	"test"
 #define	SELECTOR2	"brisbane"
 #define	SELECTOR256	"sha256only"
+#define SELECTORED25519 "edtest"
 #define	SELECTORBADH	"badh"
 #define	SELECTORBADK	"badk"
 #define	SELECTORBADV	"badv"
@@ -109,6 +110,9 @@
 	"XZIZ/dhDhl1nDQIhAK3rADDB4BCfm4WdTQxtYyLkfKiro0EjHcdJCuBD91oBAiB3\n" \
 	"dJk2Cl+yMP+oIqR6bDZQY5lzuaE5v3GMRSSWC94B6A==\n" \
 	"-----END RSA PRIVATE KEY-----\n"
+#define ED25519_PRIVKEY	"-----BEGIN PRIVATE KEY-----\n" \
+	"MC4CAQAwBQYDK2VwBCIEIP4tsVbnTpLuFaC4JLLV9L0LDlhBDaub2vwIOYsThmxi\n" \
+	"-----END PRIVATE KEY-----\n"
 #define	PUBLICKEY	"v=DKIM1; k=rsa; t=y:s; h=sha1:sha256; p=" \
 	"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC4GUGr+d/6SFNzVLYpphnRd0QP" \
 	"GKz2uWnV65RAxa1Pw352BqizqiKOBjgYGzj8pJQSs8tOvv/2k6jpI809RnESqOFg" \
@@ -134,6 +138,7 @@
 	"GKz2uWnV65RAxa1Pw352BqizqiKOBjgYGzj8pJQSs8tOvv/2k6jpI809RnESqOFg" \
 	"F0gu3UJbNnu3+cd8k/kiQj+q4cKKRpAT92ccxc7svhCNgN1sBGmROYZuysG3Vu3D" \
 	"yc079gSLtnSrgXb+gQIDAQAB"
+#define PUBLICKEYED25519 "v=DKIM1; k=ed25519; p=qrX9fPtgfFLYw1xdv8wtrKcugHwNS76PH9Y7VIYlB4w="
 #define	PUBLICKEYBADH	"v=DKIM1; k=rsa; t=y:s; h=sha0; p=" \
 	"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC4GUGr+d/6SFNzVLYpphnRd0QP" \
 	"GKz2uWnV65RAxa1Pw352BqizqiKOBjgYGzj8pJQSs8tOvv/2k6jpI809RnESqOFg" \

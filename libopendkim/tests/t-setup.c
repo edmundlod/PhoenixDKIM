@@ -82,6 +82,15 @@ main(int argc, char **argv)
 	}
 	fprintf(f, "\n");
 
+	/* Add Ed25519 entry */
+	fprintf(f, "%s.%s.%s ", SELECTORED25519, DKIM_DNSKEYNAME, DOMAIN);
+	for (p = PUBLICKEYED25519; *p != '\0'; p++)
+	{
+	    if (*p != '\n')
+		putc(*p, f);
+	}
+	fprintf(f, "\n");
+
 	fprintf(f, "%s.%s.%s ", SELECTORBADH, DKIM_DNSKEYNAME, DOMAIN);
 	for (p = PUBLICKEYBADH; *p != '\0'; p++)
 	{
