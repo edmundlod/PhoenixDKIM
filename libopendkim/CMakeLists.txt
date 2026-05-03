@@ -235,8 +235,9 @@ function(configure_opendkim_target tgt)
     endif()
 
     if(WITH_LUA)
-        target_link_libraries(${tgt} PRIVATE Lua::Lua) 
-        target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
+        target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
+        target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
+        target_compile_definitions(${tgt} PRIVATE WITH_LUA=1)
     endif()
 endfunction()
 
