@@ -17,6 +17,8 @@ t-setup
 .libs/
 autom4te.cache/
 autoscan-*.log
+/build/
+Testing/
 build-config.h.in
 compile
 config.guess
@@ -47,3 +49,5 @@ core
 *.core
 build-aux
 opendkim-[0-9].[0-9].[0-9]
+ctest-output.txt
+
