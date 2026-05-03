@@ -1,0 +1,3 @@
+usr/sbin/opendkim-testkey
+usr/sbin/opendkim-testmsg
+usr/sbin/opendkim-genzone
