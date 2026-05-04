@@ -18,7 +18,7 @@ override_dh_auto_configure:
 
 # Test results on kfreebsd-* are inconsistent, but not due to package bugs.
 override_dh_auto_test:
-	dh_auto_test -- args+="V"
+	dh_auto_test
 
 override_dh_installsystemd:
 	dh_installsystemd --name=opendkim
