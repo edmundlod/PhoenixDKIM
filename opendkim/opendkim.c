@@ -667,7 +667,7 @@ pthread_mutex_t pwdb_lock;			/* passwd/group lock */
 					(x) = NULL; \
 				} \
 			} while (0)
-#define	DKIMF_EOHMACROS	"i {daemon_name} {auth_type}"
+#define	DKIMF_EOHMACROS	"i {daemon_name} {auth_type} {auth_authen}"
 
 
 
@@ -11374,7 +11374,9 @@ mlfi_eoh(SMFICTX *ctx)
 		internal = internal || dkimf_checkip(conf->conf_internal,
 		                                     (struct sockaddr *) &cc->cctx_ip);
 
-		authtype = dkimf_getsymval(ctx, "{auth_type}");
+		authtype = dkimf_getsymval(ctx, "{auth_authen}");
+        if (authtype == NULL || authtype[0] == '\0') 
+            authtype = dkimf_getsymval(ctx, "{auth_type}"); // Fallback
 
 #ifdef POPAUTH
 		popauth = dkimf_checkpopauth(popdb,
