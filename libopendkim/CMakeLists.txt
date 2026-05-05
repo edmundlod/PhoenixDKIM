@@ -1,9 +1,28 @@
+# Porting versioning logic from configure.ac
+set(VERSION_MAJOR_REV 13)
+set(VERSION_MINOR_REV 0)
+set(VERSION_PATCH 0)
+set(VERSION_RELEASE 0)
+
+# Calculate hex version: (RELEASE << 24) | (MAJOR << 16) | (MINOR << 8) | PATCH
+math(EXPR HEX_VERSION "(${VERSION_RELEASE} << 24) | (${VERSION_MAJOR_REV} << 16) | (${VERSION_MINOR_REV} << 8) | ${VERSION_PATCH}")
+
+# Format as 0x00000000 for the header
+string(PRINTF "0x%08x" OPENDKIM_LIB_VERSION_HEX ${HEX_VERSION})
+
 # ── Required modules ──────────────────────────────────────────────────────────
 
 include(CheckFunctionExists)
 include(CheckIncludeFile)
 include(CheckSymbolExists)
 include(GNUInstallDirs)
+include(CheckIncludeFiles)
+
+check_include_files("sys/param.h" HAVE_SYS_PARAM_H)
+check_include_files("sys/file.h" HAVE_SYS_FILE_H)
+check_include_files("paths.h" HAVE_PATHS_H)
+check_include_files("sys/vfs.h" HAVE_SYS_VFS_H)
+check_include_files("sys/statfs.h" HAVE_SYS_STATFS_H)
 
 # ── OpenSSL 3 (required) ──────────────────────────────────────────────────────
 
@@ -56,6 +75,59 @@ find_package(Threads REQUIRED)
 # to link it even when the symbols are already in libc.
 
 find_library(RESOLV_LIBRARY NAMES resolv)
+
+include(CheckFunctionExists)
+include(CheckLibraryExists)
+
+# Logic to find where DNS functions reside
+check_function_exists(res_query HAVE_RES_QUERY_LIBC)
+
+if(NOT HAVE_RES_QUERY_LIBC)
+    check_library_exists(resolv res_query "" HAVE_LIBRESOLV)
+    if(HAVE_LIBRESOLV)
+        set(DNS_LIB resolv)
+    else()
+        check_library_exists(nsl res_query "" HAVE_LIBNSL)
+        if(HAVE_LIBNSL)
+            set(DNS_LIB nsl)
+        endif()
+    endif()
+endif()
+
+# Check for networking conversion functions
+check_function_exists(inet_pton HAVE_INET_PTON)
+check_function_exists(inet_ntop HAVE_INET_NTOP)
+check_function_exists(getaddrinfo HAVE_GETADDRINFO)
+
+# ── libunbound (optional DNSSEC async resolver) ──────────────────────────────
+option(WITH_UNBOUND "Enable libunbound DNSSEC async resolver support" ON)
+
+if(WITH_UNBOUND)
+    pkg_check_modules(UNBOUND IMPORTED_TARGET libunbound)
+
+    if(NOT UNBOUND_FOUND)
+        # Fallback for systems without pkg-config (BSD/macOS)
+        find_path(UNBOUND_INCLUDE_DIR NAMES unbound.h)
+        find_library(UNBOUND_LIBRARY NAMES unbound)
+        if(UNBOUND_INCLUDE_DIR AND UNBOUND_LIBRARY)
+            set(UNBOUND_FOUND TRUE)
+            add_library(PkgConfig::UNBOUND UNKNOWN IMPORTED)
+            set_target_properties(PkgConfig::UNBOUND PROPERTIES
+                IMPORTED_LOCATION "${UNBOUND_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${UNBOUND_INCLUDE_DIR}"
+            )
+        endif()
+    endif()
+
+    if(UNBOUND_FOUND)
+        message(STATUS "libunbound found: enabling DNSSEC support")
+        # Ensure build-config.h gets these
+        set(USE_UNBOUND 1)
+        set(HAVE_UNBOUND_H 1)
+    else()
+        message(WARNING "libunbound not found: DNSSEC disabled")
+    endif()
+endif()
 
 # ── strlcpy / strlcat detection ───────────────────────────────────────────────
 # Detection order per SCOPE.md:
@@ -148,6 +220,13 @@ configure_file(
     @ONLY
 )
 
+# ── Process dkim.h to inject the hex version ──────────────────────────────────
+configure_file(
+    dkim.h
+    ${CMAKE_CURRENT_BINARY_DIR}/opendkim/dkim.h
+    @ONLY
+)
+
 # ── Library sources ───────────────────────────────────────────────────────────
 # Source list derived from libopendkim/Makefile.am.
 
@@ -225,6 +304,16 @@ function(configure_opendkim_target tgt)
         PUBLIC  OpenSSL::Crypto
         PRIVATE Threads::Threads ${LMDB_TARGET}
     )
+
+    if(UNBOUND_FOUND)
+        target_include_directories(${tgt} PRIVATE ${UNBOUND_INCLUDE_DIRS})
+        target_link_libraries(${tgt} PRIVATE PkgConfig::UNBOUND)
+
+        target_compile_definitions(${tgt} PRIVATE
+            USE_UNBOUND=1
+            HAVE_UNBOUND_H=1
+        )
+    endif()
 
     if(RESOLV_LIBRARY)
         target_link_libraries(${tgt} PRIVATE ${RESOLV_LIBRARY})

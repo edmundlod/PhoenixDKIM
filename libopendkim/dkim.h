@@ -31,9 +31,14 @@ extern "C" {
 **  	MM == major revision number
 **  	mm == minor revision number
 **  	pp == patch number
+**
+**      This was the old autotools-era line:
+**      #define	OPENDKIM_LIB_VERSION	0x01020000
 */
 
-#define	OPENDKIM_LIB_VERSION	0x01020000
+#ifndef OPENDKIM_LIB_VERSION
+# define OPENDKIM_LIB_VERSION    @OPENDKIM_LIB_VERSION_HEX@
+#endif
 
 #ifdef __STDC__
 # ifndef __P
