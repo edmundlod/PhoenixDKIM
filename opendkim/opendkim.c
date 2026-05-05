@@ -12655,10 +12655,22 @@ mlfi_eom(SMFICTX *ctx)
 			/* NOTREACHED */
 		}
 
-		snprintf(header, sizeof header, "%s; dkim=%s (%s)",
-		         authservid, ar,
-		         dkimf_lookup_inttostr(dfc->mctx_status,
-		                               dkimf_statusstrings));
+		int n;
+
+		n = snprintf(header, sizeof header,
+					 "%s; dkim=%s (%s)",
+					 authservid, ar,
+			   dkimf_lookup_inttostr(dfc->mctx_status,
+									 dkimf_statusstrings));
+
+		if (n < 0 || (size_t)n >= sizeof header)
+		{
+			if (dolog)
+				syslog(LOG_WARNING,
+					   "mlfi_eom: Authentication-Results header truncated");
+
+				header[sizeof(header) - 1] = '\0';
+		}
 
 		if (dkimf_insheader(ctx, 1, AUTHRESULTSHDR,
 		                    (char *) header) == MI_FAILURE)
