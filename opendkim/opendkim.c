@@ -5308,56 +5308,83 @@ dkimf_reportaddr(struct dkimf_config *conf)
 {
 	uid_t uid;
 	struct passwd *pw;
+
 	assert(conf != NULL);
 
+	/* --- configured address --- */
 	if (conf->conf_reportaddr != NULL)
 	{
 		int status;
 		u_char *user;
 		u_char *domain;
-		u_char env[MAXADDRESS + 1];	/* reporting address */
+		u_char env[MAXADDRESS + 1];
 
 		strlcpy(reportaddr, conf->conf_reportaddr, sizeof reportaddr);
-		strlcpy((char *) env, conf->conf_reportaddr,
-		        sizeof reportaddr);
+		strlcpy((char *) env, conf->conf_reportaddr, sizeof env);
+
 		status = dkim_mail_parse(env, &user, &domain);
 		if (status == 0 && user != NULL && domain != NULL)
 		{
-			snprintf(reportcmd, sizeof reportcmd,
-			         "%s -t -f%s@%s",
-			         conf->conf_mtacommand, user, domain);
+			int n = snprintf(reportcmd, sizeof reportcmd,
+							 "%s -t -f%s@%s",
+					conf->conf_mtacommand, user, domain);
 
-			return;
+			if (n >= 0 && (size_t)n < sizeof reportcmd)
+				return;
+
+			if (dolog)
+				syslog(LOG_ERR,
+					   "reportcmd truncated; using default");
 		}
 		else
 		{
 			if (dolog)
-			{
 				syslog(LOG_ERR,
-				       "error parsing ReportAddress; using default");
-			}
+					   "error parsing ReportAddress; using default");
 		}
 	}
 
-	/* not successful case has already returned. Make up a value if not
-	 * set of an error occurs */
-
+	/* --- fallback --- */
 	uid = geteuid();
 	pw = getpwuid(uid);
 
 	if (pw == NULL)
 	{
-		snprintf(reportaddr, sizeof reportaddr,
-		         "%u@%s", uid, myhostname);
+		int n = snprintf(reportaddr, sizeof reportaddr,
+						 "%u@%s", uid, myhostname);
+
+		if (n < 0 || (size_t)n >= sizeof reportaddr)
+		{
+			if (dolog)
+				syslog(LOG_ERR, "reportaddr truncated");
+			return;
+		}
 	}
 	else
 	{
-		snprintf(reportaddr, sizeof reportaddr,
-		         "%s@%s", pw->pw_name, myhostname);
+		int n = snprintf(reportaddr, sizeof reportaddr,
+						 "%s@%s", pw->pw_name, myhostname);
+
+		if (n < 0 || (size_t)n >= sizeof reportaddr)
+		{
+			if (dolog)
+				syslog(LOG_ERR, "reportaddr truncated");
+			return;
+		}
 	}
 
-	snprintf(reportcmd, sizeof reportcmd, "%s -t -f%s",
-	         conf->conf_mtacommand, reportaddr);
+	{
+		int n = snprintf(reportcmd, sizeof reportcmd,
+						 "%s -t -f%s",
+				   conf->conf_mtacommand, reportaddr);
+
+		if (n < 0 || (size_t)n >= sizeof reportcmd)
+		{
+			if (dolog)
+				syslog(LOG_ERR, "reportcmd truncated");
+			return;
+		}
+	}
 }
 
 /*
