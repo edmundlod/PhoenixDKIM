@@ -10096,25 +10096,48 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			}
 #endif /* USE_UNBOUND */
 
+			size_t n = 0;
+			int r;
+
 			memset(val, '\0', sizeof val);
 
-			(void) dkim_sig_getidentity(dkim, sigs[c],
-			                            val, sizeof val - 1);
+			(void)dkim_sig_getidentity(dkim, sigs[c],
+									val, sizeof val - 1);
 
 			domain = dkim_sig_getdomain(sigs[c]);
 
-			snprintf(tmp, sizeof tmp,
-			         "%s%sdkim=%s%s (%u-bit key%s%s) header.d=%s header.i=%s%s%s",
-			         c == 0 ? "" : ";",
-			         DELIMITER, result, comment,
-			         keybits,
-			         dnssec == NULL ? "" : "; ",
-			         dnssec == NULL ? "" : dnssec,
-			         domain, val,
-			         ts == DKIM_STAT_OK ? " header.b=" : "",
-			         ts == DKIM_STAT_OK ? ss : "");
+			#define APPEND(...) do {                            \
+			if (n >= hdrlen)                                    \
+				break;                                          \
+                                                                \
+				r = snprintf(hdr + n, hdrlen - n, __VA_ARGS__); \
+                                                                \
+				if (r < 0)                                      \
+				{                                               \
+					n = hdrlen;                                 \
+					break;                                      \
+				}                                               \
+                                                                \
+				if ((size_t)r >= hdrlen - n)                    \
+				{                                               \
+					n = hdrlen;                                 \
+					break;                                      \
+				}                                               \
+                                                                \
+				n += r;                                         \
+			} while (0)
 
-			strlcat(hdr, tmp, hdrlen);
+			APPEND("%s%sdkim=%s%s (%u-bit key%s%s) header.d=%s header.i=%s%s%s",
+				c == 0 ? "" : ";",
+				DELIMITER, result, comment,
+				keybits,
+				dnssec == NULL ? "" : "; ",
+				dnssec == NULL ? "" : dnssec,
+				domain, val,
+				ts == DKIM_STAT_OK ? " header.b=" : "",
+				ts == DKIM_STAT_OK ? ss : "");
+
+			#undef APPEND
 		}
 	}
 }
@@ -11977,11 +12000,21 @@ mlfi_eoh(SMFICTX *ctx)
 			}
 		}
 #endif /* _FFR_IDENTITY_HEADER */
-				
+
 		if (!idset)
 		{
-			snprintf((char *) identity, sizeof identity, "@%s",
-			         dfc->mctx_domain);
+			int n;
+
+			n = snprintf((char *) identity, sizeof identity, "@%s",
+							dfc->mctx_domain);
+
+			if (n < 0 || (size_t)n >= sizeof identity)
+			{
+				if (dolog)
+					syslog(LOG_ERR, "identity truncated");
+
+				return SMFIS_TEMPFAIL;
+			}
 		}
 
 		if (dfc->mctx_srhead != NULL)
