@@ -132,19 +132,28 @@ dkim_tmpfile(DKIM *dkim, int *fp, _Bool keep)
 	int fd;
 	char *p;
 	char path[MAXPATHLEN + 1];
+	int n;
 
 	assert(dkim != NULL);
 	assert(fp != NULL);
 
 	if (dkim->dkim_id != NULL)
 	{
-		snprintf(path, MAXPATHLEN, "%s/dkim.%s.XXXXXX",
-		         dkim->dkim_libhandle->dkiml_tmpdir, dkim->dkim_id);
+		n = snprintf(path, sizeof path, "%s/dkim.%s.XXXXXX",
+					 dkim->dkim_libhandle->dkiml_tmpdir,
+			   dkim->dkim_id);
 	}
 	else
 	{
-		snprintf(path, MAXPATHLEN, "%s/dkim.XXXXXX",
-		         dkim->dkim_libhandle->dkiml_tmpdir);
+		n = snprintf(path, sizeof path, "%s/dkim.XXXXXX",
+					 dkim->dkim_libhandle->dkiml_tmpdir);
+	}
+
+	/* STOP HERE if truncated */
+	if (n < 0 || (size_t)n >= sizeof path)
+	{
+		dkim_error(dkim, "Temporary file path too long");
+		return DKIM_STAT_NORESOURCE;
 	}
 
 	for (p = path + strlen((char *) dkim->dkim_libhandle->dkiml_tmpdir) + 1;
