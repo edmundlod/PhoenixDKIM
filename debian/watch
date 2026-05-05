@@ -1,4 +1,8 @@
 version=4
-opts="filenamemangle=s/(?:.*\/)?v?(\d[\d\.]*)\.tar\.gz/opendkim-ng-$1.tar.gz/" \
+
+opts="\
+filenamemangle=s@.*/v?(\d[\d\.\-a-zA-Z]*)\.tar\.gz@opendkim-ng-$1.tar.gz@,\
+uversionmangle=s/-((alpha|beta|rc)[0-9]*)/~\1/\
+" \
 https://github.com/edmundlod/opendkim-ng/tags \
-(?:.*\/)?v?(\d[\d\.]*)\.tar\.gz
+.*/v?(\d[\d\.\-a-zA-Z]*)\.tar\.gz
