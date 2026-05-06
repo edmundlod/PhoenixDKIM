@@ -1,11 +1,11 @@
-.TH opendkim.conf 5 "The Trusted Domain Project"
+.TH opendkim.conf 5
 
 .SH NAME
 .B opendkim.conf
 \- Configuration file for opendkim
 
 .SH LOCATION
-.I @SYSCONFDIR@/opendkim.conf
+.I /etc/opendkim/opendkim.conf
 
 .SH DESCRIPTION
 .I opendkim(8)
@@ -46,13 +46,48 @@ man page for a description of such parameters.
 Unless otherwise stated, Boolean values default to "false", integer values
 default to 0, and string and dataset values default to being undefined.
 
-.SH PARAMETERS
-.TP
-.I AllowSHA1Only (Boolean)
-Permit verify mode when only SHA1 support is available.  RFC6376 requires
-that verifiers implement both SHA1 and SHA256 support.  Setting this
-feature changes the absence of SHA256 support from an error to a warning.
+.SH DEPRECATED OPTIONS
+The following configuration options have been removed and must not appear in
+.I opendkim.conf.
+Their presence may prevent the filter from starting.
 
+.SS "Removed in 2.10.0"
+AddAllSignatureResults,
+ADSPAction,
+ADSPNoSuchDomain,
+BogusPolicy,
+DisableADSP,
+LDAPSoftStart,
+LocalADSP,
+NoDiscardableMailTo,
+On-PolicyError,
+SendADSPReports,
+UnprotectedPolicy.
+
+.SS "Removed in 3.0.0"
+The following options were removed when their associated subsystems were eliminated.
+
+.TP
+.I AllowSHA1Only
+SHA-1 signing support has been removed.
+
+.TP
+.I LDAPAuthMechanism, LDAPAuthName, LDAPAuthRealm, LDAPAuthUser, LDAPBindPassword, LDAPBindUser, LDAPDisableCache, LDAPKeepaliveIdle, LDAPKeepaliveInterval, LDAPKeepaliveProbes, LDAPTimeout, LDAPUseTLS
+LDAP/OpenLDAP support has been removed.
+
+.TP
+.I SoftStart
+The LDAP/SQL backend support that this option guarded has been removed.
+
+.TP
+.I Statistics, StatisticsName, StatisticsPrefix
+Statistics collection support has been removed.
+
+.TP
+.I VBR-Certifiers, VBR-PurgeFields, VBR-TrustedCertifiers, VBR-TrustedCertifiersOnly, VBR-Type
+Vouch By Reference (VBR) support has been removed.
+
+.SH PARAMETERS
 .TP
 .I AlwaysAddARHeader (Boolean)
 Add an "Authentication-Results:" header field even to unsigned messages
@@ -364,70 +399,6 @@ the apparent domain name of the sender.  The
 signatures based on the message sender.
 
 .TP
-.I LDAPAuthMechanism (string)
-Names the authentication mechanism to use when connecting to an LDAP
-server.  The default is the empty string, meaning "simple" authentication
-should be done.
-
-.TP 
-.I LDAPAuthName (string)
-Specifies the authenticating name to use when using SASL to authenticate to
-an LDAP server.  Requires SASL support be installed on the local system.
-There is no default.
-
-.TP 
-.I LDAPAuthRealm (string)
-Specifies the authentication realm to use when using SASL to authenticate to
-an LDAP server.  Requires SASL support be installed on the local system.
-There is no default.
-
-.TP 
-.I LDAPAuthUser (string)
-Specifies the authenticating user to use when using SASL to authenticate to an
-LDAP server.  Requires SASL support be installed on the local system.
-There is no default.
-
-.TP 
-.I LDAPBindPassword (string)
-Specifies the password to use when conducting an LDAP "bind" operation.
-There is no default.
-
-.TP 
-.I LDAPBindUser (string)
-Specifies the user ID to use when conducting an LDAP "bind" operation.
-There is no default.
-
-.TP
-.I LDAPDisableCache (Boolean)
-Suppresses creation of a local cache in front of LDAP queries.
-
-.TP
-.I LDAPKeepaliveIdle (integer)
-Sets the number of seconds a connection to an LDAP server needs to remain
-idle before TCP starts sending keepalive probes.  If not specified, the
-LDAP library default is used.
-
-.TP
-.I LDAPKeepaliveInterval (integer)
-Sets the interval in seconds between TCP keepalive probes.  If not specified,
-the LDAP library default is used.
-
-.TP
-.I LDAPKeepaliveProbes (integer)
-Sets the maximum number of keepalive probes TCP should send before abandoning
-the connection.  If not specified, the LDAP library default is used.
-
-.TP
-.I LDAPTimeout (integer)
-Sets the time in seconds after which an LDAP operation should be abandoned.
-The default is 5.
-
-.TP 
-.I LDAPUseTLS (Boolean)
-Indicates whether or not a TLS connection should be established when
-contacting an LDAP server.  The default is "False".
-
-.TP
 .I LogResults (boolean)
 If logging is enabled (see
 .I Syslog
@@ -591,7 +562,7 @@ an otherwise valid signature as invalid.  The default is an empty list.
 .TP
 .I Nameservers (string)
 Provides a comma-separated list of IP addresses that are to be used when
-doing DNS queries to retrieve DKIM keys, VBR records, etc.
+doing DNS queries to retrieve DKIM keys, etc.
 These override any local defaults built in to the resolver in use, which
 may be defined in
 .I /etc/resolv.conf
@@ -935,10 +906,17 @@ for details. @LUA_MANNOTICE@
 .I SignatureAlgorithm (string)
 Selects the signing algorithm to use when generating signatures.
 Use 'opendkim \-V' to see the list of supported algorithms.
-The default is
+Supported signing algorithms are
 .I rsa-sha256
-if it is available, otherwise it will be
-.I rsa-sha1.
+and
+.I ed25519-sha256
+(RFC 8463).
+The default is
+.I rsa-sha256.
+Note that
+.I rsa-sha1
+is still accepted during signature verification for compatibility, but must
+not be used for signing.
 
 .TP
 .I SignatureTTL (integer)
@@ -1028,12 +1006,6 @@ listening on all interfaces.  A literal IP address must be enclosed in
 square brackets.  This option is mandatory either in the configuration file or
 on the command line.
 
-.TP 
-.I SoftStart (Boolean)
-If set, the inability to connect and authenticate to an LDAP or SQL server will
-not prevent the filter from starting, and reconnections will be attempted for
-each query.  The default is "False".
-
 .TP
 .I SoftwareHeader (Boolean)
 Causes
@@ -1047,33 +1019,6 @@ setting causes the message to be ignored (e.g., if only signing mode is enabled
 and the configuration causes the message not to be signed, or only verify
 mode is enabled and configuration would otherwise have caused the message to
 be signed, then it will not have this header field added).
-
-.TP
-.I Statistics (filename)
-This specifies a file in which to store DKIM transaction statistics.  See
-.I opendkim-stats(8)
-for a mechanism to parse the file's contents, and
-.I opendkim-importstats()
-for a mechanism to translate the file's contents into SQL database insertions.
-@STATS_MANNOTICE@
-
-.TP
-.I StatisticsName (string)
-Defines the name to be used as the reporting host in statistics logs.
-By default, the local host's name returned by
-.I gethostname(3)
-is used.
-@STATS_MANNOTICE@
-
-.TP
-.I StatisticsPrefix (string)
-When
-.I AnonymousStatistics
-is enabled, this string may be specified and will be prepended to all
-data before hashing for more complete anonymization.  This means two records
-from different sources referencing the same source will still produce
-different hashes, meaning such correlation is now only possible within the
-data from a single repoter.
 
 .TP
 .I StrictHeaders (Boolean)
@@ -1190,36 +1135,6 @@ unless an alternate
 is specified.
 
 .TP
-.I VBR-Certifiers (string)
-The default certifiers if not specified in X-VBR-Certifiers header field.
-@VBR_MANNOTICE@
-
-.TP
-.I VBR-PurgeFields (string)
-If set, arranges to remove X-VBR-Certifiers and X-VBR-Type fields on messages
-prior to sending them.
-@VBR_MANNOTICE@
-
-.TP
-.I VBR-TrustedCertifiers (string)
-A colon or comma sparated list of trusted certifiers to accept when 
-verifying VBR-Info header field.
-@VBR_MANNOTICE@
-
-.TP
-.I VBR-TrustedCertifiersOnly (Boolean)
-By default, the certifiers that are in both the trusted certifiers list
-(above) and those in the message's VBR-Info header field will be checked
-for vouching.  With this option set, the trusted certifiers will be
-checked and the ones claimed by the message will be ignored.
-@VBR_MANNOTICE@
-
-.TP
-.I VBR-Type (string)
-This default VBR type if not specified in the X-VBR-Type header field.
-@VBR_MANNOTICE@
-
-.TP
 .I WeakSyntaxChecks (Boolean)
 Requests that the library continue processing messages even if syntax errors
 are discovered early in message analysis.  This means, for example, that
@@ -1243,17 +1158,17 @@ way that function handles the non-trivial cases (for example, "192.0.2/24"
 and "192.0.2.0/24" are not the same thing).
 .SH FILES
 .TP
-.I @SYSCONFDIR@/opendkim.conf
+.I /etc/opendkim/opendkim.conf
 Default location of this file.
 .SH VERSION
-This man page covers version @VERSION@ of
+This man page covers version 3.0 of
 .I opendkim.
 
 .SH COPYRIGHT
 Copyright (c) 2007, 2008, Sendmail, Inc. and its suppliers.  All rights
 reserved.
 
-Copyright (c) 2009-2015, The Trusted Domain Project.  All rights reserved.
+Copyright (c) 2009-2026, The OpenDKIM Project.  All rights reserved.
 .SH SEE ALSO
 .I opendkim(8), opendkim-lua(3), sendmail(8)
 .P
@@ -1269,3 +1184,5 @@ Cryptographic Results
 RFC6376 - DomainKeys Identified Mail
 .P
 RFC6651 - Extensions to DomainKeys Identified Mail (DKIM) for Failure Reporting
+.P
+RFC8463 - A New Cryptographic Signature Method for DomainKeys Identified Mail (DKIM)
