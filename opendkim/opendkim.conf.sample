@@ -383,7 +383,7 @@ KeyFile			/var/db/dkim/example.private
 ##  	default (none)
 ##
 ##  Provides a comma-separated list of IP addresses that are to be used when
-##  doing DNS queries to retrieve DKIM keys, VBR records, etc.
+##  doing DNS queries to retrieve DKIM keys.
 ##  These override any local defaults built in to the resolver in use, which
 ##  may be defined in /etc/resolv.conf or hard-coded into the software.
 
