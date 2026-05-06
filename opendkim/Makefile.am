@@ -1,5 +1,5 @@
 # Copyright (c) 2010-2014, The Trusted Domain Project.  All rights reserved.
-#
+# Copyright (c) 2026, OpenDKIM contributors. All rights reserved.
 
 if DEBUG
 AM_CFLAGS = -g

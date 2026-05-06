@@ -3,6 +3,8 @@
 **	All rights reserved.
 **
 **  Copyright (c) 2009-2014, The Trusted Domain Project.  All rights reserved.
+**
+**  Copyright (c) 2026, OpenDKIM contributors. All rights reserved.
 */
 
 #ifndef _OPENDKIM_H_
