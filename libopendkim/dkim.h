@@ -34,11 +34,9 @@ extern "C" {
 **
 **      This was the old autotools-era line:
 **      #define	OPENDKIM_LIB_VERSION	0x01020000
+**
+**      Now injected via libopendkim/CMakeLists.txt
 */
-
-#ifndef OPENDKIM_LIB_VERSION
-# define OPENDKIM_LIB_VERSION    @OPENDKIM_LIB_VERSION_HEX@
-#endif
 
 #ifdef __STDC__
 # ifndef __P

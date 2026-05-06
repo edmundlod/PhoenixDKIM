@@ -1,14 +1,45 @@
-# Porting versioning logic from configure.ac
-set(VERSION_MAJOR_REV 13)
-set(VERSION_MINOR_REV 0)
+# --- Package Version Logic ---
+set(VERSION_RELEASE 2)
+set(VERSION_MAJOR_REV 10)
+set(VERSION_MINOR_REV 3)
 set(VERSION_PATCH 0)
-set(VERSION_RELEASE 0)
 
-# Calculate hex version: (RELEASE << 24) | (MAJOR << 16) | (MINOR << 8) | PATCH
-math(EXPR HEX_VERSION "(${VERSION_RELEASE} << 24) | (${VERSION_MAJOR_REV} << 16) | (${VERSION_MINOR_REV} << 8) | ${VERSION_PATCH}")
+# Define the human-readable version string
+set(PACKAGE_VERSION "${VERSION_RELEASE}.${VERSION_MAJOR_REV}.${VERSION_MINOR_REV}")
 
-# Format as 0x00000000 for the header
-string(PRINTF "0x%08x" OPENDKIM_LIB_VERSION_HEX ${HEX_VERSION})
+# --- Library Version Logic (Libtool equivalent) ---
+set(LIBVERSION_CURRENT 10)
+set(LIBVERSION_REVISION 3)
+set(LIBVERSION_AGE 0)
+
+# LIBOPENDKIM_VERSION_INFO (simple concatenation)
+set(LIBOPENDKIM_VERSION_INFO "${LIBVERSION_CURRENT}:${LIBVERSION_REVISION}:${LIBVERSION_AGE}")
+
+# --- Hexadecimal Version Logic (for dkim.h) ---
+
+# 1. Perform the bitwise math
+# Formula: ((RELEASE << 8 | MAJOR) << 8 | MINOR) << 8 | PATCH
+math(EXPR HEX_VAL "(((${VERSION_RELEASE} << 8) | ${VERSION_MAJOR_REV}) << 8 | ${VERSION_MINOR_REV}) << 8 | ${VERSION_PATCH}")
+
+# 2. Convert to Hexadecimal string (requires CMake 3.13+)
+math(EXPR RAW_HEX "${HEX_VAL}" OUTPUT_FORMAT HEXADECIMAL)
+
+# 3. Handle Padding (0x08x)
+# math() returns "0x..." but doesn't guarantee 8 digits of padding.
+string(SUBSTRING "${RAW_HEX}" 2 -1 HEX_BODY) # Strip "0x"
+string(LENGTH "${HEX_BODY}" HEX_LEN)
+
+while(HEX_LEN LESS 8)
+    string(PREPEND HEX_BODY "0")
+    string(LENGTH "${HEX_BODY}" HEX_LEN)
+endwhile()
+
+set(HEX_VERSION "0x${HEX_BODY}")
+
+# --- Output for Verification ---
+message(STATUS "Package Version: ${PACKAGE_VERSION}")
+message(STATUS "Libtool Version: ${LIBOPENDKIM_VERSION_INFO}")
+message(STATUS "Hex Version:     ${HEX_VERSION}")
 
 # ── Required modules ──────────────────────────────────────────────────────────
 
@@ -273,6 +304,11 @@ function(configure_opendkim_target tgt)
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/opendkim>
         PRIVATE
             ${CMAKE_CURRENT_BINARY_DIR}   # build-config.h lives here
+    )
+
+    # Inject the version hex directly into the source code
+    target_compile_definitions(${tgt} PUBLIC
+        OPENDKIM_LIB_VERSION=${HEX_VERSION}
     )
 
     # Always-on compile definitions for this modern build
