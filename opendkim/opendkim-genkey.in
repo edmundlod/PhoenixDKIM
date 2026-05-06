@@ -28,7 +28,8 @@ use Getopt::Long;
 ## Set up defaults
 ##
 
-my $bits = 1024;
+my $bits = 2048;
+my $keytype = "rsa";
 my $domain = "@DOMAIN@";
 my $version = "@DOMAIN@";
 my $outdir = ".";
@@ -75,6 +76,7 @@ sub usage
 	print STDERR "\t--selector=name        selector name [$selector]\n";
 	print STDERR "\t--subdomains           allow signing of subdomains\n";
 	print STDERR "\t--testmode             indicate key is in test mode\n";
+	print STDERR "\t--type=algorithm       key type: rsa (default) or ed25519\n";
 	print STDERR "\t--verbose              increased output\n";
 	print STDERR "\t--version              print version and exit\n";
 }
@@ -97,6 +99,7 @@ my $opt_retval = &Getopt::Long::GetOptions('a|append-domain!' => \$append,
                                            'S!' => \$nosubdomains,
                                            'subdomains!' => \$subdomains,
                                            't|testmode!' => \$testmode,
+                                           'type=s' => \$keytype,
                                            'v|verbose+' => \$verbose,
                                            'V|version!' => \$showversion,
                                           );
@@ -121,6 +124,12 @@ if ($showversion)
 	exit 0;
 }
 
+if (lc($keytype) ne "rsa" && lc($keytype) ne "ed25519")
+{
+	print STDERR "$progname: unknown key type '$keytype'\n";
+	exit(1);
+}
+
 ## do this securely and in the right place
 chdir($outdir) or die "$progname: $outdir: chdir(): $!";;
 umask(077);
@@ -131,53 +140,106 @@ if ($verbose >= 1)
 	print STDERR "$progname: generating private key\n";
 }
 
-if ($bits < 1024)
+if (lc($keytype) eq "rsa" && $bits < 2048)
 {
-	print STDERR "$progname: WARNING: RFC6376 advises minimum 1024-bit keys\n";
+	print STDERR "$progname: WARNING: RFC6376 advises minimum 2048-bit keys\n";
 }
 
-$status = system("openssl genrsa -out " . $selector . ".private " . $bits . " > /dev/null 2>&1");
-if ($status != 0)
+if (lc($keytype) eq "ed25519")
 {
-	if ($? & 127)
+	$status = system("openssl genpkey -algorithm ed25519 -out "
+	                 . $selector . ".private > /dev/null 2>&1");
+	if ($status != 0)
 	{
-		print STDERR "$progname: openssl died with signal %d\n",
-		      ($? & 127);
-		exit(1);
+		if ($? & 127)
+		{
+			print STDERR "$progname: openssl died with signal %d\n",
+			      ($? & 127);
+			exit(1);
+		}
+		else
+		{
+			print STDERR "$progname: openssl exited with status %d\n",
+			      ($? >> 8);
+			exit(1);
+		}
 	}
-	else
+
+	if ($verbose)
 	{
-		print STDERR "$progname: openssl exited with status %d\n",
-		      ($? >> 8);
-		exit(1);
+		print STDERR "$progname: private key written to " . $selector . ".private\n";
+	}
+
+	## generate a public key based on the private key
+	if ($verbose)
+	{
+		print STDERR "$progname: extracting public key\n";
+	}
+
+	$status = system("openssl pkey -in " . $selector
+	                 . ".private -pubout -out "
+	                 . $selector . ".public -outform PEM > /dev/null 2>&1");
+	if ($status != 0)
+	{
+		if ($? & 127)
+		{
+			print STDERR "$progname: openssl died with signal %d\n",
+			      ($? & 127);
+			exit(1);
+		}
+		else
+		{
+			print STDERR "$progname: openssl exited with status %d\n",
+			      ($? >> 8);
+			exit(1);
+		}
 	}
 }
-
-if ($verbose)
+else
 {
-	print STDERR "$progname: private key written to " . $selector . ".private\n";
-}
-
-## generate a public key based on the private key
-if ($verbose)
-{
-	print STDERR "$progname: extracting public key\n";
-}
-
-$status = system("openssl rsa -in " . $selector . ".private -pubout -out " . $selector . ".public -outform PEM > /dev/null 2>&1");
-if ($status != 0)
-{
-	if ($? & 127)
+	$status = system("openssl genrsa -out " . $selector . ".private " . $bits . " > /dev/null 2>&1");
+	if ($status != 0)
 	{
-		print STDERR "$progname: openssl died with signal %d\n",
-		      ($? & 127);
-		exit(1);
+		if ($? & 127)
+		{
+			print STDERR "$progname: openssl died with signal %d\n",
+			      ($? & 127);
+			exit(1);
+		}
+		else
+		{
+			print STDERR "$progname: openssl exited with status %d\n",
+			      ($? >> 8);
+			exit(1);
+		}
 	}
-	else
+
+	if ($verbose)
 	{
-		print STDERR "$progname: openssl exited with status %d\n",
-		      ($? >> 8);
-		exit(1);
+		print STDERR "$progname: private key written to " . $selector . ".private\n";
+	}
+
+	## generate a public key based on the private key
+	if ($verbose)
+	{
+		print STDERR "$progname: extracting public key\n";
+	}
+
+	$status = system("openssl rsa -in " . $selector . ".private -pubout -out " . $selector . ".public -outform PEM > /dev/null 2>&1");
+	if ($status != 0)
+	{
+		if ($? & 127)
+		{
+			print STDERR "$progname: openssl died with signal %d\n",
+			      ($? & 127);
+			exit(1);
+		}
+		else
+		{
+			print STDERR "$progname: openssl exited with status %d\n",
+			      ($? >> 8);
+			exit(1);
+		}
 	}
 }
 
@@ -271,7 +333,8 @@ if (!open($txtout, ">", $selector . ".txt"))
 	exit(1);
 }
 
-print $txtout $selector . "._domainkey" . ${domstr} . "\tIN\tTXT\t( \"v=DKIM1;" . $noteout . $hashout . " k=rsa; " . $flags . "\"\n\t  \"p=";
+my $keytype_tag = (lc($keytype) eq "ed25519") ? "ed25519" : "rsa";
+print $txtout $selector . "._domainkey" . ${domstr} . "\tIN\tTXT\t( \"v=DKIM1;" . $noteout . $hashout . " k=" . $keytype_tag . "; " . $flags . "\"\n\t  \"p=";
 
 $len = length($keydata);
 $cur = 0;
