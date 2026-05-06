@@ -3,6 +3,8 @@
 ##
 ## Copyright (c) 2010-2015, The Trusted Domain Project.  All rights reserved.
 ##
+## Copyright (c) 2026, OpenDKIM contributors
+##
 
 ##
 ## For settings that refer to a "dataset", see the opendkim(8) man page.
@@ -26,22 +28,33 @@
 ##   On-PolicyError
 ##   SendADSPReports
 ##   UnprotectedPolicy
+##
+## Removed in 3.0.0:
+##   AllowSHA1Only
+##   LDAPAuthMechanism
+##   LDAPAuthName
+##   LDAPAuthRealm
+##   LDAPAuthUser
+##   LDAPBindPassword
+##   LDAPBindUser
+##   LDAPDisableCache
+##   LDAPKeepaliveIdle
+##   LDAPKeepaliveInterval
+##   LDAPKeepaliveProbes
+##   LDAPTimeout
+##   LDAPUseTLS
+##   SoftStart
+##   Statistics
+##   StatisticsName
+##   StatisticsPrefix
+##   VBR-Certifiers
+##   VBR-PurgeFields
+##   VBR-TrustedCertifiers
+##   VBR-TrustedCertifiersOnly
+##   VBR-Type
+
 
 ## CONFIGURATION OPTIONS
-
-##  AllowSHA1Only { yes | no }
-##  	default "no"
-##
-##  By default, the filter will refuse to start if support for SHA256 is
-##  not available since this violates the strong recommendations of
-##  RFC6376 Section 3.3, which says:
-##
-##  "Verifiers MUST implement both rsa-sha1 and rsa-sha256.  Signers MUST
-##   implement and SHOULD sign using rsa-sha256."
-##
-##  This forces that violation to be explicitly selected by the administrator.
-
-# AllowSHA1Only		no
 
 ##  AlwaysAddARHeader { yes | no }
 ##  	default "no"
