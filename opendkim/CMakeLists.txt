@@ -55,6 +55,7 @@ find_package(Threads REQUIRED)
 # ── libresolv ─────────────────────────────────────────────────────────────────
 
 find_library(RESOLV_LIBRARY NAMES resolv)
+find_library(UNBOUND_LIBRARY NAMES unbound)
 
 # ── strlcpy / strlcat ─────────────────────────────────────────────────────────
 
@@ -117,6 +118,9 @@ function(configure_daemon_target tgt)
 
     if(RESOLV_LIBRARY)
         target_link_libraries(${tgt} PRIVATE ${RESOLV_LIBRARY})
+    endif()
+    if(UNBOUND_LIBRARY)
+        target_link_libraries(${tgt} PRIVATE ${UNBOUND_LIBRARY})
     endif()
 
     if(STRL_LIBRARY)

@@ -1,25 +1,25 @@
 # --- Package Version Logic ---
-set(VERSION_RELEASE 2)
-set(VERSION_MAJOR_REV 10)
-set(VERSION_MINOR_REV 3)
+set(VERSION_RELEASE 3)
+set(VERSION_MAJOR_REV 0)
+set(VERSION_MINOR_REV 0)
 set(VERSION_PATCH 0)
 
 # Define the human-readable version string
 set(PACKAGE_VERSION "${VERSION_RELEASE}.${VERSION_MAJOR_REV}.${VERSION_MINOR_REV}")
 
 # --- Library Version Logic (Libtool equivalent) ---
-set(LIBVERSION_CURRENT 10)
-set(LIBVERSION_REVISION 3)
+set(LIBVERSION_CURRENT 13)
+set(LIBVERSION_REVISION 0)
 set(LIBVERSION_AGE 0)
 
 # LIBOPENDKIM_VERSION_INFO (simple concatenation)
 set(LIBOPENDKIM_VERSION_INFO "${LIBVERSION_CURRENT}:${LIBVERSION_REVISION}:${LIBVERSION_AGE}")
 
-# --- Hexadecimal Version Logic (for dkim.h) ---
+# --- Hexadecimal Version Logic for the library (for dkim.h) ---
 
 # 1. Perform the bitwise math
 # Formula: ((RELEASE << 8 | MAJOR) << 8 | MINOR) << 8 | PATCH
-math(EXPR HEX_VAL "(((${VERSION_RELEASE} << 8) | ${VERSION_MAJOR_REV}) << 8 | ${VERSION_MINOR_REV}) << 8 | ${VERSION_PATCH}")
+math(EXPR HEX_VAL "(((${LIBVERSION_CURRENT} << 8) | ${LIBVERSION_REVISION}) << 8 | ${LIBVERSION_AGE}) << 8")
 
 # 2. Convert to Hexadecimal string (requires CMake 3.13+)
 math(EXPR RAW_HEX "${HEX_VAL}" OUTPUT_FORMAT HEXADECIMAL)
