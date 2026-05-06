@@ -7575,7 +7575,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			pw = getpwnam(tmp);
 			if (pw == NULL)
 			{
-				snprintf(err, errlen, "%s: no such user", tmp);
+				snprintf(err, errlen, "%.64s: no such user", tmp);
 				close(fd);
 				return -1;
 			}
