@@ -1,0 +1,109 @@
+.TH opendkim-genzone 8
+.SH NAME
+.B opendkim-genzone
+\- DKIM public key DNS zone file generation tool
+.SH SYNOPSIS
+.B opendkim-genzone
+[\-C address]
+[\-d domain]
+[\-D]
+[\-E secs]
+[\-f]
+[\-F]
+[\-o file]
+[\-r]
+[\-S]
+[\-t secs]
+[\-T secs]
+[\-u]
+[\-v]
+[\-\-version]
+[\-z]
+dataset
+.SH DESCRIPTION
+.B opendkim-genzone
+reads a DKIM key table dataset (typically the file referenced by the
+.I KeyTable
+configuration option in
+.I opendkim.conf(5))
+and generates a DNS zone file fragment or nsupdate(8) input containing
+the corresponding public key TXT records.
+
+The dataset argument specifies the key table to read.  It uses the same
+format as the
+.I KeyTable
+option in
+.I opendkim.conf(5).
+.SH OPTIONS
+.TP
+.I \-C address
+Contact address to include in SOA record.  Only used with
+.I \-z.
+.TP
+.I \-d domain
+Only include records for the named domain.
+.TP
+.I \-D
+Include a DKIM flag indicating subdomain signing is not permitted.
+.TP
+.I \-E secs
+Sets the expire time in the SOA record.  Only used with
+.I \-z.
+The default is 604800 (one week).
+.TP
+.I \-f
+Force output even if a key cannot be found or loaded.
+.TP
+.I \-F
+Add a DKIM flag indicating this is a test key.
+.TP
+.I \-o file
+Send output to the named file rather than standard output.
+.TP
+.I \-r
+Restrict the key to e-mail signing use only (adds
+.I s=email
+to the key record).
+.TP
+.I \-S
+Don't generate SOA or NS records when using
+.I \-z.
+.TP
+.I \-t secs
+Specify a TTL for generated records.  Default is 300.
+.TP
+.I \-T secs
+Sets the TTL in the SOA record.  Only used with
+.I \-z.
+The default is 3600.
+.TP
+.I \-u
+Generate nsupdate(8) compatible output rather than a zone fragment.
+.TP
+.I \-v
+Increase verbose output.
+.TP
+.I \-\-version
+Print version number and exit.
+.TP
+.I \-z
+Include SOA and NS records in the output.
+.SH VERSION
+This man page covers the version of
+.I opendkim-genzone
+that shipped with version 3.0 of
+.I OpenDKIM.
+.SH COPYRIGHT
+Copyright (c) 2007, 2008, Sendmail, Inc. and its suppliers.
+Copyright (c) 2009-2015, The Trusted Domain Project.
+Copyright (c) 2026, OpenDKIM contributors.
+All rights reserved.
+.SH SEE ALSO
+.I opendkim(8),
+.I opendkim.conf(5),
+.I opendkim-genkey(8),
+.I nsupdate(8)
+.P
+RFC 6376 - DomainKeys Identified Mail
+.P
+RFC 8463 - A New Cryptographic Signature Method for DomainKeys Identified Mail (Ed25519)
