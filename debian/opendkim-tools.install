@@ -1,3 +1,7 @@
 usr/sbin/opendkim-testkey
 usr/sbin/opendkim-testmsg
 usr/sbin/opendkim-genzone
+usr/share/man/man8/opendkim-testkey.8
+usr/share/man/man8/opendkim-testmsg.8
+usr/share/man/man8/opendkim-genzone.8
+
