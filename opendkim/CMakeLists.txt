@@ -247,3 +247,15 @@ add_custom_target(opendkim-genkey
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/opendkim-genkey
     DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
+
+# ── Man pages ─────────────────────────────────────────────────────────────────
+include(GNUInstallDirs)
+install(FILES
+    opendkim.8
+    opendkim-genkey.8
+    opendkim-genzone.8
+    opendkim-testkey.8
+    opendkim-testmsg.8
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man8
+)
+install(FILES opendkim.conf.5 DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
