@@ -29,7 +29,6 @@ human approval.
 |---|---|
 | `libopendkim/` | Core DKIM library: signing, verification, canonicalisation, key parsing. This is the heart of the project. |
 | `opendkim/` | The milter filter daemon. Signing and verification of live mail via the milter protocol. |
-| `libar/` | Async DNS resolver. Solves real operational timeout problems. Keep. |
 | `libut/` | Internal utility library used by libopendkim. Keep. |
 | `miltertest/` | Lua-based milter testing framework. Keep for integration tests. |
 | `docs/` | RFC and draft reference documents. Keep. |
@@ -210,6 +209,7 @@ once they are written and passing.
 | `statsext` | Subsystem removed |
 | `rbl` | Subsystem removed |
 | `default_sender` | Low-value edge case. Trivial to add later if needed. |
+| `libar/` | Async DNS resolver. Solves real operational timeout problems. Deprecated and removed in 2012. |
 
 ---
 
