@@ -1020,18 +1020,39 @@ dkim_privkey_load(DKIM *dkim)
 		}
 	}
 
+	/* Detect key type from the loaded key and override algorithm if needed */
+	int keyid = EVP_PKEY_id(pkey);
+	if (keyid == EVP_PKEY_ED25519)
+	{
+		if (dkim->dkim_signalg != DKIM_SIGN_ED25519SHA256)
+		{
+			dkim->dkim_signalg = DKIM_SIGN_ED25519SHA256;
+			if (dkim->dkim_siglist != NULL &&
+				dkim->dkim_siglist[0] != NULL)
+			{
+				dkim->dkim_siglist[0]->sig_signalg = DKIM_SIGN_ED25519SHA256;
+				dkim->dkim_siglist[0]->sig_hashtype = DKIM_HASHTYPE_SHA256;
+			}
+		}
+	}
+	else if (keyid != EVP_PKEY_RSA)
+	{
+		dkim_error(dkim, "unsupported key type %d", keyid);
+		EVP_PKEY_free(pkey);
+		BIO_free(keybio);
+		return DKIM_STAT_INVALID;
+	}
+	else if (dkim->dkim_signalg == DKIM_SIGN_ED25519SHA256)
+	{
+		dkim_error(dkim, "private key is RSA but algorithm is ed25519-sha256");
+		EVP_PKEY_free(pkey);
+		BIO_free(keybio);
+		return DKIM_STAT_INVALID;
+	}
+
 	if (dkim->dkim_signalg == DKIM_SIGN_ED25519SHA256)
 	{
 		struct dkim_ed25519 *ed;
-
-		if (EVP_PKEY_id(pkey) != EVP_PKEY_ED25519)
-		{
-			dkim_error(dkim,
-			           "private key is not an Ed25519 key");
-			EVP_PKEY_free(pkey);
-			BIO_free(keybio);
-			return DKIM_STAT_INVALID;
-		}
 
 		ed = DKIM_MALLOC(dkim, sizeof(struct dkim_ed25519));
 		if (ed == NULL)
