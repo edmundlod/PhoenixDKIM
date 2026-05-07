@@ -1,0 +1,22 @@
+# Copyright (c) 2026 OpenDKIM contributors
+#   All rights reserved.
+
+if(NOT WITH_LUA)
+    return()
+endif()
+
+add_executable(miltertest miltertest.c)
+
+target_include_directories(miltertest PRIVATE
+    ${CMAKE_SOURCE_DIR}/libopendkim
+    ${CMAKE_BINARY_DIR}/libopendkim
+    ${LUA_INCLUDE_DIR}
+)
+
+target_link_libraries(miltertest PRIVATE
+    opendkim
+    ${LUA_LIBRARIES}
+)
+
+install(TARGETS miltertest DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES miltertest.8 DESTINATION ${CMAKE_INSTALL_MANDIR}/man8)

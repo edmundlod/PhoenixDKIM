@@ -15,6 +15,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 add_subdirectory(libopendkim)
 add_subdirectory(opendkim)
+add_subdirectory(miltertest)
 
 # CPack for creating .deb files
 set(CPACK_PACKAGE_NAME "opendkim")
