@@ -261,9 +261,6 @@ struct dkim
 	dkim_canon_t		dkim_hdrcanonalg;
 	dkim_canon_t		dkim_bodycanonalg;
 	dkim_alg_t		dkim_signalg;
-#ifdef _FFR_ATPS
-	_Bool			dkim_atps;
-#endif /* _FFR_ATPS */
 	ssize_t			dkim_bodylen;
 	ssize_t			dkim_signlen;
 	const u_char *		dkim_id;

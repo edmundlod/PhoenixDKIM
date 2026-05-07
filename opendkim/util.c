@@ -31,9 +31,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
-#ifdef _FFR_REPLACE_RULES
-# include <regex.h>
-#endif /* _FFR_REPLACE_RULES */
 
 #ifdef HAVE_PATHS_H
 # include <paths.h>
@@ -126,45 +123,18 @@ static char *optlist[] =
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
 
-#ifdef _FFR_ADSP_LISTS
-	"_FFR_ADSP_LISTS",
-#endif /* _FFR_ADSP_LISTS */
 
-#ifdef _FFR_DEFAULT_SENDER
-	"_FFR_DEFAULT_SENDER",
-#endif /* _FFR_DEFAULT_SENDER */
 
-#if _FFR_DIFFHEADERS
-	"_FFR_DIFFHEADERS",
-#endif /* _FFR_DIFFHEADERS */
 
 #if _FFR_IDENTITY_HEADER
 	"_FFR_IDENTITY_HEADER",
 #endif /* _FFR_IDENTITY_HEADER */
 
-#if _FFR_LDAP_CACHING
-	"_FFR_LDAP_CACHING",
-#endif /* _FFR_LDAP_CACHING */
 
-#if _FFR_LUA_ONLY_SIGNING
-	"_FFR_LUA_ONLY_SIGNING",
-#endif /* _FFR_LUA_ONLY_SIGNING */
 
-#if _FFR_POSTGRESQL_RECONNECT_HACK
-	"_FFR_POSTGRESQL_RECONNECT_HACK",
-#endif /* _FFR_POSTGRESQL_RECONNECT_HACK */
 
-#if _FFR_RATE_LIMIT
-	"_FFR_RATE_LIMIT",
-#endif /* _FFR_RATE_LIMIT */
 
-#if _FFR_RBL
-	"_FFR_RBL",
-#endif /* _FFR_RBL */
 
-#if _FFR_REPLACE_RULES
-	"_FFR_REPLACE_RULES",
-#endif /* _FFR_REPLACE_RULES */
 
 #if _FFR_RESIGN
 	"_FFR_RESIGN",
@@ -174,13 +144,7 @@ static char *optlist[] =
 	"_FFR_SENDER_MACRO",
 #endif /* _FFR_SENDER_MACRO */
 
-#ifdef _FFR_SOCKETDB
-	"_FFR_SOCKETDB",
-#endif /* _FFR_SOCKETDB */
 
-#if _FFR_VBR
-	"_FFR_VBR",
-#endif /* _FFR_VBR */
 
 	NULL
 };
@@ -740,116 +704,6 @@ dkimf_checkpopauth(DKIMF_DB db, struct sockaddr *ip)
 }
 #endif /* POPAUTH */
 
-#ifdef _FFR_REPLACE_RULES
-/*
-**  DKIMF_LOAD_REPLIST -- load a list of replace patterns
-**
-**  Parameters:
-**  	in -- input stream (must already be open)
-**  	list -- list to be updated
-**
-**  Return value:
-**  	TRUE if successful, FALSE otherwise
-**
-**  Side effects:
-**  	Prints an error message when appropriate.
-*/
-
-_Bool
-dkimf_load_replist(FILE *in, struct replace **list)
-{
-	int line;
-	int status;
-	char *p;
-	struct replace *newrep;
-	char rule[BUFRSZ + 1];
-
-	assert(in != NULL);
-	assert(list != NULL);
-
-	memset(rule, '\0', sizeof rule);
-
-	while (fgets(rule, sizeof(rule) - 1, in) != NULL)
-	{
-		line++;
-
-		for (p = rule; *p != '\0'; p++)
-		{
-			if (*p == '\n' || *p == '#')
-			{
-				*p = '\0';
-				break;
-			}
-		}
-
-		if (dkimf_isblank(rule))
-			continue;
-
-		newrep = (struct replace *) malloc(sizeof(struct replace));
-		if (newrep == NULL)
-		{
-			fprintf(stderr, "%s: malloc(): %s\n", progname,
-			        strerror(errno));
-			return FALSE;
-		}
-
-		p = strrchr(rule, '\t');
-		if (p == NULL)
-			return FALSE;
-
-		*p = '\0';
-
-		status = regcomp(&newrep->repl_re, rule, 0);
-		if (status != 0)
-		{
-			fprintf(stderr, "%s: regcomp() failed\n", progname);
-			return FALSE;
-		}
-
-		newrep->repl_txt = strdup(p + 1);
-		if (newrep->repl_txt == NULL)
-		{
-			fprintf(stderr, "%s: strdup(): %s\n", progname,
-			        strerror(errno));
-			return FALSE;
-		}
-
-		newrep->repl_next = *list;
-
-		*list = newrep;
-	}
-
-	return TRUE;
-}
-
-/*
-**  DKIMF_FREE_REPLIST -- destroy a list of replacement information
-**
-**  Parameters:
-**  	list -- list to destroy
-**
-**  Return value:
-**  	None.
-*/
-
-void
-dkimf_free_replist(struct replace *list)
-{
-	struct replace *cur;
-	struct replace *next;
-
-	assert(list != NULL);
-
-	for (cur = list; cur != NULL; cur = next)
-	{
-		next = cur->repl_next;
-		regfree(&cur->repl_re);
-		free(cur->repl_txt);
-		free(cur);
-	}
-}
-
-#endif /* _FFR_REPLACE_RULES */
 
 /*
 **  DKIMF_INET_NTOA -- thread-safe inet_ntoa()
