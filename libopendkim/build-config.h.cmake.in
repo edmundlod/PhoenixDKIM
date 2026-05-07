@@ -23,7 +23,7 @@
 #define _FFR_SENDER_MACRO 1
 
 /* Lua 5.4 scripting support (enabled with -DWITH_LUA=ON) */
-#cmakedefine WITH_LUA 1
+#cmakedefine USE_LUA 1
 
 /* libunbound (DNSSEC) support */
 #cmakedefine USE_UNBOUND 1
@@ -58,6 +58,15 @@
 
 /* smfi_version availability */
 #cmakedefine HAVE_SMFI_VERSION 1
+#cmakedefine HAVE_SMFI_INSHEADER  1
+#cmakedefine HAVE_SMFI_OPENSOCKET 1
+#cmakedefine HAVE_SMFI_PROGRESS   1
+#cmakedefine HAVE_SMFI_SETSYMLIST 1
+
+/* BSD socket structure length fields */
+#cmakedefine HAVE_SUN_LEN  1
+#cmakedefine HAVE_SIN_LEN  1
+#cmakedefine HAVE_SIN6_LEN 1
 
 /* st_node field in struct stat (BSD-specific) */
 #cmakedefine HAVE_ST_NODE 1
