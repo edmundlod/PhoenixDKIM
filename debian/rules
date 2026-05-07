@@ -7,6 +7,10 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 %:
 	dh $@ --buildsystem=cmake
 
+# Disable autoreconf since we are using CMake exclusively
+override_dh_autoreconf:
+	@echo "Skipping autoreconf (using CMake instead)"
+
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_INSTALL_PREFIX=/usr \
