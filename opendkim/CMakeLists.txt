@@ -261,6 +261,7 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_MANDIR}/man8
 )
 install(FILES opendkim.conf.5 DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
+install(FILES opendkim-lua.3 DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 

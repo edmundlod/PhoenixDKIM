@@ -553,7 +553,7 @@ Valid values are the constants with DKIM_SIGERROR_ prefixes as defined in the
 header file
 .I dkim.h.
 .SH VERSION
-This man page covers version @VERSION@ of
+This man page covers version 3.0.0 of
 .I OpenDKIM.
 .SH COPYRIGHT
 Copyright (c) 2009-2014, The Trusted Domain Project.  All rights reserved.
