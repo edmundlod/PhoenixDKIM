@@ -152,7 +152,6 @@ add_executable(opendkim_daemon
     opendkim-dns.c
     opendkim-lua.c
     config.c
-    flowrate.c
     test.c
     util.c
 )
