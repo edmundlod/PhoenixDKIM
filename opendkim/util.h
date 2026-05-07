@@ -24,18 +24,6 @@
 /* TYPES */
 struct dkimf_dstring;
 
-#ifdef _FFR_REPLACE_RULES
-/*
-**  REPLACE -- replacement table
-*/
-
-struct replace
-{
-	regex_t		repl_re;
-	char *		repl_txt;
-	struct replace	*repl_next;
-};
-#endif /* _FFR_REPLACE_RULES */
 
 /* PROTOTYPES */
 extern void dkimf_base64_encode_file __P((int, FILE *, int, int, int));
@@ -49,10 +37,6 @@ extern size_t dkimf_inet_ntoa __P((struct in_addr, char *, size_t));
 #ifdef POPAUTH
 extern int dkimf_initpopauth __P((void));
 #endif /* POPAUTH */
-#ifdef _FFR_REPLACE_RULES
-extern void dkimf_free_replist __P((struct replace *));
-extern _Bool dkimf_load_replist __P((FILE *, struct replace **));
-#endif /* _FFR_REPLACE_RULES */
 extern void dkimf_ipstring __P((char *, size_t, struct sockaddr_storage *));
 extern _Bool dkimf_isblank __P((char *));
 extern void dkimf_lowercase __P((u_char *));

@@ -81,16 +81,7 @@
 #define	SWHEADERNAME	"DKIM-Filter"
 #define	SELECTCANONHDR	"Canonicalization"
 
-#ifdef _FFR_VBR
-# define VBRTYPEHEADER	"VBR-Type"
-# define VBRCERTHEADER	"VBR-Certifiers"
-#endif /* _FFR_VBR */
 
-#ifdef _FFR_ADSP_LISTS
-# define ADSP_DISCARDABLE_SMTP	"550"
-# define ADSP_DISCARDABLE_ESC	"5.7.1"
-# define ADSP_DISCARDABLE_TEXT	"ADSP discardable mail may not be sent to this address"
-#endif /* _FFR_ADSP_LISTS */
 
 /* POPAUTH db */
 #if POPAUTH

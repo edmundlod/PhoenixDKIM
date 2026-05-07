@@ -43,9 +43,6 @@ struct configdef dkimf_config[] =
 	{ "CaptureUnknownErrors",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "ChangeRootDirectory",	CONFIG_TYPE_STRING,	FALSE },
 	{ "ClockDrift",			CONFIG_TYPE_INTEGER,	FALSE },
-#ifdef _FFR_DEFAULT_SENDER
-	{ "DefaultSender",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_DEFAULT_SENDER */
 	{ "Diagnostics",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DiagnosticDirectory",	CONFIG_TYPE_STRING,	FALSE },
 	{ "DisableCryptoInit",		CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -61,11 +58,6 @@ struct configdef dkimf_config[] =
 	{ "FinalPolicyScript",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_LUA */
 	{ "FixCRLF",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_RATE_LIMIT
-	{ "FlowData",			CONFIG_TYPE_STRING,	FALSE },
-	{ "FlowDataFactor",		CONFIG_TYPE_INTEGER,	FALSE },
-	{ "FlowDataTTL",		CONFIG_TYPE_INTEGER,	FALSE },
-#endif /* _FFR_RATE_LIMIT */
 #ifdef _FFR_IDENTITY_HEADER
 	{ "IdentityHeader",		CONFIG_TYPE_STRING,     FALSE },
 	{ "IdentityHeaderRemove",	CONFIG_TYPE_BOOLEAN,    FALSE },
@@ -95,9 +87,6 @@ struct configdef dkimf_config[] =
 #endif /* USE_LDAP */
 	{ "LogResults",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "LogWhy",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_LUA_ONLY_SIGNING
-	{ "LuaOnlySigning",		CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* _FFR_LUA_ONLY_SIGNING */
 	{ "MaximumHeaders",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MaximumSignedBytes",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MaximumSignaturesToVerify",	CONFIG_TYPE_INTEGER,	FALSE },
@@ -131,16 +120,10 @@ struct configdef dkimf_config[] =
 #ifdef QUERY_CACHE
 	{ "QueryCache",			CONFIG_TYPE_BOOLEAN,	FALSE },
 #endif /* QUERY_CACHE */
-#ifdef _FFR_RATE_LIMIT
-	{ "RateLimits",			CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_RATE_LIMIT */
 	{ "RedirectFailuresTo",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RemoveARAll",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RemoveARFrom",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RemoveOldSignatures",	CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_REPLACE_RULES
-	{ "ReplaceRules",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_REPLACE_RULES */
 	{ "ReportAddress",		CONFIG_TYPE_STRING,	FALSE },
 	{ "ReportBccAddress",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RequestReports",		CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -193,13 +176,6 @@ struct configdef dkimf_config[] =
 	{ "UnprotectedKey",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_UNBOUND */
 	{ "UserID",			CONFIG_TYPE_STRING,	FALSE },
-#ifdef _FFR_VBR
-	{ "VBR-Certifiers",		CONFIG_TYPE_STRING,	FALSE },
-	{ "VBR-PurgeFields",		CONFIG_TYPE_BOOLEAN,	FALSE },
-	{ "VBR-TrustedCertifiers",	CONFIG_TYPE_STRING,	FALSE },
-	{ "VBR-TrustedCertifiersOnly",	CONFIG_TYPE_BOOLEAN,	FALSE },
-	{ "VBR-Type",			CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_VBR */
 	{ "WeakSyntaxChecks",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "X-Header",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ NULL,				(u_int) -1,		FALSE }

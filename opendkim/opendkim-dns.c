@@ -27,15 +27,7 @@
 # include <unbound.h>
 #endif /* USE_UNBOUND */
 
-#ifdef _FFR_RBL
-/* librbl includes */
-# include <rbl.h>
-#endif /* _FFR_RBL */
 
-#ifdef _FFR_VBR
-/* libvbr includes */
-# include <vbr.h>
-#endif /* _FFR_VBR */
 
 /* opendkim includes */
 #include "opendkim-dns.h"
@@ -685,35 +677,6 @@ dkimf_ub_nslist(void *srv, const char *nslist)
 	return DKIM_DNS_SUCCESS;
 }
 
-# ifdef _FFR_RBL
-/*
-**  DKIMF_RBL_UNBOUND_SETUP -- connect libunbound to librbl
-**
-**  Parameters:
-**  	rbl -- librbl handle
-**  	ub -- dkimf_unbound handle to use
-**
-**  Return value:
-**  	0 on success, -1 on failure
-*/
-
-int
-dkimf_rbl_unbound_setup(RBL *rbl)
-{
-	assert(rbl != NULL);
-
-	(void) rbl_dns_set_query_start(rbl, dkimf_ub_query);
-	(void) rbl_dns_set_query_cancel(rbl, dkimf_ub_cancel);
-	(void) rbl_dns_set_query_waitreply(rbl, dkimf_ub_waitreply);
-	(void) rbl_dns_set_init(rbl, dkimf_ub_init);
-	(void) rbl_dns_set_close(rbl, dkimf_ub_close);
-	(void) rbl_dns_set_nslist(rbl, dkimf_ub_nslist);
-	(void) rbl_dns_set_config(rbl, dkimf_ub_config);
-	(void) rbl_dns_set_trustanchor(rbl, dkimf_ub_trustanchor);
-
-	return 0;
-}
-# endif /* _FFR_RBL */
 
 /*
 **  DKIMF_UNBOUND_SETUP -- connect libunbound to libopendkim
@@ -1022,34 +985,3 @@ dkimf_filedns_setup(DKIM_LIB *lib, DKIMF_DB db)
 	return 0;
 }
 
-#ifdef _FFR_VBR
-# ifdef USE_UNBOUND
-/*
-**  DKIMF_VBR_UNBOUND_SETUP -- connect libunbound to libvbr
-**
-**  Parameters:
-**  	vbr -- libvbr handle
-**  	ub -- dkimf_unbound handle to use
-**
-**  Return value:
-**  	0 on success, -1 on failure
-*/
-
-int
-dkimf_vbr_unbound_setup(VBR *vbr)
-{
-	assert(vbr != NULL);
-
-	(void) vbr_dns_set_query_start(vbr, dkimf_ub_query);
-	(void) vbr_dns_set_query_cancel(vbr, dkimf_ub_cancel);
-	(void) vbr_dns_set_query_waitreply(vbr, dkimf_ub_waitreply);
-	(void) vbr_dns_set_init(vbr, dkimf_ub_init);
-	(void) vbr_dns_set_close(vbr, dkimf_ub_close);
-	(void) vbr_dns_set_nslist(vbr, dkimf_ub_nslist);
-	(void) vbr_dns_set_config(vbr, dkimf_ub_config);
-	(void) vbr_dns_set_trustanchor(vbr, dkimf_ub_trustanchor);
-
-	return 0;
-}
-# endif /* USE_UNBOUND */
-#endif /* _FFR_VBR */

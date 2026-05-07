@@ -73,16 +73,9 @@
 # include <lua.h>
 #endif /* USE_LUA */
 
-#ifdef _FFR_RBL
-/* librbl includes */
-# include <rbl.h>
-#endif /* _FFR_RBL */
 
 /* libopendkim includes */
 #include "dkim.h"
-#ifdef _FFR_VBR
-# include "vbr.h"
-#endif /* _FFR_VBR */
 
 /* libbsd if found */
 #ifdef USE_BSD_H
@@ -96,9 +89,6 @@
 
 /* opendkim includes */
 #include "config.h"
-#ifdef _FFR_RATE_LIMIT
-# include "flowrate.h"
-#endif /* _FFR_RATE_LIMIT */
 #include "opendkim-db.h"
 #include "opendkim-config.h"
 #include "opendkim-crypto.h"
@@ -183,9 +173,6 @@ struct dkimf_config
 #if defined(USE_LDAP) || defined(USE_ODBX)
 	_Bool		conf_softstart;		/* do LDAP/SQL soft starts */
 #endif /* defined(USE_LDAP) || defined(USE_ODBX) */
-#ifdef _FFR_LUA_ONLY_SIGNING
-	_Bool		conf_luasigning;	/* signing via Lua only */
-#endif /* _FFR_LUA_ONLY_SIGNING */
 	_Bool		conf_weaksyntax;	/* do weaker syntax checking */
 	_Bool		conf_passmalformed;	/* pass malformed messages */
 	_Bool		conf_logresults;	/* log all results */
@@ -224,10 +211,6 @@ struct dkimf_config
 #ifdef USE_LDAP
 	_Bool		conf_ldap_usetls;	/* LDAP TLS */
 #endif /* USE_LDAP */
-#ifdef _FFR_VBR
-	_Bool		conf_vbr_purge;		/* purge X-VBR-* fields */
-	_Bool		conf_vbr_trustedonly;	/* trusted certifiers only */
-#endif /* _FFR_VBR */
 	unsigned int	conf_mode;		/* operating mode */
 	unsigned int	conf_refcnt;		/* reference count */
 	unsigned int	conf_dnstimeout;	/* DNS timeout */
@@ -238,10 +221,6 @@ struct dkimf_config
 	unsigned int	conf_boguskey;		/* bogus key action */
 	unsigned int	conf_unprotectedkey;	/* unprotected key action */
 #endif /* USE_UNBOUND */
-#ifdef _FFR_RATE_LIMIT
-	unsigned int	conf_flowdatattl;	/* flow data TTL */
-	unsigned int	conf_flowfactor;	/* flow factor */
-#endif /* _FFR_RATE_LIMIT */
 	int		conf_clockdrift;	/* tolerable clock drift */
 	int		conf_sigmintype;	/* signature minimum type */
 	size_t		conf_sigmin;		/* signature minimum */
@@ -278,9 +257,6 @@ struct dkimf_config
 	char *		conf_chroot;		/* chroot(2) directory */
 	char *		conf_selectcanonhdr;	/* canon select header name */
 	u_char *	conf_selector;		/* key selector */
-#ifdef _FFR_DEFAULT_SENDER
-	char *		conf_defsender;		/* default sender address */
-#endif /* _FFR_DEFAULT_SENDER */
 #ifdef _FFR_RESIGN
 	char *		conf_resign;		/* resign mail to */
 #endif /* _FFR_RESIGN */
@@ -319,21 +295,10 @@ struct dkimf_config
 	char *		conf_finalscript;	/* Lua script: final */
 	void *		conf_finalfunc;		/* Lua function: final */
 #endif /* USE_LUA */
-#ifdef _FFR_REPLACE_RULES
-	char *		conf_rephdrs;		/* replacement headers */
-	struct replace * conf_replist;		/* replacement list */
-	DKIMF_DB	conf_rephdrsdb;		/* replacement headers (DB) */
-#endif /* _FFR_REPLACE_RULES */
 	dkim_sigkey_t	conf_seckey;		/* secret key data */
 	char *		conf_nslist;		/* replacement NS list */
 	char *		conf_trustanchorpath;	/* trust anchor file */
 	char *		conf_resolverconfig;	/* resolver config file */
-#ifdef _FFR_VBR
-	char *		conf_vbr_deftype;	/* default VBR type */
-	char *		conf_vbr_defcert;	/* default VBR certifiers */
-	DKIMF_DB	conf_vbr_trusteddb;	/* trusted certifiers (DB) */
-	u_char **	conf_vbr_trusted;	/* trusted certifiers */
-#endif /* _FFR_VBR */
 	DKIMF_DB	conf_testdnsdb;		/* test TXT records */
 	DKIMF_DB	conf_bldb;		/* l= recipients (DB) */
 	DKIMF_DB	conf_domainsdb;		/* domains to sign (DB) */
@@ -365,10 +330,6 @@ struct dkimf_config
 #ifdef _FFR_RESIGN
 	DKIMF_DB	conf_resigndb;		/* resigning addresses */
 #endif /* _FFR_RESIGN */
-#ifdef _FFR_RATE_LIMIT
-	DKIMF_DB	conf_ratelimitdb;	/* domain rate limits */
-	DKIMF_DB	conf_flowdatadb;	/* domain flow data */
-#endif /* _FFR_RATE_LIMIT */
 	DKIM_LIB *	conf_libopendkim;	/* DKIM library handle */
 	struct handling	conf_handling;		/* message handling */
 };
@@ -391,9 +352,6 @@ struct msgctx
 #ifdef _FFR_RESIGN
 	_Bool		mctx_resign;		/* arrange to re-sign */
 #endif /* _FFR_RESIGN */
-#ifdef _FFR_VBR
-	_Bool		mctx_vbrpurge;		/* purge X-VBR-* headers */
-#endif /* _FFR_VBR */
 #ifdef USE_LUA
 	int		mctx_mresult;		/* SMFI status code */
 #endif /* USE_LUA */
@@ -410,10 +368,6 @@ struct msgctx
 	u_char *	mctx_jobid;		/* job ID */
 	u_char *	mctx_laddr;		/* address triggering l= */
 	DKIM *		mctx_dkimv;		/* verification handle */
-#ifdef _FFR_VBR
-	VBR *		mctx_vbr;		/* VBR handle */
-	char *		mctx_vbrinfo;		/* VBR-Info header field */
-#endif /* _FFR_VBR */
 	struct Header *	mctx_hqhead;		/* header queue head */
 	struct Header *	mctx_hqtail;		/* header queue tail */
 	struct signreq * mctx_srhead;		/* signature request head */
@@ -1256,164 +1210,6 @@ dkimf_xs_export(lua_State *l)
 	return 0;
 }
 
-# ifdef _FFR_RBL
-/*
-**  DKIMF_XS_RBLCHECK -- do an RBL query
-**
-**  Parameters:
-**  	l -- Lua state
-**
-**  Return value:
-**  	Number of stack items pushed.
-*/
-
-int
-dkimf_xs_rblcheck(lua_State *l)
-{
-	_Bool found = FALSE;
-	RBL_STAT status;
-	uint32_t res;
-	double timeout = -1.;
-	double i;
-	const char *query;
-	const char *qroot = NULL;
-	void *qh;
-	RBL *rbl;
-	SMFICTX *ctx;
-	struct connctx *cc = NULL;
-	struct dkimf_config *conf;
-	struct timeval to;
-
-	if (lua_gettop(l) < 3 || lua_gettop(l) > 4)
-	{
-		lua_pushstring(l,
-		               "odkim.rbl_check(): incorrect argument count");
-		lua_error(l);
-	}
-	else if (!lua_isuserdata(l, 1) ||
-	         !lua_isstring(l, 2) ||
-	         !lua_isstring(l, 3) ||
-	         (lua_gettop(l) == 4 && !lua_isnumber(l, 4)))
-	{
-		lua_pushstring(l,
-		               "odkim.rbl_check(): incorrect argument type");
-		lua_error(l);
-	}
-
-	ctx = (SMFICTX *) lua_touserdata(l, 1);
-	if (ctx != NULL)
-		cc = (struct connctx *) dkimf_getpriv(ctx);
-		
-	query = lua_tostring(l, 2);
-	qroot = lua_tostring(l, 3);
-	if (lua_gettop(l) == 4)
-		timeout = lua_tonumber(l, 4);
-	lua_pop(l, lua_gettop(l));
-
-	if (cc == NULL)
-		return 0;
-
-	conf = cc->cctx_config;
-
-	rbl = rbl_init(NULL, NULL, NULL);
-	if (rbl == NULL)
-	{
-		lua_pushstring(l,
-		               "odkim.rbl_check(): can't create RBL handle");
-		lua_error(l);
-	}
-
-#  ifdef USE_UNBOUND
-	dkimf_rbl_unbound_setup(rbl);
-#  endif /* USE_UNBOUND */
-
-	if (conf->conf_nslist != NULL)
-	{
-		status = rbl_dns_nslist(rbl, conf->conf_nslist);
-		if (status != DKIM_STAT_OK)
-		{
-			lua_pushstring(l,
-			               "odkim.rbl_check(): can't set nameserver list");
-			lua_error(l);
-		}
-	}
-
-	if (conf->conf_trustanchorpath != NULL)
-	{
-		if (access(conf->conf_trustanchorpath, R_OK) != 0)
-		{
-			lua_pushfstring(l,
-			                "odkim.rbl_check(): %s: access(): %s",
-			                conf->conf_trustanchorpath,
-			                strerror(errno));
-			lua_error(l);
-		}
-
-		status = rbl_dns_trustanchor(rbl, conf->conf_trustanchorpath);
-		if (status != DKIM_STAT_OK)
-		{
-			lua_pushstring(l,
-			               "odkim.rbl_check(): can't set trust anchor");
-			lua_error(l);
-		}
-	}
-
-	if (conf->conf_resolverconfig != NULL)
-	{
-		status = rbl_dns_config(rbl, conf->conf_resolverconfig);
-		if (status != DKIM_DNS_SUCCESS)
-		{
-			lua_pushstring(l,
-			               "odkim.rbl_check(): can't configure resolver");
-			lua_error(l);
-		}
-	}
-
-	rbl_setdomain(rbl, (u_char *) qroot);
-
-	status = rbl_query_start(rbl, (u_char *) query, &qh);
-	if (status != RBL_STAT_OK)
-	{
-		rbl_close(rbl);
-		lua_pushstring(l,
-		               "odkim.rbl_check(): RBL query failed");
-		lua_error(l);
-	}
-
-	to.tv_usec = modf(timeout, &i);
-	to.tv_sec = (u_int) i;
-
-	status = rbl_query_check(rbl, qh, timeout == -1. ? NULL : &to, &res);
-
-	if (status != RBL_STAT_NOTFOUND &&
-	    status != RBL_STAT_NOREPLY &&
-	    status != RBL_STAT_FOUND)
-		lua_pushstring(l, rbl_geterror(rbl));
-	else if (status == RBL_STAT_FOUND)
-		found = TRUE;
-
-	rbl_close(rbl);
-
-	if (status != RBL_STAT_NOTFOUND &&
-	    status != RBL_STAT_NOREPLY &&
-	    status != RBL_STAT_FOUND)
-	{
-		return 1;
-	}
-	else if (found)
-	{
-		lua_pushnumber(l, res >> 24);
-		lua_pushnumber(l, (res >> 16) & 0xff);
-		lua_pushnumber(l, (res >> 8) & 0xff);
-		lua_pushnumber(l, res & 0xff);
-		return 4;
-	}
-	else
-	{
-		return 0;
-	}
-}
-# endif /* _FFR_RBL */
 
 /*
 **  DKIMF_XS_XTAG -- add an extension tag
@@ -3925,75 +3721,6 @@ dkimf_xs_setresult(lua_State *l)
 
 #endif /* USE_LUA */
 
-#ifdef _FFR_VBR
-/*
-**  DKIMF_VALID_VBR -- determine whether or not VBR should be verified
-**
-**  Parameters:
-**  	dfc -- filter context
-**
-**  Return value:
-**  	TRUE iff the message should have its VBR data checked
-*/
-
-static _Bool
-dkimf_valid_vbr(struct msgctx *dfc)
-{
-	_Bool ret;
-	int c = 0;
-	char *p;
-	char *q;
-	char *last = NULL;
-	Header hdr;
-	char mc[DKIM_MAXHEADER + 1];
-	char tmp[DKIM_MAXHEADER + 1];
-
-	assert(dfc != NULL);
-
-	memset(mc, '\0', sizeof mc);
-
-	for (c = 0; c == 0 || ret; c++)
-	{
-		hdr = dkimf_findheader(dfc, VBR_INFOHEADER, c);
-
-		if (hdr == NULL)
-			break;
-
-		if (c == 0)
-			ret = TRUE;
-
-		strlcpy(tmp, hdr->hdr_val, sizeof tmp);
-
-		for (p = strtok_r(tmp, ";", &last);
-		     p != NULL;
-		     p = strtok_r(NULL, ";", &last))
-		{
-			q = strchr(p, '=');
-			if (q == NULL)
-				continue;
-			*q = '\0';
-
-			dkimf_trimspaces(p);
-			dkimf_trimspaces(q + 1);
-
-			if (strcasecmp(p, "mc") == 0)
-			{
-				if (mc[0] == '\0')
-					strlcpy(mc, q + 1, sizeof mc);
-				else if (strcasecmp(q + 1, mc) != 0)
-					ret = FALSE;
-
-				break;
-			}
-		}
-	}
-
-	if (mc[0] == '\0')
-		ret = FALSE;
-
-	return ret;
-}
-#endif /* _FFR_VBR */
 
 /*
 **  DKIMF_ADD_AR_FIELDS -- add Authentication-Results header fields
@@ -5661,10 +5388,6 @@ dkimf_config_new(void)
 	new->conf_signbytes = -1L;
 	new->conf_sigmintype = SIGMIN_BYTES;
 	new->conf_safekeys = TRUE;
-#ifdef _FFR_RATE_LIMIT
-	new->conf_flowdatattl = DEFFLOWDATATTL;
-	new->conf_flowfactor = 1;
-#endif /* _FFR_RATE_LIMIT */
 	new->conf_mtacommand = SENDMAIL_PATH;
 	new->conf_selectcanonhdr = SELECTCANONHDR;
 
@@ -5748,17 +5471,7 @@ dkimf_config_free(struct dkimf_config *conf)
 	if (conf->conf_exemptdb != NULL)
 		dkimf_db_close(conf->conf_exemptdb);
 
-#ifdef _FFR_REPLACE_RULES
-	if (conf->conf_replist != NULL)
-		dkimf_free_replist(conf->conf_replist);
-	if (conf->conf_rephdrsdb != NULL)
-		dkimf_db_close(conf->conf_rephdrsdb);
-#endif /* _FFR_REPLACE_RULES */
 
-#ifdef _FFR_VBR
-	if (conf->conf_vbr_trusteddb != NULL)
-		dkimf_db_close(conf->conf_vbr_trusteddb);
-#endif /* _FFR_VBR */
 
 	if (conf->conf_nosignpats != NULL)
 	{
@@ -5775,12 +5488,6 @@ dkimf_config_free(struct dkimf_config *conf)
 		dkimf_db_close(conf->conf_resigndb);
 #endif /* _FFR_RESIGN */
 
-#ifdef _FFR_RATE_LIMIT
-	if (conf->conf_ratelimitdb != NULL)
-		dkimf_db_close(conf->conf_ratelimitdb);
-	if (conf->conf_flowdatadb != NULL)
-		dkimf_db_close(conf->conf_flowdatadb);
-#endif /* _FFR_RATE_LIMIT */
 
 #ifdef USE_LUA
 	if (conf->conf_setupscript != NULL)
@@ -5987,10 +5694,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		(void) config_get(data, "ClockDrift", &conf->conf_clockdrift,
 		                  sizeof conf->conf_clockdrift);
 
-#ifdef _FFR_DEFAULT_SENDER
-		(void) config_get(data, "DefaultSender", &conf->conf_defsender,
-		                  sizeof conf->conf_defsender);
-#endif /* _FFR_DEFAULT_SENDER */
 
 		(void) config_get(data, "Diagnostics", &conf->conf_ztags,
 		                  sizeof conf->conf_ztags);
@@ -6207,11 +5910,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  &conf->conf_weaksyntax,
 		                  sizeof conf->conf_weaksyntax);
 
-#ifdef _FFR_LUA_ONLY_SIGNING
-		(void) config_get(data, "LuaOnlySigning",
-		                  &conf->conf_luasigning,
-		                  sizeof conf->conf_luasigning);
-#endif /* _FFR_LUA_ONLY_SIGNING */
 
 		(void) config_get(data, "IgnoreMalformedMail",
 		                  &conf->conf_passmalformed,
@@ -6996,55 +6694,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			return -1;
 	}
 
-#ifdef _FFR_VBR
-	if (data != NULL)
-	{
-		(void) config_get(data, "VBR-Type", &conf->conf_vbr_deftype,
-		                  sizeof conf->conf_vbr_deftype);
-		(void) config_get(data, "VBR-Certifiers",
-		                  &conf->conf_vbr_defcert,
-		                  sizeof conf->conf_vbr_defcert);
-	}
-
-	str = NULL;
-	if (data != NULL)
-	{
-		(void) config_get(data, "VBR-TrustedCertifiers", &str,
-		                  sizeof str);
-	}
-	if (str != NULL)
-	{
-		char *dberr = NULL;
-		int status;
-
-		status = dkimf_db_open(&conf->conf_vbr_trusteddb, str,
-		                       (dbflags |
-		                        DKIMF_DB_FLAG_ICASE |
-		                        DKIMF_DB_FLAG_READONLY),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         str, dberr);
-			return -1;
-		}
-
-		(void) dkimf_db_mkarray(conf->conf_vbr_trusteddb,
-		                        (char ***) &conf->conf_vbr_trusted,
-		                        NULL);
-	}
-
-	if (data != NULL)
-	{
-		(void) config_get(data, "VBR-PurgeFields",
-		                  &conf->conf_vbr_purge,
-		                  sizeof conf->conf_vbr_purge);
-
-		(void) config_get(data, "VBR-TrustedCertifiersOnly",
-		                  &conf->conf_vbr_trustedonly,
-		                  sizeof conf->conf_vbr_trustedonly);
-	}
-#endif /* _FFR_VBR */
 
 	if (data != NULL)
 	{
@@ -7162,68 +6811,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	}
 #endif /* _FFR_RESIGN */
 
-#ifdef _FFR_RATE_LIMIT
-	str = NULL;
-	if (data != NULL)
-	{
-		(void) config_get(data, "RateLimits", &str, sizeof str);
-	}
-	if (str != NULL)
-	{
-		int status;
-		char *dberr = NULL;
-
-		status = dkimf_db_open(&conf->conf_ratelimitdb, str,
-		                       (dbflags | DKIMF_DB_FLAG_ICASE |
-		                        DKIMF_DB_FLAG_READONLY),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         str, dberr);
-			return -1;
-		}
-	}
-
-	str = NULL;
-	if (data != NULL)
-	{
-		(void) config_get(data, "FlowData", &str, sizeof str);
-
-		(void) config_get(data, "FlowDataTTL", &conf->conf_flowdatattl,
-		                  sizeof conf->conf_flowdatattl);
-
-		(void) config_get(data, "FlowDataFactor",
-		                  &conf->conf_flowfactor,
-		                  sizeof conf->conf_flowfactor);
-	}
-	if (str != NULL)
-	{
-		int dbtype;
-		int status;
-		char *dberr = NULL;
-
-		status = dkimf_db_open(&conf->conf_flowdatadb, str,
-		                       (dbflags | DKIMF_DB_FLAG_ICASE |
-		                        DKIMF_DB_FLAG_MAKELOCK),
-		                       NULL, &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         str, dberr);
-			return -1;
-		}
-
-		dbtype = dkimf_db_type(conf->conf_flowdatadb);
-		if (dbtype != DKIMF_DB_TYPE_BDB)
-		{
-			snprintf(err, errlen,
-			         "%s: invalid data set type for FlowData",
-			         str);
-			return -1;
-		}
-	}
-#endif /* _FFR_RATE_LIMIT */
 
 	str = NULL;
 	if (conf->conf_domlist != NULL)
@@ -7448,56 +7035,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		}
 	}
 
-#ifdef _FFR_REPLACE_RULES
-	/* replacement list */
-	str = NULL;
-	if (data != NULL)
-	{
-		(void) config_get(data, "ReplaceHeaders", &str, sizeof str);
-	}
-	if (str != NULL)
-	{
-		int status;
-		char *dberr = NULL;
-
-		status = dkimf_db_open(&conf->conf_rephdrsdb, str,
-		                       (dbflags | DKIMF_DB_FLAG_READONLY |
-		                        DKIMF_DB_FLAG_ICASE), NULL,
-		                       &dberr);
-		if (status != 0)
-		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         str, dberr);
-			return -1;
-		}
-	}
-
-	str = NULL;
-	if (data != NULL)
-		(void) config_get(data, "ReplaceRules", &str, sizeof str);
-	if (str != NULL)
-	{
-		FILE *f;
-
-		f = fopen(str, "r");
-		if (f == NULL)
-		{
-			snprintf(err, errlen, "%s: fopen(): %s", str,
-			         strerror(errno));
-			return -1;
-		}
-
-		if (!dkimf_load_replist(f, &conf->conf_replist))
-		{
-			snprintf(err, errlen,
-			         "failed to load ReplaceRules from %s", str);
-			fclose(f);
-			return -1;
-		}
-
-		fclose(f);
-	}
-#endif /* _FFR_REPLACE_RULES */
 
 	dkimf_reportaddr(conf);
 
@@ -8651,12 +8188,6 @@ dkimf_cleanup(SMFICTX *ctx)
 		if (dfc->mctx_dkimv != NULL)
 			dkim_free(dfc->mctx_dkimv);
 
-#ifdef _FFR_VBR
-		if (dfc->mctx_vbr != NULL)
-			vbr_close(dfc->mctx_vbr);
-
-		TRYFREE(dfc->mctx_vbrinfo);
-#endif /* _FFR_VBR */
 
 		if (dfc->mctx_tmpstr != NULL)
 			dkimf_dstring_free(dfc->mctx_tmpstr);
@@ -10221,9 +9752,6 @@ mlfi_negotiate(SMFICTX *ctx,
 # ifdef _FFR_IDENTITY_HEADER
 	    conf->conf_rmidentityhdr ||
 # endif /* _FFR_IDENTITY_HEADER */
-# ifdef _FFR_VBR
-	    conf->conf_vbr_purge ||
-# endif /* _FFR_VBR */
 	    conf->conf_remsigs)
 		reqactions |= SMFIF_CHGHDRS;
 
@@ -10681,9 +10209,6 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 sfsistat
 mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 {
-#ifdef _FFR_REPLACE_RULES
-	_Bool dorepl = FALSE;
-#endif /* _FFR_REPLACE_RULES */
 	msgctx dfc;
 	connctx cc;
 	Header newhdr;
@@ -10801,99 +10326,6 @@ mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 		dkimf_dstring_copy(dfc->mctx_tmpstr, (u_char *) headerv);
 	}
 
-#ifdef _FFR_REPLACE_RULES
-	if (conf->conf_rephdrsdb == NULL)
-	{
-		dorepl = TRUE;
-	}
-	else
-	{
-		_Bool found;
-
-		found = FALSE;
-
-		if (dkimf_db_get(conf->conf_rephdrsdb,
-		                 (char *) headerf, 0, NULL, 0,
-		                 &found) != 0)
-		{
-			if (conf->conf_dolog)
-				syslog(LOG_ERR, "dkimf_db_get() failed");
-
-			return SMFIS_TEMPFAIL;
-		}
-
-		dorepl = found;
-	}
-
-	if (conf->conf_replist != NULL && dorepl)
-	{
-		int status;
-		regmatch_t match;
-		char *str;
-		struct dkimf_dstring *tmphdr = NULL;
-		struct replace *rep;
-
-		tmphdr = dkimf_dstring_new(BUFRSZ, 0);
-		if (tmphdr == NULL)
-		{
-			if (conf->conf_dolog)
-				syslog(LOG_ERR, "dkimf_dstring_new() failed");
-
-			TRYFREE(newhdr->hdr_hdr);
-			free(newhdr);
-
-			dkimf_cleanup(ctx);
-
-			return SMFIS_TEMPFAIL;
-		}
-	
-		for (rep = conf->conf_replist;
-		     rep != NULL;
-		     rep = rep->repl_next)
-		{
-			str = dkimf_dstring_get(dfc->mctx_tmpstr);
-
-			for (;;)
-			{
-				status = regexec(&rep->repl_re, str, 1,
-				                 &match, 0);
-
-				if (status == REG_NOMATCH)
-				{
-					break;
-				}
-				else if (status != 0)
-				{
-					if (conf->conf_dolog)
-					{
-						syslog(LOG_ERR,
-						       "regexec() failed");
-					}
-
-					TRYFREE(newhdr->hdr_hdr);
-					free(newhdr);
-					dkimf_dstring_free(tmphdr);
-					dkimf_cleanup(ctx);
-
-					return SMFIS_TEMPFAIL;
-				}
-
-				dkimf_dstring_blank(tmphdr);
-
-				dkimf_dstring_copy(tmphdr, str);
-				dkimf_dstring_chop(tmphdr, match.rm_so);
-				dkimf_dstring_cat(tmphdr, rep->repl_txt);
-				dkimf_dstring_cat(tmphdr, str + match.rm_eo);
-
-				dkimf_dstring_blank(dfc->mctx_tmpstr);
-				str = dkimf_dstring_get(tmphdr);
-				dkimf_dstring_cat(dfc->mctx_tmpstr, str);
-			}
-		}
-
-		dkimf_dstring_free(tmphdr);
-	}
-#endif /* _FFR_REPLACE_RULES */
 
 	newhdr->hdr_val = strdup((char *) dkimf_dstring_get(dfc->mctx_tmpstr));
 
@@ -10988,10 +10420,6 @@ mlfi_eoh(SMFICTX *ctx)
 #endif /* _FFR_SENDER_MACRO */
 	u_char *user;
 	u_char *domain;
-#ifdef _FFR_VBR
-	char *vbr_cert = NULL;
-	char *vbr_type = NULL;
-#endif /* _FFR_VBR */
 	struct dkimf_config *conf;
 	struct dkimf_dstring *addr;
 	Header from = NULL;
@@ -11064,15 +10492,6 @@ mlfi_eoh(SMFICTX *ctx)
 
 	status = dkim_mail_parse(dkimf_dstring_get(addr), &user, &domain);
 
-#ifdef _FFR_DEFAULT_SENDER
-	if (conf->conf_defsender != NULL &&
-	    (status != 0 || user == NULL || domain == NULL ||
-	     user[0] == '\0' || domain[0] == '\0'))
-	{
-		strlcpy(addr, conf->conf_defsender, sizeof addr);
-		status = dkim_mail_parse(addr, &user, &domain);
-	}
-#endif /* _FFR_DEFAULT_SENDER */
 
 	if ((conf->conf_mode & DKIMF_MODE_SIGNER) != 0 &&
 	    (status != 0 || user == NULL || domain == NULL ||
@@ -11097,14 +10516,6 @@ mlfi_eoh(SMFICTX *ctx)
 				       dfc->mctx_jobid, from->hdr_hdr,
 				       from->hdr_val);
 			}
-#ifdef _FFR_DEFAULT_SENDER
-			else if (conf->conf_defsender != NULL)
-			{
-				syslog(LOG_INFO,
-				       "%s: can't parse default sender value '%s'",
-				       dfc->mctx_jobid, conf->conf_defsender);
-			}
-#endif /* _FFR_DEFAULT_SENDER */
 		}
 
 		dfc->mctx_addheader = TRUE;
@@ -11556,9 +10967,6 @@ mlfi_eoh(SMFICTX *ctx)
 	/* still no key selected; check the signing table (if any) */
 	if (originok && dfc->mctx_srhead == NULL &&
 	    (user != NULL && dfc->mctx_domain[0] != '\0') && 
-#ifdef _FFR_LUA_ONLY_SIGNING
-	    !conf->conf_luasigning &&
-#endif /* _FFR_LUA_ONLY_SIGNING */
 	    conf->conf_keytabledb != NULL && conf->conf_signtabledb != NULL)
 	{
 		int found;
@@ -12046,222 +11454,6 @@ mlfi_eoh(SMFICTX *ctx)
 			dkim_setpartial(sr->srq_dkim, TRUE);
 	}
 
-#ifdef _FFR_VBR
-	/* establish a VBR handle */
-	dfc->mctx_vbr = vbr_init(NULL, NULL, NULL);
-	if (dfc->mctx_vbr == NULL)
-	{
-		if (conf->conf_dolog)
-		{
-			syslog(LOG_ERR, "%s: can't create VBR context",
-			       dfc->mctx_jobid);
-		}
-		dkimf_cleanup(ctx);
-		return SMFIS_TEMPFAIL;
-	}
-
-# ifdef USE_UNBOUND
-	dkimf_vbr_unbound_setup(dfc->mctx_vbr);
-# endif /* USE_UNBOUND */
-
-	if (conf->conf_vbr_trustedonly)
-		vbr_options(dfc->mctx_vbr, VBR_OPT_TRUSTEDONLY);
-
-	/* store the trusted certifiers */
-	if (conf->conf_vbr_trusted != NULL)
-		vbr_trustedcerts(dfc->mctx_vbr, conf->conf_vbr_trusted);
-
-	if (vbr_dns_init(dfc->mctx_vbr) != 0)
-	{
-		if (conf->conf_dolog)
-		{
-			syslog(LOG_ERR, "%s: can't initialize VBR resolver",
-			       dfc->mctx_jobid);
-		}
-		dkimf_cleanup(ctx);
-		return SMFIS_TEMPFAIL;
-	}
-
-	if (conf->conf_nslist != NULL)
-	{
-		status = vbr_dns_nslist(dfc->mctx_vbr, conf->conf_nslist);
-		if (status != VBR_STAT_OK)
-		{
-			if (conf->conf_dolog)
-			{
-				syslog(LOG_ERR,
-				       "%s: can't set VBR resolver list",
-				       dfc->mctx_jobid);
-			}
-			dkimf_cleanup(ctx);
-			return SMFIS_TEMPFAIL;
-		}
-	}
-
-	if (conf->conf_trustanchorpath != NULL)
-	{
-		if (access(conf->conf_trustanchorpath, R_OK) != 0)
-		{
-			if (conf->conf_dolog)
-			{
-				syslog(LOG_ERR,
-				       "%s: %s: access(): %s",
-				       dfc->mctx_jobid,
-				       conf->conf_trustanchorpath,
-				       strerror(errno));
-			}
-			dkimf_cleanup(ctx);
-			return SMFIS_TEMPFAIL;
-		}
-
-		status = vbr_dns_trustanchor(dfc->mctx_vbr,
-		                             conf->conf_trustanchorpath);
-		if (status != DKIM_STAT_OK)
-		{
-			if (conf->conf_dolog)
-			{
-				syslog(LOG_ERR,
-				       "%s: can't set VBR trust anchor from %s",
-				       dfc->mctx_jobid,
-				       conf->conf_trustanchorpath);
-			}
-			dkimf_cleanup(ctx);
-			return SMFIS_TEMPFAIL;
-		}
-	}
-
-	if (conf->conf_resolverconfig != NULL)
-	{
-		status = vbr_dns_config(dfc->mctx_vbr,
-		                        conf->conf_resolverconfig);
-		if (status != DKIM_STAT_OK)
-		{
-			if (conf->conf_dolog)
-			{
-				syslog(LOG_ERR,
-				       "%s: can't set VBR resolver configuration",
-				       dfc->mctx_jobid);
-			}
-			dkimf_cleanup(ctx);
-			return SMFIS_TEMPFAIL;
-		}
-	}
-
-	if (dfc->mctx_srhead != NULL)
-	{
-		Header newhdr;
-		char header[DKIM_MAXHEADER + 1];
-
-		/* set the sending domain */
-		vbr_setdomain(dfc->mctx_vbr, dfc->mctx_domain);
-
-		/* VBR-Type; get value from headers or use default */
-		hdr = dkimf_findheader(dfc, VBRTYPEHEADER, 0);
-		if (hdr != NULL)
-		{
-			dfc->mctx_vbrpurge = TRUE;
-			vbr_type = hdr->hdr_val;
-		}
-		else
-		{
-			vbr_type = conf->conf_vbr_deftype;
-		}
-
-		/* X-VBR-Certifiers; get value from headers or use default */
-		hdr = dkimf_findheader(dfc, VBRCERTHEADER, 0);
-		if (hdr != NULL)
-		{
-			dfc->mctx_vbrpurge = TRUE;
-			vbr_cert = hdr->hdr_val;
-		}
-		else
-		{
-			vbr_cert = conf->conf_vbr_defcert;
-		}
-
-		/* set message type and certifiers, and generate a header */
-		if (vbr_type != NULL && vbr_cert != NULL)
-		{
-			memset(header, '\0', sizeof header);
-
-			/* set the VBR transaction type */
-			(void) vbr_settype(dfc->mctx_vbr, (u_char *) vbr_type);
-	
-			/* set the VBR certifier list */
-			(void) vbr_setcert(dfc->mctx_vbr, (u_char *) vbr_cert);
-
-			status = vbr_getheader(dfc->mctx_vbr,
-			                       header, sizeof header);
-			if (status != VBR_STAT_OK)
-			{
-				const char *err;
-
-				err = vbr_geterror(dfc->mctx_vbr);
-
-				syslog(LOG_ERR,
-				       "%s: can't create VBR-Info header field%s%s",
-				       dfc->mctx_jobid,
-				       err == NULL ? "" : ": ",
-				       err == NULL ? "" : err);
-			}
-			else
-			{
-				/* store it for addition in mlfi_eom() */
-				dfc->mctx_vbrinfo = strdup(header);
-				if (dfc->mctx_vbrinfo == NULL)
-				{
-					syslog(LOG_ERR, "%s: strdup(): %s",
-					       dfc->mctx_jobid,
-					       strerror(errno));
-					dkimf_cleanup(ctx);
-					return SMFIS_TEMPFAIL;
-				}
-
-				/* add it to header set so it gets signed */
-				newhdr = (Header) malloc(sizeof(struct Header));
-				if (newhdr == NULL)
-				{
-					if (conf->conf_dolog)
-					{
-						syslog(LOG_ERR, "malloc(): %s",
-						       strerror(errno));
-
-						dkimf_cleanup(ctx);
-						return SMFIS_TEMPFAIL;
-					}
-				}
-
-				(void) memset(newhdr, '\0',
-				              sizeof(struct Header));
-
-				newhdr->hdr_hdr = strdup(VBR_INFOHEADER);
-				newhdr->hdr_val = strdup(header);
-
-				if (newhdr->hdr_hdr == NULL ||
-				    newhdr->hdr_val == NULL)
-				{
-					syslog(LOG_ERR, "%s: strdup(): %s",
-					       dfc->mctx_jobid,
-					       strerror(errno));
-					TRYFREE(newhdr->hdr_hdr);
-					dkimf_cleanup(ctx);
-					return SMFIS_TEMPFAIL;
-				}
-
-				newhdr->hdr_next = NULL;
-				newhdr->hdr_prev = dfc->mctx_hqtail;
-
-				if (dfc->mctx_hqhead == NULL)
-					dfc->mctx_hqhead = newhdr;
-
-				if (dfc->mctx_hqtail != NULL)
-					dfc->mctx_hqtail->hdr_next = newhdr;
-
-				dfc->mctx_hqtail = newhdr;
-			}
-		}
-	}
-#endif /* _FFR_VBR */
 
 	/* run the headers */
 	for (hdr = dfc->mctx_hqhead; hdr != NULL; hdr = hdr->hdr_next)
@@ -13111,10 +12303,6 @@ mlfi_eom(SMFICTX *ctx)
 				else
 				{
 					int c;
-#ifdef _FFR_DIFFHEADERS
-					int ndiffs;
-					struct dkim_hdrdiff *diffs;
-#endif /* _FFR_DIFFHEADERS */
 					struct Header *hdr;
 
 					fprintf(f, "z tag headers:\n\n");
@@ -13136,34 +12324,6 @@ mlfi_eom(SMFICTX *ctx)
 						        hdr->hdr_val);
 					}
 
-#ifdef _FFR_DIFFHEADERS
-					/* XXX -- make the "5" configurable */
-					status = dkim_diffheaders(dfc->mctx_dkimv,
-					                          canon,
-					                          5,
-					                          (char **) ohdrs,
-					                          nhdrs,
-					                          &diffs,
-					                          &ndiffs);
-
-					if (status == DKIM_STAT_OK &&
-					    diffs != NULL && ndiffs > 0)
-					{
-						fprintf(f, "--------------------\n\n");
-						fprintf(f, "Munging detected:\n\n");
-
-						for (c = 0; c < ndiffs; c++)
-						{
-							fprintf(f,
-							        "-%s\n+%s\n\n",
-							        diffs[c].hd_old,
-							        diffs[c].hd_new);
-						}
-
-						if (ndiffs > 0)
-							free(diffs);
-					}
-#endif /* _FFR_DIFFHEADERS */
 
 					fclose(f);
 				}
@@ -13345,297 +12505,12 @@ mlfi_eom(SMFICTX *ctx)
 			}
 		}
 
-#ifdef _FFR_RATE_LIMIT
-		/* enact rate limiting */
-		if (conf->conf_ratelimitdb != NULL &&
-		    conf->conf_flowdatadb != NULL)
-		{
-			int exceeded = 0;
-			int nvalid = 0;
-			int nsigs = 0;
-			unsigned int limit;
-			DKIM_SIGINFO **sigs;
-
-			if (dkim_getsiglist(dfc->mctx_dkimv, &sigs,
-			                    &nsigs) == DKIM_STAT_OK)
-			{
-				for (c = 0; c < nsigs; c++)
-				{
-					if ((dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) == 0 &&
-					    dkim_sig_getbh(sigs[c]) != DKIM_SIGBH_MATCH)
-						continue;
-
-					nvalid++;
-
-					if (dkimf_rate_check(dkim_sig_getdomain(sigs[c]),
-					                     conf->conf_ratelimitdb,
-					                     conf->conf_flowdatadb,
-					                     conf->conf_flowfactor,
-					                     conf->conf_flowdatattl,
-					                     &limit) == 1)
-					{
-						exceeded++;
-
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_ERR,
-							       "%s: rate limit for '%s' (%u) exceeded",
-							       dfc->mctx_jobid,
-							       dkim_sig_getdomain(sigs[c]),
-							       limit);
-						}
-					}
-				}
-			}
-
-			if (nvalid == 0)
-			{
-				if (dkimf_rate_check(NULL,
-				                     conf->conf_ratelimitdb,
-				                     conf->conf_flowdatadb,
-				                     conf->conf_flowfactor,
-				                     conf->conf_flowdatattl,
-				                     &limit) == 1)
-				{
-					exceeded++;
-
-					if (conf->conf_dolog)
-					{
-						syslog(LOG_ERR,
-						       "%s: rate limit for unsigned mail (%u) exceeded",
-						       dfc->mctx_jobid,
-						       limit);
-					}
-				}
-			}
-
-			if (exceeded > 0)
-				return SMFIS_TEMPFAIL;
-		}
-#endif /* _FFR_RATE_LIMIT */
 
 		/* send an ARF message for DKIM? */
 		if (dfc->mctx_status == DKIMF_STATUS_BAD &&
 		    conf->conf_sendreports)
 			dkimf_sigreport(cc, conf, hostname);
 
-#ifdef _FFR_VBR
-	    	if (dkimf_valid_vbr(dfc))
-		{
-			_Bool add_vbr_header = FALSE;
-			_Bool vbr_validsig = FALSE;
-			VBR_STAT vbr_status = VBR_STAT_OK;
-			int c;
-			int nsigs;
-			char *vbr_result;
-			char *vbr_domain;
-			char *vbr_certifier;
-			char *vbr_vouchers;
-			char *vbr_type;
-			char *p;
-			char *sctx;
-			char *eq;
-			u_char *param;
-			u_char *value;
-			DKIM_SIGINFO **sigs;
-			Header vbr_header;
-			char tmp[DKIM_MAXHEADER + 1];
-
-			for (c = 0; ; c++)
-			{
-				vbr_header = dkimf_findheader(dfc,
-				                              VBR_INFOHEADER,
-				                              c);
-				if (vbr_header == NULL)
-					break;
-
-				vbr_result = "none";
-				vbr_domain = NULL;
-				vbr_certifier = NULL;
-				vbr_vouchers = NULL;
-				vbr_type = NULL;
-	
-				/* break out the VBR-Info header contents */
-				strlcpy(tmp, vbr_header->hdr_val, sizeof tmp);
-				for (p = strtok_r(tmp, ";", &sctx);
-				     p != NULL;
-				     p = strtok_r(NULL, ";", &sctx))
-				{
-					eq = strchr(p, '=');
-					if (eq == NULL)
-						continue;
-					*eq = '\0';
-
-					for (param = (u_char *) p;
-					     *param != '\0';
-					     param++)
-					{
-						if (!(isascii(*param) &&
-						      isspace(*param)))
-							break;
-					}
-					dkimf_trimspaces(param);
-
-					for (value = (u_char *) eq + 1;
-					     *value != '\0';
-					     value++)
-					{
-						if (!(isascii(*value) &&
-						      isspace(*value)))
-							break;
-					}
-					dkimf_trimspaces(value);
-
-					if (strcasecmp((char *) param,
-					               "md") == 0)
-					{
-						vbr_domain = (char *) value;
-					}
-					else if (strcasecmp((char *) param,
-					                    "mc") == 0)
-					{
-						vbr_type = (char *) value;
-					}
-					else if (strcasecmp((char *) param,
-					                    "mv") == 0)
-					{
-						vbr_vouchers = (char *) value;
-					}
-				}
-			
-				/* confirm a valid signature was there */
-				if (dfc->mctx_dkimv != NULL &&
-				    dkim_getsiglist(dfc->mctx_dkimv,
-				                    &sigs,
-				                    &nsigs) == DKIM_STAT_OK)
-				{
-					u_char *d;
-
-					for (c = 0; c < nsigs; c++)
-					{
-						d = dkim_sig_getdomain(sigs[c]);
-						if (strcasecmp((char *) d,
-						               vbr_domain) == 0 &&
-						    (dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) != 0 &&
-						    dkim_sig_getbh(sigs[c]) == DKIM_SIGBH_MATCH)
-						{
-							vbr_validsig = TRUE;
-							break;
-						}
-					}
-				}
-				
-				if (vbr_validsig)
-				{
-					/* use accessors to set parsed values */
-					vbr_setcert(dfc->mctx_vbr,
-					            (u_char *) vbr_vouchers);
-					vbr_settype(dfc->mctx_vbr,
-					            (u_char *) vbr_type);
-					vbr_setdomain(dfc->mctx_vbr,
-					              (u_char *) vbr_domain);
-		
-					/* attempt the query */
-					vbr_status = vbr_query(dfc->mctx_vbr,
-					                       (u_char **) &vbr_result,
-					                       (u_char **) &vbr_certifier);
-				}
-
-				switch (vbr_status)
-				{
-				  case VBR_STAT_DNSERROR:
-					if (conf->conf_dolog)
-					{
-						const char *err;
-
-						err = (const char *) vbr_geterror(dfc->mctx_vbr);
-
-						syslog(LOG_NOTICE,
-						       "%s: can't verify VBR information%s%s",
-						       dfc->mctx_jobid,
-						       err == NULL ? "" : ": ",
-						       err == NULL ? "" : err);
-					}
-
-					add_vbr_header = TRUE;
-
-					vbr_result = "temperror";
-					break;
-
-				  case VBR_STAT_INVALID:
-				  case VBR_STAT_NORESOURCE:
-					if (conf->conf_dolog)
-					{
-						const char *err;
-
-						err = (const char *) vbr_geterror(dfc->mctx_vbr);
-
-						syslog(LOG_NOTICE,
-						       "%s: error handling VBR information%s%s",
-						       dfc->mctx_jobid,
-						       err == NULL ? "" : ": ",
-						       err == NULL ? "" : err);
-					}
-
-					add_vbr_header = TRUE;
-
-					if (vbr_status == VBR_STAT_INVALID)
-						vbr_result = "temperror";
-					else
-						vbr_result = "permerror";
-
-					break;
-
-				  case VBR_STAT_OK:
-					add_vbr_header = TRUE;
-					break;
-
-				  default:
-					assert(0);
-				}
-
-				if (add_vbr_header)
-				{
-					snprintf((char *) header,
-					         sizeof header,
-					         "%s%s%s%s vbr=%s header.md=%s",
-					         cc->cctx_noleadspc ? " " : "",
-					         authservid,
-					         conf->conf_authservidwithjobid ? "/"
-					                                        : "",
-					         conf->conf_authservidwithjobid ? (char *) dfc->mctx_jobid
-					                                        : "",
-					         vbr_result,
-					         vbr_domain);
-
-					if (vbr_certifier != NULL)
-					{
-						strlcat(header,
-						        " header.mv=",
-						        sizeof header);
-						strlcat(header,
-						        vbr_certifier,
-						        sizeof header);
-					}
-		
-					if (dkimf_insheader(ctx, 1,
-					                    AUTHRESULTSHDR,
-					                    (char *) header) == MI_FAILURE)
-					{
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_ERR,
-							       "%s: %s header add failed",
-							       dfc->mctx_jobid,
-							       AUTHRESULTSHDR);
-						}
-					}
-
-					break;
-				}
-			}
-		}
-#endif /* _FFR_VBR */
 
 		if (conf->conf_redirect != NULL &&
 		    dfc->mctx_status == DKIMF_STATUS_BAD)
@@ -13853,42 +12728,6 @@ mlfi_eom(SMFICTX *ctx)
 			}
 		}
 
-#ifdef _FFR_VBR
-		/* add VBR-Info header if generated */
-		if (dfc->mctx_vbrinfo != NULL)
-		{
-			if (dkimf_insheader(ctx, 1, VBR_INFOHEADER,
-			                    dfc->mctx_vbrinfo) == MI_FAILURE)
-			{
-				if (conf->conf_dolog)
-				{
-					syslog(LOG_ERR,
-					       "%s: %s header add failed",
-					       dfc->mctx_jobid,
-					       VBR_INFOHEADER);
-				}
-			}
-		}
-
-		if (conf->conf_vbr_purge && dfc->mctx_vbrpurge)
-		{
-			if (dkimf_chgheader(ctx, VBRTYPEHEADER,
-			                    0, NULL) != MI_SUCCESS ||
-			     conf->conf_dolog)
-			{
-				syslog(LOG_ERR, "%s: %s header remove failed",
-				       dfc->mctx_jobid, VBRTYPEHEADER);
-			}
-
-			if (dkimf_chgheader(ctx, VBRCERTHEADER,
-			                    0, NULL) != MI_SUCCESS ||
-			     conf->conf_dolog)
-			{
-				syslog(LOG_ERR, "%s: %s header remove failed",
-				       dfc->mctx_jobid, VBRCERTHEADER);
-			}
-		}
-#endif /* _FFR_VBR */
 	}
 
 	/*
@@ -14600,9 +13439,6 @@ main(int argc, char **argv)
 #ifdef USE_LIBMEMCACHED
 			                "\tmemcache:host[:port][,...]/prefix\n"
 #endif /* USE_LIBMEMCACHED */
-#ifdef _FFR_SOCKETDB
-			                "\tsocket:{ port@host | path}\n"
-#endif /* _FFR_SOCKETDB */
 #ifdef USE_MDB
 			                "\tmdb:path\n"
 #endif /* USE_MDB */
@@ -15538,9 +14374,6 @@ main(int argc, char **argv)
 #ifdef _FFR_IDENTITY_HEADER
 		    curconf->conf_rmidentityhdr ||
 #endif /* _FFR_IDENTITY_HEADER */
-#ifdef _FFR_VBR
-		    curconf->conf_vbr_purge ||
-#endif /* _FFR_VBR */
 		    curconf->conf_remsigs)
 			smfilter.xxfi_flags |= SMFIF_CHGHDRS;
 #ifdef SMFIF_QUARANTINE

@@ -17,15 +17,7 @@
 /* opendkim includes */
 #include "opendkim-db.h"
 
-#ifdef _FFR_RBL
-/* librbl includes */
-# include <rbl.h>
-#endif /* _FFR_RBL */
 
-#ifdef _FFR_VBR
-/* libvbr includes */
-# include <vbr.h>
-#endif /* _FFR_VBR */
 
 struct dkimf_filedns;
 
@@ -35,12 +27,6 @@ struct dkimf_filedns;
 
 /* prototypes */
 extern int dkimf_unbound_setup __P((DKIM_LIB *));
-# ifdef _FFR_RBL
-extern int dkimf_rbl_unbound_setup __P((RBL *));
-# endif /* _FFR_RBL */
-# ifdef _FFR_VBR
-extern int dkimf_vbr_unbound_setup __P((VBR *));
-# endif /* _FFR_VBR */
 #endif /* USE_UNBOUND */
 
 extern int dkimf_filedns_free __P((struct dkimf_filedns *));
