@@ -1,0 +1,16 @@
+# Copyright (c) 2026 OpenDKIM contributors. All rights reserved.
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@/opendkim
+
+Name: OpenDKIM Library
+Description: Library for performing DKIM signing and verification
+URL: http://opendkim.org
+Version: @PACKAGE_VERSION@
+Requires: openssl
+Requires.private: libcrypto libssl@OPENDKIM_PC_REQUIRES_PRIVATE@
+Libs: -L${libdir} -lopendkim
+Libs.private:@OPENDKIM_PC_PRIVATE_LIBS@
+Cflags: -I${includedir}

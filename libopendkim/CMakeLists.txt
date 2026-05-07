@@ -227,10 +227,18 @@ if(MILTER_INCLUDE_DIR AND MILTER_LIBRARY)
 
     # Use a unique internal variable to avoid CMake's "sticky" cache issue
     check_symbol_exists(smfi_version "libmilter/mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
+    check_symbol_exists(smfi_insheader  "libmilter/mfapi.h" HAVE_SMFI_INSHEADER)
+    check_symbol_exists(smfi_opensocket "libmilter/mfapi.h" HAVE_SMFI_OPENSOCKET)
+    check_symbol_exists(smfi_progress   "libmilter/mfapi.h" HAVE_SMFI_PROGRESS)
+    check_symbol_exists(smfi_setsymlist "libmilter/mfapi.h" HAVE_SMFI_SETSYMLIST)
 
     if(NOT HAVE_SMFI_VERSION_INTERNAL)
         # Fallback for systems where it's just <mfapi.h> without the libmilter/ prefix
         check_symbol_exists(smfi_version "mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
+        check_symbol_exists(smfi_insheader  "mfapi.h" HAVE_SMFI_INSHEADER)
+        check_symbol_exists(smfi_opensocket "mfapi.h" HAVE_SMFI_OPENSOCKET)
+        check_symbol_exists(smfi_progress   "mfapi.h" HAVE_SMFI_PROGRESS)
+        check_symbol_exists(smfi_setsymlist "mfapi.h" HAVE_SMFI_SETSYMLIST)
     endif()
 
     # 3. Finalize the variable for your config.h
@@ -378,6 +386,39 @@ install(FILES dkim.h
 install(TARGETS opendkim opendkim_static
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# ── pkg-config .pc file ───────────────────────────────────────────────────────
+
+set(OPENDKIM_PC_REQUIRES_PRIVATE "")
+set(OPENDKIM_PC_PRIVATE_LIBS "")
+
+if(UNBOUND_FOUND)
+    string(APPEND OPENDKIM_PC_REQUIRES_PRIVATE " libunbound")
+endif()
+
+if(LMDB_FOUND AND PKG_CONFIG_FOUND)
+    string(APPEND OPENDKIM_PC_REQUIRES_PRIVATE " lmdb")
+else()
+    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -llmdb")
+endif()
+
+if(RESOLV_LIBRARY)
+    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -lresolv")
+endif()
+
+if(STRL_LIBRARY)
+    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -lbsd")
+endif()
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/opendkim.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/opendkim.pc
+    @ONLY
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opendkim.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
