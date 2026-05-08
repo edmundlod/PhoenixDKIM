@@ -5,6 +5,8 @@ if(NOT WITH_LUA)
     return()
 endif()
 
+find_package(Lua 5.4 EXACT REQUIRED)
+
 add_executable(miltertest miltertest.c)
 
 target_include_directories(miltertest PRIVATE

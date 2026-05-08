@@ -1355,7 +1355,7 @@ mt_connect(lua_State *l)
 	lua_pop(l, top);
 
 	af = AF_UNSPEC;
-	p = strchr(sockinfo, ':');
+	p = (char *) strchr(sockinfo, ':');
 	if (p == NULL)
 	{
 		af = AF_UNIX;
@@ -1446,7 +1446,7 @@ mt_connect(lua_State *l)
 
 		p++;
 
-		at = strchr(p, '@');
+		at = (char *) strchr(p, '@');
 		if (at == NULL)
 		{
 			sa.sin_addr.s_addr = INADDR_ANY;
@@ -4009,13 +4009,13 @@ main(int argc, char **argv)
 	}
 
 	/* register functions */
-#if LUA_VERSION_NUM == 502
+#if LUA_VERSION_NUM >= 502
         luaL_newlib(l, mt_library);
 	lua_setglobal(l, "mt");
-#else /* LUA_VERSION_NUM == 502 */
+#else /* LUA_VERSION_NUM >= 502 */
 	luaL_register(l, "mt", mt_library);
-#endif /* LUA_VERSION_NUM == 502 */
 	lua_pop(l, 1);
+#endif /* LUA_VERSION_NUM >= 502 */
 
 	/* register constants */
 	lua_pushnumber(l, MT_HDRINSERT);
@@ -4163,13 +4163,13 @@ main(int argc, char **argv)
 	lua_setglobal(l, "SMFIF_SETSYMLIST");
 #endif /* SMFIF_SETSYMLIST */
 
-#if LUA_VERSION_NUM == 502
+#if LUA_VERSION_NUM >= 502
 	switch (lua_load(l, mt_lua_reader, (void *) &io,
 	                 script == NULL ? "(stdin)" : script, NULL))
-#else /* LUA_VERSION_NUM == 502 */
+#else /* LUA_VERSION_NUM >= 502 */
 	switch (lua_load(l, mt_lua_reader, (void *) &io,
 	                 script == NULL ? "(stdin)" : script))
-#endif /* LUA_VERSION_NUM == 502 */
+#endif /* LUA_VERSION_NUM >= 502 */
 	{
 	  case 0:
 		break;
