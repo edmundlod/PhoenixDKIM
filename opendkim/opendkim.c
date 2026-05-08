@@ -7278,10 +7278,11 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			dbd[0].dbdata_flags = 0;
 			dbd[1].dbdata_buffer = signer;
 			dbd[1].dbdata_buflen = sizeof signer - 1;
-			dbd[1].dbdata_flags = 0;
+			dbd[1].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
 
-			while (dkimf_db_walk(conf->conf_signtabledb, first,
-			                     NULL, NULL, dbd, 2) == 0)
+			int _walkret;
+			while ((_walkret = dkimf_db_walk(conf->conf_signtabledb, first,
++                                                        NULL, NULL, dbd, 2)) == 0)
 			{
 				first = FALSE;
 				found = FALSE;
@@ -7314,7 +7315,15 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				dbd[0].dbdata_buffer = keyname;
 				dbd[0].dbdata_buflen = sizeof keyname - 1;
 				dbd[0].dbdata_flags = 0;
+				dbd[1].dbdata_buffer = signer;
+				dbd[1].dbdata_buflen = sizeof signer - 1;
+				dbd[1].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
 			}
+			if (_walkret == -1)
+                        {
+                                snprintf(err, errlen, "error walking SigningTable");
+                                return -1;
+                        }
 		}
 	}
 
