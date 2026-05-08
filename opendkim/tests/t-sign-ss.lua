@@ -14,7 +14,7 @@ else
 	sock = "unix:" .. mt.getcwd() .. "/t-sign-ss.sock"
 end
 
-binpath = mt.getcwd() .. "/.."
+binpath = os.getenv("OPENDKIM_BINPATH") or (mt.getcwd() .. "/..")
 if os.getenv("srcdir") ~= nil then
 	mt.chdir(os.getenv("srcdir"))
 end
