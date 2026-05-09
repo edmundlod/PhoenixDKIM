@@ -7950,10 +7950,9 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 	if (b1 == NULL)
 		return DKIM_STAT_SYNTAX;
 
-	minlen = MIN(*buflen, dkim->dkim_minsiglen);
+	minlen = MIN(*buflen > 0 ? *buflen - 1 : 0, dkim->dkim_minsiglen);
 	strncpy(buf, b1, minlen);
-	if (minlen < *buflen)
-		buf[minlen] = '\0';
+	buf[minlen] = '\0';
 	*buflen = minlen;
 
 	return DKIM_STAT_OK;

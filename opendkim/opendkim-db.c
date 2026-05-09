@@ -1299,7 +1299,9 @@ dkimf_db_erl_decode_response(ei_x_buff *resp, const char *notfound,
 				return -1;
 			n = snprintf(req[0].dbdata_buffer,
 			             req[0].dbdata_buflen, "%ld", val);
-			req[0].dbdata_buflen = n + 1;
+			if (n < 0 || (size_t)n >= req[0].dbdata_buflen)
+				return -1;
+			req[0].dbdata_buflen = (size_t)n + 1;
 			for (c = 1; c < reqnum; c++)
 				req[c].dbdata_buflen = 0;
 			return 0;
@@ -1368,7 +1370,9 @@ dkimf_db_erl_decode_response(ei_x_buff *resp, const char *notfound,
 					if (ret != 0)
 						return -1;
 					n = snprintf(key, *keylen, "%ld", val);
-					*keylen = n + 1;
+					if (n < 0 || (size_t)n >= *keylen)
+						return -1;
+					*keylen = (size_t)n + 1;
 					break;
 				  }
 
@@ -1529,12 +1533,9 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	else
 	{
 		int c;
-		size_t clen;
 		char dbtype[BUFRSZ + 1];
 
-		memset(dbtype, '\0', sizeof dbtype);
-		clen = MIN(sizeof(dbtype) - 1, p - name);
-		strncpy(dbtype, name, clen);
+		strlcpy(dbtype, name, MIN(sizeof dbtype, (size_t)(p - name) + 1));
 
 		for (c = 0; ; c++)
 		{
@@ -3646,13 +3647,21 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			return err;
 		}
 
-		snprintf(query, sizeof query,
-		         "SELECT %s FROM %s WHERE %s = '%s'%s%s",
-		         dsn->dsn_datacol,
-		         dsn->dsn_table,
-		         dsn->dsn_keycol, escaped,
-		         dsn->dsn_filter == NULL ? "" : " AND ",
-		         dsn->dsn_filter == NULL ? "" : dsn->dsn_filter);
+		{
+			int n = snprintf(query, sizeof query,
+			                 "SELECT %s FROM %s WHERE %s = '%s'%s%s",
+			                 dsn->dsn_datacol,
+			                 dsn->dsn_table,
+			                 dsn->dsn_keycol, escaped,
+			                 dsn->dsn_filter == NULL ? "" : " AND ",
+			                 dsn->dsn_filter == NULL ? "" : dsn->dsn_filter);
+			if (n < 0 || (size_t)n >= sizeof query)
+			{
+				if (db->db_lock != NULL)
+					(void) pthread_mutex_unlock(db->db_lock);
+				return -1;
+			}
+		}
 
 		err = odbx_query(odbx, query, 0);
 		if (err < 0)
@@ -4018,8 +4027,13 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		mcs = (memcached_st *) db->db_handle;
 		key = (char *) db->db_data;
 
-		snprintf(query, sizeof query, "%s:%s", key, (char *) buf);
-		
+		{
+			int n = snprintf(query, sizeof query, "%s:%s",
+			                 key, (char *) buf);
+			if (n < 0 || (size_t)n >= sizeof query)
+				return -1;
+		}
+
 		out = memcached_get(mcs, query, strlen(query), &vlen,
 		                    &flags, &ret);
 
@@ -4608,9 +4622,15 @@ dkimf_db_walk(DKIMF_DB db, _Bool first, void *key, size_t *keylen,
 		{
 			char query[BUFRSZ];
 
-			snprintf(query, sizeof query, "SELECT %s,%s FROM %s",
-			         dsn->dsn_keycol, dsn->dsn_datacol,
-			         dsn->dsn_table);
+			{
+				int n = snprintf(query, sizeof query,
+				                 "SELECT %s,%s FROM %s",
+				                 dsn->dsn_keycol,
+				                 dsn->dsn_datacol,
+				                 dsn->dsn_table);
+				if (n < 0 || (size_t)n >= sizeof query)
+					return -1;
+			}
 
 			err = odbx_query((odbx_t *) db->db_handle, query, 0);
 			if (err < 0)

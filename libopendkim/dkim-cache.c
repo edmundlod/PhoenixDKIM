@@ -232,7 +232,7 @@ dkim_cache_query(DB *db, char *str, int ttl, char *buf, size_t *buflen,
 		pthread_mutex_unlock(&cache_stats_lock);
 
 		strlcpy(buf, ce.cache_data, *buflen);
-		*buflen = strlen(ce.cache_data);
+		*buflen = strlen(buf);           /* bytes actually present, NUL-safe */
 		return 0;
 	}
 	else if (status != DB_NOTFOUND)

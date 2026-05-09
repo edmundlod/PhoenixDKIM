@@ -3468,7 +3468,7 @@ dkimf_xs_delrcpt(lua_State *l)
 	{
 		char header[MAXADDRESS + 8];
 
-		snprintf(header, sizeof header, "rfc822;%s", a->a_addr);
+		(void) snprintf(header, sizeof header, "rfc822;%s", a->a_addr);
 		if (dkimf_addheader(ctx, ORCPTHEADER, header) != MI_SUCCESS)
 		{
 			if (conf->conf_dolog)
@@ -3974,7 +3974,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 		{
 			if (err != NULL)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s is not owned by the executing uid (%d)%s",
 				         path, myuid,
 				         myuid != 0 ? " or the superuser"
@@ -3999,7 +3999,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 				{
 					if (err != NULL)
 					{
-						snprintf(err, errlen,
+						(void) snprintf(err, errlen,
 						         "%s is in group %u which has multiple users (e.g. \"%s\")",
 						         path, s.st_gid,
 						         pw->pw_name);
@@ -4025,7 +4025,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 				{
 					if (err != NULL)
 					{
-						snprintf(err, errlen,
+						(void) snprintf(err, errlen,
 						         "%s is in group %u which has multiple users (e.g., \"%s\")",
 						         path, s.st_gid,
 						         gr->gr_mem[c]);
@@ -4043,7 +4043,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 		{
 			if (err != NULL)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s can be read or written by other users",
 				         path);
 			}
@@ -4060,7 +4060,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 		{
 			if (err != NULL)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s can be read or written by other users",
 				         path);
 			}
@@ -4083,7 +4083,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 				{
 					if (err != NULL)
 					{
-						snprintf(err, errlen,
+						(void) snprintf(err, errlen,
 						         "%s is in group %u which has multiple users (e.g., \"%s\")",
 						         myname, s.st_gid,
 						         pw->pw_name);
@@ -4109,7 +4109,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 				{
 					if (err != NULL)
 					{
-						snprintf(err, errlen,
+						(void) snprintf(err, errlen,
 						         "%s is in group %u which has multiple users (e.g., \"%s\")",
 						         myname, s.st_gid,
 						         gr->gr_mem[c]);
@@ -4129,7 +4129,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 		{
 			if (err != NULL)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s is writeable and owned by uid %u which is not the executing uid (%u)%s",
 				         path, s.st_uid, myuid,
 				         myuid != 0 ? " or the superuser"
@@ -5530,7 +5530,7 @@ dkimf_parsehandler(struct config *cfg, char *name, struct handling *hndl,
 
 	action = dkimf_lookup_strtoint(val, dkimf_values);
 	if (action == -1) {
-		snprintf(err, errlen, "invalid handling value \"%s\"", val);
+		(void) snprintf(err, errlen, "invalid handling value \"%s\"", val);
 		return -1;
 	}
 
@@ -5575,7 +5575,7 @@ dkimf_parsehandler(struct config *cfg, char *name, struct handling *hndl,
 		return TRUE;
 
 	  default:
-		snprintf(err, errlen, "unknown handling key \"%s\"", name);
+		(void) snprintf(err, errlen, "unknown handling key \"%s\"", name);
 		return FALSE;
 	}
 }
@@ -6038,7 +6038,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		if (conf->conf_trustanchorpath != NULL &&
 		    access(conf->conf_trustanchorpath, R_OK) != 0)
 		{
-			snprintf(err, errlen, "%s: %s",
+			(void) snprintf(err, errlen, "%s: %s",
 			         conf->conf_trustanchorpath, strerror(errno));
 			return -1;
 		}
@@ -6057,7 +6057,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			c = dkimf_lookup_strtoint(str, dkimf_keyactions);
 			if (c == -1)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "unknown key action '%s'", str);
 				return -1;
 			}
@@ -6078,7 +6078,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			c = dkimf_lookup_strtoint(str, dkimf_keyactions);
 			if (c == -1)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "unknown key action '%s'", str);
 				return -1;
 			}
@@ -6104,14 +6104,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			fd = open(str, O_RDONLY, 0);
 			if (fd < 0)
 			{
-				snprintf(err, errlen, "%s: open(): %s", str,
+				(void) snprintf(err, errlen, "%s: open(): %s", str,
 				         strerror(errno));
 				return -1;
 			}
 
 			if (fstat(fd, &s) == -1)
 			{
-				snprintf(err, errlen, "%s: fstat(): %s", str,
+				(void) snprintf(err, errlen, "%s: fstat(): %s", str,
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6120,7 +6120,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			conf->conf_setupscript = malloc(s.st_size + 1);
 			if (conf->conf_setupscript == NULL)
 			{
-				snprintf(err, errlen, "malloc(): %s",
+				(void) snprintf(err, errlen, "malloc(): %s",
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6130,14 +6130,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			rlen = read(fd, conf->conf_setupscript, s.st_size);
 			if (rlen == -1)
 			{
-				snprintf(err, errlen, "%s: read(): %s",
+				(void) snprintf(err, errlen, "%s: read(): %s",
 				         str, strerror(errno));
 				close(fd);
 				return -1;
 			}
 			else if (rlen < s.st_size)
 			{
-				snprintf(err, errlen, "%s: early EOF",
+				(void) snprintf(err, errlen, "%s: early EOF",
 				         str);
 				close(fd);
 				return -1;
@@ -6170,14 +6170,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			fd = open(str, O_RDONLY, 0);
 			if (fd < 0)
 			{
-				snprintf(err, errlen, "%s: open(): %s", str,
+				(void) snprintf(err, errlen, "%s: open(): %s", str,
 				         strerror(errno));
 				return -1;
 			}
 
 			if (fstat(fd, &s) == -1)
 			{
-				snprintf(err, errlen, "%s: fstat(): %s", str,
+				(void) snprintf(err, errlen, "%s: fstat(): %s", str,
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6186,7 +6186,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			conf->conf_screenscript = malloc(s.st_size + 1);
 			if (conf->conf_screenscript == NULL)
 			{
-				snprintf(err, errlen, "malloc(): %s",
+				(void) snprintf(err, errlen, "malloc(): %s",
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6196,14 +6196,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			rlen = read(fd, conf->conf_screenscript, s.st_size);
 			if (rlen == -1)
 			{
-				snprintf(err, errlen, "%s: read(): %s",
+				(void) snprintf(err, errlen, "%s: read(): %s",
 				         str, strerror(errno));
 				close(fd);
 				return -1;
 			}
 			else if (rlen < s.st_size)
 			{
-				snprintf(err, errlen, "%s: early EOF",
+				(void) snprintf(err, errlen, "%s: early EOF",
 				         str);
 				close(fd);
 				return -1;
@@ -6236,14 +6236,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			fd = open(str, O_RDONLY, 0);
 			if (fd < 0)
 			{
-				snprintf(err, errlen, "%s: open(): %s", str,
+				(void) snprintf(err, errlen, "%s: open(): %s", str,
 				         strerror(errno));
 				return -1;
 			}
 
 			if (fstat(fd, &s) == -1)
 			{
-				snprintf(err, errlen, "%s: fstat(): %s", str,
+				(void) snprintf(err, errlen, "%s: fstat(): %s", str,
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6252,7 +6252,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			conf->conf_finalscript = malloc(s.st_size + 1);
 			if (conf->conf_finalscript == NULL)
 			{
-				snprintf(err, errlen, "malloc(): %s",
+				(void) snprintf(err, errlen, "malloc(): %s",
 				         strerror(errno));
 				close(fd);
 				return -1;
@@ -6262,14 +6262,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			rlen = read(fd, conf->conf_finalscript, s.st_size);
 			if (rlen == -1)
 			{
-				snprintf(err, errlen, "%s: read(): %s",
+				(void) snprintf(err, errlen, "%s: read(): %s",
 				         str, strerror(errno));
 				close(fd);
 				return -1;
 			}
 			else if (rlen < s.st_size)
 			{
-				snprintf(err, errlen, "%s: early EOF",
+				(void) snprintf(err, errlen, "%s: early EOF",
 				         str);
 				close(fd);
 				return -1;
@@ -6306,7 +6306,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	{
 		if (chdir(basedir) != 0)
 		{
-			snprintf(err, errlen, "%s: chdir(): %s",
+			(void) snprintf(err, errlen, "%s: chdir(): %s",
 			         basedir, strerror(errno));
 			return -1;
 		}
@@ -6333,7 +6333,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6352,7 +6352,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6380,7 +6380,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6397,7 +6397,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         DEFINTERNAL, dberr);
 			return -1;
 		}
@@ -6426,7 +6426,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6454,7 +6454,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6476,7 +6476,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6497,7 +6497,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6518,7 +6518,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6539,7 +6539,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6560,7 +6560,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6587,7 +6587,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6608,7 +6608,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6634,7 +6634,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6655,7 +6655,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6687,7 +6687,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                       NULL, &dberr);
 			if (status != 0)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s: dkimf_db_open(): %s",
 				         conf->conf_signtable, dberr);
 				return -1;
@@ -6717,7 +6717,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                       &dberr);
 			if (status != 0)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "%s: dkimf_db_open(): %s",
 				         conf->conf_keytable, dberr);
 				return -1;
@@ -6729,7 +6729,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 
 	if (conf->conf_signtabledb != NULL && conf->conf_keytabledb == NULL)
 	{
-		snprintf(err, errlen, "use of SigningTable requires KeyTable");
+		(void) snprintf(err, errlen, "use of SigningTable requires KeyTable");
 		return -1;
 	}
 
@@ -6750,7 +6750,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6776,7 +6776,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6803,7 +6803,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       NULL, &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6827,7 +6827,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                       &dberr);
 		if (status != 0)
 		{
-			snprintf(err, errlen, "%s: dkimf_db_open(): %s",
+			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
 			         str, dberr);
 			return -1;
 		}
@@ -6836,7 +6836,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		if (dbtype != DKIMF_DB_TYPE_FILE &&
 		    dbtype != DKIMF_DB_TYPE_CSL)
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "%s: invalid data set type for MacroList",
 			         str);
 			return -1;
@@ -6852,7 +6852,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                                           dkimf_sign);
 		if (conf->conf_signalg == -1)
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "unknown signing algorithm \"%s\"",
 			         conf->conf_signalgstr);
 			return -1;
@@ -6874,7 +6874,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                                            dkimf_canon);
 			if (conf->conf_hdrcanon == -1)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "unknown canonicalization algorithm \"%s\"",
 				         conf->conf_canonstr);
 				return -1;
@@ -6890,7 +6890,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                                            dkimf_canon);
 			if (conf->conf_hdrcanon == -1)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "unknown canonicalization algorithm \"%s\"",
 				         conf->conf_canonstr);
 				return -1;
@@ -6900,7 +6900,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                                             dkimf_canon);
 			if (conf->conf_bodycanon == -1)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "unknown canonicalization algorithm \"%s\"",
 				         p + 1);
 				return -1;
@@ -6935,7 +6935,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		tmpl = strtoul(str, &p, 10);
 		if (tmpl > UINT_MAX || errno != 0)
 		{
-			snprintf(err, errlen, "illegal value for \"Minimum\"");
+			(void) snprintf(err, errlen, "illegal value for \"Minimum\"");
 			return -1;
 		}
 
@@ -6945,7 +6945,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		{
 			if (conf->conf_sigmin > 100)
 			{
-				snprintf(err, errlen,
+				(void) snprintf(err, errlen,
 				         "illegal value for \"Minimum\"");
 				return -1;
 			}
@@ -6958,7 +6958,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		}
 		else if (*p != '\0')
 		{
-			snprintf(err, errlen, "illegal value for \"Minimum\"");
+			(void) snprintf(err, errlen, "illegal value for \"Minimum\"");
 			return -1;
 		}
 	}
@@ -6999,7 +6999,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				break;
 
 			  default:
-				snprintf(err, errlen, "unknown mode \"%c\"",
+				(void) snprintf(err, errlen, "unknown mode \"%c\"",
 				         *p);
 				return -1;
 			}
@@ -7036,7 +7036,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				errno = saveerrno;
 			}
 
-			snprintf(err, errlen, "%s: open(): %s",
+			(void) snprintf(err, errlen, "%s: open(): %s",
 			         conf->conf_keyfile, strerror(errno));
 			return -1;
 		}
@@ -7057,14 +7057,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				errno = saveerrno;
 			}
 
-			snprintf(err, errlen, "%s: stat(): %s",
+			(void) snprintf(err, errlen, "%s: stat(): %s",
 			         conf->conf_keyfile, strerror(errno));
 			close(fd);
 			return -1;
 		}
 		else if (!S_ISREG(s.st_mode))
 		{
-			snprintf(err, errlen, "%s: open(): Not a regular file",
+			(void) snprintf(err, errlen, "%s: open(): Not a regular file",
 			         conf->conf_keyfile);
 			close(fd);
 			return -1;
@@ -7085,7 +7085,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			pw = getpwnam(tmp);
 			if (pw == NULL)
 			{
-				snprintf(err, errlen, "%.64s: no such user", tmp);
+				(void) snprintf(err, errlen, "%.64s: no such user", tmp);
 				close(fd);
 				return -1;
 			}
@@ -7127,7 +7127,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				errno = saveerrno;
 			}
 
-			snprintf(err, errlen, "malloc(): %s", strerror(errno));
+			(void) snprintf(err, errlen, "malloc(): %s", strerror(errno));
 			return -1;
 		}
 
@@ -7149,7 +7149,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				errno = saveerrno;
 			}
 
-			snprintf(err, errlen, "%s: read(): %s",
+			(void) snprintf(err, errlen, "%s: read(): %s",
 			         conf->conf_keyfile, strerror(errno));
 			close(fd);
 			free(s33krit);
@@ -7163,7 +7163,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				       conf->conf_keyfile, (u_long) rlen);
 			}
 
-			snprintf(err, errlen, "%s: read() wrong size (%lu)",
+			(void) snprintf(err, errlen, "%s: read() wrong size (%lu)",
 			         conf->conf_keyfile, (u_long) rlen);
 			close(fd);
 			free(s33krit);
@@ -7183,7 +7183,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		    (conf->conf_selector == NULL &&
 		     conf->conf_keyfile != NULL))
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "KeyFile and Selector must both be defined or both be undefined");
 			return -1;
 		}
@@ -7192,7 +7192,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		    (conf->conf_selector == NULL ||
 		     conf->conf_keyfile == NULL))
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "Domain requires KeyFile and Selector");
 			return -1;
 		}
@@ -7200,7 +7200,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		if (conf->conf_signtable != NULL &&
 		    conf->conf_keytable == NULL)
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "SigningTable requires KeyTable");
 			return -1;
 		}
@@ -7210,7 +7210,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		    conf->conf_signtable == NULL &&
 		    conf->conf_setupscript == NULL)
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "KeyTable requires either SigningTable or SetupPolicyScript");
 			return -1;
 		}
@@ -7218,7 +7218,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		if (conf->conf_keytable != NULL &&
 		    conf->conf_signtable == NULL)
 		{
-			snprintf(err, errlen,
+			(void) snprintf(err, errlen,
 			         "KeyTable requires SigningTable");
 			return -1;
 		}
@@ -7275,7 +7275,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				    dbd[1].dbdata_buflen == 0 ||
 				    dbd[2].dbdata_buflen == 0)
 				{
-					snprintf(err, errlen,
+					(void) snprintf(err, errlen,
 					         "could not find valid key record \"%s\" in KeyTable",
 					         keyname);
 					return -1;
@@ -7292,7 +7292,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			}
 			if (_walkret == -1)
                         {
-                                snprintf(err, errlen, "error walking SigningTable");
+                                (void) snprintf(err, errlen, "error walking SigningTable");
                                 return -1;
                         }
 		}
