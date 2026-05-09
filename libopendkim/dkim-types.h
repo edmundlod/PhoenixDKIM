@@ -230,9 +230,7 @@ struct dkim
 	_Bool			dkim_bodydone;
 	_Bool			dkim_subdomain;
 	_Bool			dkim_skipbody;
-#ifdef _FFR_RESIGN
 	_Bool			dkim_hdrbind;
-#endif /* _FFR_RESIGN */
 	_Bool			dkim_eoh_reentry;
 	int			dkim_mode;
 	int			dkim_state;
@@ -243,9 +241,7 @@ struct dkim
 	int			dkim_presult;
 	int			dkim_hdrcnt;
 	int			dkim_minsiglen;
-#ifdef _FFR_RESIGN
 	u_int			dkim_refcnt;
-#endif /* _FFR_RESIGN */
 #ifdef QUERY_CACHE
 	u_int			dkim_cache_queries;
 	u_int			dkim_cache_hits;
@@ -281,9 +277,7 @@ struct dkim
 	void *			dkim_keydata;
 	void *			dkim_closure;
 	const void *		dkim_user_context;
-#ifdef _FFR_RESIGN
 	DKIM *			dkim_resign;
-#endif /* _FFR_RESIGN */
 	struct dkim_xtag *	dkim_xtags;
 	struct dkim_siginfo **	dkim_siglist;
 	struct dkim_set *	dkim_sethead;

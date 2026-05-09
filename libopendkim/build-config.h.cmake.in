@@ -17,11 +17,6 @@
 /* LMDB is required */
 #define USE_MDB 1
 
-/* Promoted FFR features — no longer experimental per project scope */
-#define _FFR_RESIGN 1
-#define _FFR_IDENTITY_HEADER 1
-#define _FFR_SENDER_MACRO 1
-
 /* Lua 5.4 scripting support (enabled with -DWITH_LUA=ON) */
 #cmakedefine USE_LUA 1
 

@@ -126,9 +126,6 @@ static char *optlist[] =
 
 
 
-#if _FFR_IDENTITY_HEADER
-	"_FFR_IDENTITY_HEADER",
-#endif /* _FFR_IDENTITY_HEADER */
 
 
 
@@ -136,13 +133,6 @@ static char *optlist[] =
 
 
 
-#if _FFR_RESIGN
-	"_FFR_RESIGN",
-#endif /* _FFR_RESIGN */
-
-#if _FFR_SENDER_MACRO
-	"_FFR_SENDER_MACRO",
-#endif /* _FFR_SENDER_MACRO */
 
 
 

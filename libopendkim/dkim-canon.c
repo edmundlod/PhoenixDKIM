@@ -665,23 +665,17 @@ dkim_canon_cleanup(DKIM *dkim)
 
 	assert(dkim != NULL);
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign != NULL && dkim->dkim_hdrbind)
 		return;
-#endif /* _FFR_RESIGN */
 
 	cur = dkim->dkim_canonhead;
 	while (cur != NULL)
 	{
 		next = cur->canon_next;
 
-#ifdef _FFR_RESIGN
 		/* skip if resigning and body */
 		if (dkim->dkim_resign == NULL || cur->canon_hdr)
 			dkim_canon_free(dkim, cur);
-#else /* _FFR_RESIGN */
-		dkim_canon_free(dkim, cur);
-#endif /* _FFR_RESIGN */
 
 		cur = next;
 	}

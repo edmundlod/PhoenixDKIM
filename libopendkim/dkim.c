@@ -3087,10 +3087,8 @@ dkim_eoh_sign(DKIM *dkim)
 
 	assert(dkim != NULL);
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign != NULL && dkim->dkim_hdrbind)
 		return DKIM_STAT_INVALID;
-#endif /* _FFR_RESIGN */
 
 	if (dkim->dkim_state >= DKIM_STATE_EOH2)
 		return DKIM_STAT_INVALID;
@@ -3451,7 +3449,6 @@ dkim_eom_sign(DKIM *dkim)
 
 	assert(dkim != NULL);
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign != NULL)
 	{
 		if (dkim->dkim_hdrbind)
@@ -3472,11 +3469,6 @@ dkim_eom_sign(DKIM *dkim)
 	{
   		return DKIM_STAT_INVALID;
 	}
-#else /* _FFR_RESIGN */
-	if (dkim->dkim_state >= DKIM_STATE_EOM2 ||
-	    dkim->dkim_state < DKIM_STATE_EOH1)
-		return DKIM_STAT_INVALID;
-#endif /* _FFR_RESIGN */
 
 	if (dkim->dkim_chunkstate != DKIM_CHUNKSTATE_INIT &&
 	    dkim->dkim_chunkstate != DKIM_CHUNKSTATE_DONE)
@@ -3485,7 +3477,6 @@ dkim_eom_sign(DKIM *dkim)
   	if (dkim->dkim_state < DKIM_STATE_EOM2)
   		dkim->dkim_state = DKIM_STATE_EOM2;
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign != NULL)
 	{
 		_Bool found = FALSE;
@@ -3529,7 +3520,6 @@ dkim_eom_sign(DKIM *dkim)
 				return DKIM_STAT_CANTVRFY;
 		}
 	}
-#endif /* _FFR_RESIGN */
 
 	/* finalize body canonicalizations */
 	status = dkim_canon_closebody(dkim);
@@ -4246,9 +4236,7 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 #ifdef _FFR_DNSSEC
 	FEATURE_ADD(libhandle, DKIM_FEATURE_DNSSEC);
 #endif /* _FFR_DNSSEC */
-#ifdef _FFR_RESIGN
 	FEATURE_ADD(libhandle, DKIM_FEATURE_RESIGN);
-#endif /* _FFR_RESIGN */
 	FEATURE_ADD(libhandle, DKIM_FEATURE_OVERSIGN);
 	FEATURE_ADD(libhandle, DKIM_FEATURE_XTAGS);
 
@@ -4731,7 +4719,6 @@ dkim_free(DKIM *dkim)
 {
 	assert(dkim != NULL);
 
-#ifdef _FFR_RESIGN
 	/* XXX -- this should be mutex-protected */
 	if (dkim->dkim_resign != NULL)
 	{
@@ -4744,14 +4731,9 @@ dkim_free(DKIM *dkim)
 	{
 		return DKIM_STAT_INVALID;
 	}
-#endif /* _FFR_RESIGN */
 
 	/* blast the headers */
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign == NULL && dkim->dkim_hhead != NULL)
-#else /* _FFR_RESIGN */
-	if (dkim->dkim_hhead != NULL)
-#endif /* _FFR_RESIGN */
 	{
 		struct dkim_header *next;
 		struct dkim_header *hdr;
@@ -4768,11 +4750,7 @@ dkim_free(DKIM *dkim)
 	}
 
 	/* blast the data sets */
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign == NULL && dkim->dkim_sethead != NULL)
-#else /* _FFR_RESIGN */
-	if (dkim->dkim_sethead != NULL)
-#endif /* _FFR_RESIGN */
 	{
 		DKIM_SET *set;
 		DKIM_SET *next;
@@ -5067,7 +5045,6 @@ dkim_verify(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 DKIM_STAT
 dkim_resign(DKIM *new, DKIM *old, _Bool hdrbind)
 {
-#ifdef _FFR_RESIGN
 	_Bool keep;
 	_Bool tmp;
 	DKIM_STAT status;
@@ -5193,9 +5170,6 @@ dkim_resign(DKIM *new, DKIM *old, _Bool hdrbind)
 	}
 
 	return DKIM_STAT_OK;
-#else /* _FFR_RESIGN */
-	return DKIM_STAT_NOTIMPLEMENT;
-#endif /* _FFR_RESIGN */
 }
 
 /*
@@ -5756,10 +5730,8 @@ dkim_header(DKIM *dkim, u_char *hdr, size_t len)
 	assert(hdr != NULL);
 	assert(len != 0);
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_hdrbind)
 		return DKIM_STAT_INVALID;
-#endif /* _FFR_RESIGN */
 
 	if (dkim->dkim_state > DKIM_STATE_HEADER)
 		return DKIM_STAT_INVALID;
@@ -5973,10 +5945,8 @@ dkim_body(DKIM *dkim, u_char *buf, size_t buflen)
 	assert(dkim != NULL);
 	assert(buf != NULL);
 
-#ifdef _FFR_RESIGN
 	if (dkim->dkim_resign != NULL)
 		return DKIM_STAT_INVALID;
-#endif /* _FFR_RESIGN */
 
 	if (dkim->dkim_state > DKIM_STATE_BODY ||
 	    dkim->dkim_state < DKIM_STATE_EOH1)

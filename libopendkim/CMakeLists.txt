@@ -326,9 +326,6 @@ function(configure_opendkim_target tgt)
     target_compile_definitions(${tgt} PRIVATE
         HAVE_SHA256=1
         USE_MDB=1
-        _FFR_RESIGN=1
-        _FFR_IDENTITY_HEADER=1
-        _FFR_SENDER_MACRO=1
     )
 
     if(HAVE_RES_NINIT)

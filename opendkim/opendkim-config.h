@@ -58,10 +58,8 @@ struct configdef dkimf_config[] =
 	{ "FinalPolicyScript",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_LUA */
 	{ "FixCRLF",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_IDENTITY_HEADER
 	{ "IdentityHeader",		CONFIG_TYPE_STRING,     FALSE },
 	{ "IdentityHeaderRemove",	CONFIG_TYPE_BOOLEAN,    FALSE },
-#endif /* _FFR_IDENTITY_HEADER */
 	{ "IgnoreMalformedMail",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "Include",			CONFIG_TYPE_INCLUDE,	FALSE },
 	{ "InternalHosts",		CONFIG_TYPE_STRING,	FALSE },
@@ -129,10 +127,8 @@ struct configdef dkimf_config[] =
 	{ "RequestReports",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RequiredHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RequireSafeKeys",		CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef _FFR_RESIGN
 	{ "ResignAll",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "ResignMailTo",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_RESIGN */
 	{ "ResolverConfiguration",	CONFIG_TYPE_STRING,	FALSE },
 	{ "ResolverTracing",		CONFIG_TYPE_BOOLEAN,	FALSE },
 #ifdef USE_LUA
@@ -141,9 +137,7 @@ struct configdef dkimf_config[] =
 	{ "Selector",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SelectCanonicalizationHeader", CONFIG_TYPE_STRING,	FALSE },
 	{ "SenderHeaders",		CONFIG_TYPE_STRING,	FALSE },
-#ifdef _FFR_SENDER_MACRO
 	{ "SenderMacro",		CONFIG_TYPE_STRING,	FALSE },
-#endif /* _FFR_SENDER_MACRO */
 	{ "SendReports",		CONFIG_TYPE_BOOLEAN,	FALSE },
 #ifdef USE_LUA
 	{ "SetupPolicyScript",		CONFIG_TYPE_STRING,	FALSE },
