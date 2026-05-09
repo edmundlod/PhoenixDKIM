@@ -264,8 +264,3 @@ install(FILES opendkim-lua.3 DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
 if(WITH_LUA)
     add_subdirectory(tests)
 endif()
-
-# ── Pkgconfig ─────────────────────────────────────────────────────────────────
-
-set(PKGCONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-install(FILES opendkim.pc DESTINATION ${PKGCONFIG_INSTALL_DIR})
