@@ -55,7 +55,6 @@
 # undef USE_SASL
 # undef USE_ODBX
 # undef USE_LUA
-# undef _FFR_SOCKETDB
 #endif /* OPENDKIM_DB_ONLY */
 #include "opendkim-db.h"
 #ifdef USE_LUA
@@ -64,12 +63,6 @@
 #include "opendkim.h"
 
 /* various DB library includes */
-#ifdef _FFR_SOCKETDB
-# include <sys/socket.h>
-# include <sys/un.h>
-# include <netinet/in.h>
-# include <arpa/inet.h>
-#endif /* _FFR_SOCKETDB */
 #ifdef USE_DB
 # include <db.h>
 #endif /* USE_DB */
@@ -100,19 +93,10 @@
 /* macros */
 #define	BUFRSZ			1024
 #define	DEFARRAYSZ		16
-#ifdef _FFR_DB_HANDLE_POOLS
-# define DEFPOOLMAX		10
-#endif /* _FFR_DB_HANDLE_POOLS */
 #define DKIMF_DB_DEFASIZE	8
 #define DKIMF_DB_MODE		0644
 #define DKIMF_LDAP_MAXURIS	8
 #define DKIMF_LDAP_DEFTIMEOUT	5
-#ifdef _FFR_LDAP_CACHING
-# define DKIMF_LDAP_TTL		600
-#endif /* _FFR_LDAP_CACHING */
-#ifdef _FFR_SOCKETDB
-# define DKIMF_SOCKET_TIMEOUT	5
-#endif /* _FFR_SOCKETDB */
 
 #define	DKIMF_DB_IFLAG_FREEARRAY 0x01
 #define	DKIMF_DB_IFLAG_RECONNECT 0x02
@@ -221,32 +205,9 @@ struct dkimf_db_ldap
 	int			ldap_timeout;
 	char			ldap_urilist[BUFRSZ];
 	LDAPURLDesc *		ldap_descr;
-# ifdef _FFR_LDAP_CACHING
-#  ifdef USE_DB
-	DKIMF_DB		ldap_cache;
-#  endif /* USE_DB */
-# endif /* _FFR_LDAP_CACHING */
 	pthread_mutex_t		ldap_lock;
 };
 
-# ifdef _FFR_LDAP_CACHING
-#  ifdef USE_DB
-#   define DKIMF_DB_CACHE_DATA		0
-#   define DKIMF_DB_CACHE_PENDING	1
-struct dkimf_db_ldap_cache
-{
-	_Bool			ldc_absent;
-	int			ldc_state;
-	int			ldc_nresults;
-	int			ldc_waiters;
-	int			ldc_error;
-	time_t			ldc_expire;
-	void *			ldc_handle;
-	char **			ldc_results;
-	pthread_cond_t		ldc_cond;
-};
-#  endif /* USE_DB */
-# endif /* _FFR_LDAP_CACHING */
 #endif /* USE_LDAP */
 
 #ifdef USE_LUA
@@ -258,13 +219,6 @@ struct dkimf_db_lua
 };
 #endif /* USE_LUA */
 
-#ifdef _FFR_SOCKETDB
-struct dkimf_db_socket
-{
-	int			sockdb_fd;
-	struct dkimf_dstring *	sockdb_buf;
-};
-#endif /* _FFR_SOCKETDB */
 
 #ifdef USE_MDB
 struct dkimf_db_mdb
@@ -308,9 +262,6 @@ struct dkimf_db_table dbtypes[] =
 #ifdef USE_LIBMEMCACHED
 	{ "memcache",		DKIMF_DB_TYPE_MEMCACHE },
 #endif /* USE_LIBMEMCACHED */
-#ifdef _FFR_SOCKETDB
-	{ "socket",		DKIMF_DB_TYPE_SOCKET },
-#endif /* _FFR_SOCKETDB */
 #ifdef USE_MDB
 	{ "mdb",		DKIMF_DB_TYPE_MDB },
 #endif /* USE_MDB */
@@ -322,299 +273,10 @@ struct dkimf_db_table dbtypes[] =
 
 static char *dkimf_db_ldap_param[DKIMF_LDAP_PARAM_MAX + 1];
 
-#ifdef _FFR_DB_HANDLE_POOLS
-struct handle_pool
-{
-	u_int		hp_dbtype;
-	u_int		hp_max;
-	u_int		hp_alloc;
-	u_int		hp_asize;
-	u_int		hp_count;
-	void *		hp_hdata;
-	void **		hp_handles;
-	pthread_mutex_t	hp_lock;
-	pthread_cond_t	hp_signal;
-};
-#endif /* _FFR_DB_HANDLE_POOLS */
 
 /* globals */
 static unsigned int gflags = 0;
 
-#ifdef _FFR_DB_HANDLE_POOLS
-/*
-**  DKIMF_DB_HP_NEW -- create a handle pool
-**
-**  Parameters:
-**  	type -- DB type
-**  	max -- maximum pool size
-**  	hdata -- data needed to make new handles
-**
-**  Return value:
-**  	Pointer to a newly-allocated handle pool, or NULL on error.
-*/
-
-static struct handle_pool *
-dkimf_db_hp_new(u_int type, u_int max, void *hdata)
-{
-	struct handle_pool *new;
-
-	new = (struct handle_pool *) malloc(sizeof *new);
-	if (new != NULL)
-	{
-		new->hp_alloc = 0;
-		new->hp_asize = 0;
-		new->hp_count = 0;
-		new->hp_dbtype = type;
-		new->hp_handles = NULL;
-		new->hp_hdata = hdata;
-		new->hp_max = max;
-		pthread_mutex_init(&new->hp_lock, NULL);
-		pthread_cond_init(&new->hp_signal, NULL);
-	}
-
-	return new;
-}
-
-/*
-**  DKIMF_DB_HP_FREE -- free a handle pool
-**
-**  Parameters:
-**  	pool -- bool to free up
-**
-**  Return value:
-**  	None.
-*/
-
-static void
-dkimf_db_hp_free(struct handle_pool *pool)
-{
-	u_int c;
-
-	assert(pool != NULL);
-
-	for (c = 0; c < pool->hp_count; c++)
-	{
-		switch (pool->hp_dbtype)
-		{
-#ifdef USE_ODBX
-		  case DKIMF_DB_TYPE_DSN:
-		  {
-			odbx_t *odbx;
-
-			odbx = (odbx_t *) pool->hp_handles[c];
-
-			(void) odbx_unbind(odbx);
-			(void) odbx_finish(odbx);
-			free(odbx);
-
-			break;
-		  }
-#endif /* USE_ODBX */
-
-		  default:
-			break;
-		}
-	}
-
-	pthread_mutex_destroy(&pool->hp_lock);
-	pthread_cond_destroy(&pool->hp_signal);
-	free(pool->hp_handles);
-	free(pool);
-}
-
-/*
-**  DKIMF_DB_HP_GET -- get a handle from a handle pool
-**
-**  Parameters:
-**  	pool -- pool from which to get a handle
-**  	err -- error code (returned)
-**
-**  Return value:
-**  	A handle appropriate to the associated DB type that is not currently
-**  	in use by another thread, or NULL on error.
-*/
-
-static void *
-dkimf_db_hp_get(struct handle_pool *pool, int *err)
-{
-	void *ret;
-
-	assert(pool != NULL);
-
-	pthread_mutex_lock(&pool->hp_lock);
-
-	for (;;)
-	{
-		/* if one is available, return it */
-		if (pool->hp_count > 0)
-		{
-			ret = pool->hp_handles[0];
-
-			if (pool->hp_count > 1)
-			{
-				memmove(&pool->hp_handles[0],
-				        &pool->hp_handles[1],
-				        sizeof(void *) * (pool->hp_count - 1));
-			}
-
-			pool->hp_count--;
-
-			pthread_mutex_unlock(&pool->hp_lock);
-
-			return ret;
-		}
-
-		/* if we can allocate one, do so */
-		if (pool->hp_alloc <= pool->hp_max)
-		{
-			switch (pool->hp_dbtype)
-			{
-#ifdef USE_ODBX
-			  case DKIMF_DB_TYPE_DSN:
-			  {
-				int dberr;
-				odbx_t *odbx;
-				struct dkimf_db_dsn *dsn;
-
-				dsn = (struct dkimf_db_dsn *) pool->hp_hdata;
-
-				dberr = odbx_init(&odbx,
-				                  STRORNULL(dsn->dsn_backend),
-				                  STRORNULL(dsn->dsn_host),
-				                  STRORNULL(dsn->dsn_port));
-
-				if (dberr < 0)
-				{
-					if (err != NULL)
-						*err = dberr;
-
-					(void) odbx_finish(odbx);
-					pthread_mutex_unlock(&pool->hp_lock);
-
-					return NULL;
-				}
-
-				dberr = odbx_bind(odbx,
-				                        STRORNULL(dsn->dsn_dbase),
-				                        STRORNULL(dsn->dsn_user),
-				                        STRORNULL(dsn->dsn_password),
-				                        ODBX_BIND_SIMPLE);
-				if (dberr < 0)
-				{
-					if (err != NULL)
-						*err = dberr;
-
-					(void) odbx_finish(odbx);
-					pthread_mutex_unlock(&pool->hp_lock);
-
-					return NULL;
-				}
-
-				ret = odbx;
-
-				break;
-			  }
-#endif /* USE_ODBX */
-
-			  default:
-				assert(0);
-				break;
-			}
-
-			pool->hp_alloc++;
-
-			pthread_mutex_unlock(&pool->hp_lock);
-
-			return ret;
-		}
-
-		/* already full; wait for one */
-		pthread_cond_wait(&pool->hp_signal, &pool->hp_lock);
-	}
-}
-
-/*
-**  DKIMF_DB_HP_DEAD -- report that a handle found in the pool was dead
-**
-**  Parameters:
-**  	pool -- handle pool to be updated
-**
-**  Return value:
-**  	None.
-**
-**  Notes:
-**  	The caller is expected to identify a dead handle and deallocate it.
-*/
-
-static void
-dkimf_db_hp_dead(struct handle_pool *pool)
-{
-	assert(pool != NULL);
-
-	pthread_mutex_lock(&pool->hp_lock);
-	pool->hp_alloc--;
-	pthread_cond_signal(&pool->hp_signal);
-	pthread_mutex_unlock(&pool->hp_lock);
-}
-
-/*
-**  DKIMF_DB_HP_PUT -- put a handle back into a handle pool after use
-**
-**  Parameters:
-**  	pool -- pool from which to get a handle
-**  	handle -- handle being returned
-**
-**  Return value:
-**  	None.
-*/
-
-static void
-dkimf_db_hp_put(struct handle_pool *pool, void *handle)
-{
-	assert(pool != NULL);
-	assert(handle != NULL);
-
-	pthread_mutex_lock(&pool->hp_lock);
-
-	/* need to grow the array? */
-	if (pool->hp_asize == pool->hp_count)
-	{
-		u_int newasz;
-
-		if (pool->hp_asize == 0)
-		{
-			newasz = DKIMF_DB_DEFASIZE;
-			pool->hp_handles = (void **) malloc(newasz * sizeof(void *));
-			assert(pool->hp_handles != NULL);
-		}
-		else
-		{
-			void **newa;
-
-			newasz = pool->hp_asize * 2;
-			newa = (void **) realloc(pool->hp_handles,
-			                         newasz * sizeof(void *));
-			assert(newa != NULL);
-			pool->hp_handles = newa;
-		}
-
-		pool->hp_asize = newasz;
-	}
-
-	/* append it */
-	pool->hp_handles[pool->hp_count] = handle;
-
-	/* increment the count */
-	pool->hp_count++;
-
-	/* signal any waiters */
-	pthread_cond_signal(&pool->hp_signal);
-
-	/* all done */
-	pthread_mutex_unlock(&pool->hp_lock);
-}
-
-#endif /* _FFR_DB_HANDLE_POOLS */
 
 /*
 **  DKIMF_DB_FLAGS -- set global flags
@@ -1895,8 +1557,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	}
 
 	/* force DB accesses to be mutex-protected */
-	if (new->db_type == DKIMF_DB_TYPE_DSN ||
-	    new->db_type == DKIMF_DB_TYPE_SOCKET)
+	if (new->db_type == DKIMF_DB_TYPE_DSN)
 		new->db_flags |= DKIMF_DB_FLAG_MAKELOCK;
 
 	/* use provided lock, or create a new one if needed */
@@ -2734,19 +2395,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 			return -1;
 		}
 
-# ifdef _FFR_DB_HANDLE_POOLS
-		new->db_handle = dkimf_db_hp_new(new->db_type,
-		                                 DEFPOOLMAX, dsn);
-		if (new == NULL)
-		{
-			if (err != NULL)
-				*err = strerror(errno);
-			free(dsn);
-			free(tmp);
-			free(new);
-			return -1;
-		}
-# else /* _FFR_DB_HANDLE_POOLS */
 		/* create odbx handle */
 		if (dkimf_db_open_sql(dsn, &odbx, err) < 0)
 		{
@@ -2764,7 +2412,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 
 		/* store handle */
 		new->db_handle = (void *) odbx;
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 		new->db_data = (void *) dsn;
 
@@ -2787,11 +2434,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 		char *q;
 		char *r;
 		LDAPURLDesc *descr;
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-		DB *newdb;
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 		char *uris[DKIMF_LDAP_MAXURIS];
 
 		memset(uris, '\0', sizeof uris);
@@ -2929,57 +2571,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 
 		pthread_mutex_init(&ldap->ldap_lock, NULL);
 
-# ifdef _FFR_LDAP_CACHING
-#  ifdef USE_DB
-		if ((new->db_flags & DKIMF_DB_FLAG_NOCACHE) == 0)
-		{
-			/* establish LDAP cache DB */
-			lderr = 0;
-
-#   if DB_VERSION_CHECK(3,0,0)
-			lderr = db_create(&newdb, NULL, 0);
-			if (lderr == 0)
-			{
-#    if DB_VERSION_CHECK(4,1,25)
-	 			lderr = newdb->open(newdb, NULL, NULL, NULL,
-				                    DB_HASH, DB_CREATE, 0);
-#    else /* DB_VERSION_CHECK(4,1,25) */
-				lderr = newdb->open(newdb, NULL, NULL, DB_HASH,
-				                    DB_CREATE, 0);
-#    endif /* DB_VERSION_CHECK(4,1,25) */
-			}
-#   elif DB_VERSION_CHECK(2,0,0)
-			lderr = db_open(NULL, DB_HASH, 0, DKIMF_DB_MODE,
-			                NULL, NULL, &newdb);
-#   else /* DB_VERSION_CHECK(2,0,0) */
-			newdb = dbopen(NULL, (O_CREAT|O_RDWR),
-			               DKIMF_DB_MODE, DB_HASH, NULL);
-			if (newdb == NULL)
-				lderr = errno;
-#   endif /* DB_VERSION_CHECK */
-
-			if (lderr == 0)
-			{
-				DKIMF_DB cachedb;
-
-				cachedb = malloc(sizeof *cachedb);
-				if (cachedb != NULL)
-				{
-					memset(cachedb, '\0', sizeof *cachedb);
-
-					cachedb->db_type = DKIMF_DB_TYPE_BDB;
-					cachedb->db_handle = newdb;
-
-					ldap->ldap_cache = cachedb;
-				}
-				else
-				{
-					DKIMF_DBCLOSE(newdb);
-				}
-			}
-		}
-#  endif /* USE_DB */
-# endif /* _FFR_LDAP_CACHING */
 
 		/* store handle */
 		new->db_handle = (void *) ld;
@@ -3142,358 +2733,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	  }
 #endif /* USE_LIBMEMCACHED */
 
-#ifdef _FFR_SOCKETDB
-	  case DKIMF_DB_TYPE_SOCKET:
-	  {
-		int fd;
-		int status;
-		struct dkimf_db_socket *sdb;
-
-		sdb = (struct dkimf_db_socket *) malloc(sizeof *sdb);
-		if (sdb == NULL)
-		{
-			if (err != NULL)
-				*err = strerror(errno);
-			free(new);
-			return 2;
-		}
-
-		if ((new->db_flags & DKIMF_DB_FLAG_READONLY) == 0)
-		{
-			if (err != NULL)
-				*err = strerror(EINVAL);
-			free(new);
-			errno = EINVAL;
-			return 2;
-		}
-
-		if (*p == '/')
-		{					/* UNIX domain */
-			struct sockaddr_un sun;
-
-			fd = socket(AF_UNIX, SOCK_STREAM, 0);
-			if (fd < 0)
-			{
-				if (err != NULL)
-					*err = strerror(errno);
-				free(new);
-				return 2;
-			}
-
-			memset(&sun, '\0', sizeof sun);
-			sun.sun_family = AF_UNIX;
-#ifdef HAVE_SUN_LEN
-			sun.sun_len = sizeof(sun);
-#endif /* HAVE_SUN_LEN */
-			strlcpy(sun.sun_path, p, sizeof(sun.sun_path));
-
-			status = connect(fd, (struct sockaddr *) &sun,
-			                 sizeof sun);
-			if (status < 0)
-			{
-				if (err != NULL)
-					*err = strerror(errno);
-				free(new);
-				return 2;
-			}
-		}
-		else
-		{					/* port@host */
-			int af;
-			char *at;
-			char *q;
-			uint16_t port;
-			struct in_addr ip4;
-# ifdef AF_INET6
-			struct in6_addr ip6;
-# endif /* AF_INET6 */
-
-			at = strchr(p, '@');
-			if (at == NULL)
-			{
-				if (err != NULL)
-					*err = strerror(EINVAL);
-				free(new);
-				errno = EINVAL;
-				return 2;
-			}
-
-			*at = '\0';
-
-			port = (uint16_t) strtoul(p, &q, 10);
-			if (*q != '\0')
-			{
-				struct servent *srv;
-
-				srv = getservbyname(p, "tcp");
-				if (srv == NULL)
-				{
-					if (err != NULL)
-						*err = strerror(EINVAL);
-					free(new);
-					errno = EINVAL;
-					return 2;
-				}
-
-				port = srv->s_port;
-			}
-			else
-			{
-				port = htons(port);
-			}
-
-			fd = -1;
-
-			if (inet_pton(AF_INET, at + 1, &ip4) == 1)
-			{
-				af = AF_INET;
-			}
-# ifdef AF_INET6
-			else if (inet_pton(AF_INET6, at + 1, &ip6) == 1)
-			{
-				af = AF_INET6;
-			}
-# endif /* AF_INET6 */
-			else
-			{
-# ifdef HAVE_GETADDRINFO
-				int save_errno;
-				struct addrinfo hint;
-				struct addrinfo *aitop;
-				struct addrinfo *aicur;
-				struct protoent *proto;
-
-				proto = getprotobyname("tcp");
-				if (proto == NULL)
-				{
-					if (err != NULL)
-						*err = strerror(EPROTONOSUPPORT);
-					free(new);
-					errno = EPROTONOSUPPORT;
-					return 2;
-				}
-
-				memset(&hint, '\0', sizeof hint);
-				hint.ai_protocol = proto->p_proto;
-
-				status = getaddrinfo(at + 1, p, &hint, &aitop);
-				if (status != 0)
-				{
-					if (err != NULL)
-						*err = (char *) gai_strerror(status);
-					free(new);
-					errno = EINVAL;
-					return 2;
-				}
-
-				for (aicur = aitop;
-				     aicur != NULL;
-				     aicur = aicur->ai_next)
-				{
-					fd = socket(aicur->ai_family,
-					            aicur->ai_socktype,
-					            aicur->ai_protocol);
-					if (fd == -1)
-					{
-						save_errno = errno;
-						continue;
-					}
-
-					status = connect(fd, aicur->ai_addr,
-					                 aicur->ai_addrlen);
-					if (status == 0)
-						break;
-
-					save_errno = errno;
-					close(fd);
-					fd = -1;
-				}
-
-				freeaddrinfo(aitop);
-
-				if (fd == -1)
-				{
-					if (err != NULL)
-						*err = strerror(save_errno);
-					free(new);
-					errno = save_errno;
-					return 2;
-				}
-# else /* HAVE_GETADDRINFO */
-				struct hostent *h;
-				struct sockaddr_in sin4;
-#  ifdef HAVE_GETHOSTBYNAME2
-				struct sockaddr_in6 sin6;
-
-				h = gethostbyname2(at + 1, AF_INET6);
-				if (h != NULL)
-				{
-					af = AF_INET6;
-
-					fd = socket(AF_INET6, SOCK_STREAM, 0);
-					if (fd < 0)
-					{
-						if (err != NULL)
-							*err = strerror(errno);
-						free(new);
-						return 2;
-					}
-
-					for (c = 0;
-					     h->h_addr_list[c] != NULL;
-					     c++)
-					{
-						memset(&sin6, '\0',
-						       sizeof sin6);
-
-						sin6.sin6_family = AF_INET6;
-						sin6.sin6_port = port;
-						memcpy(&sin6.sin6_addr,
-						       h->h_addr_list[c],
-						       sizeof sin6.sin6_addr);
-
-						status = connect(fd,
-						                 (struct sockaddr *) &sin6,
-						                 sizeof sin6);
-						if (status == 0)
-							break;
-
-						save_errno = errno;
-					}
-
-					close(fd);
-					fd = -1;
-				}
-#  endif /* HAVE_GETHOSTBYNAME2 */
-
-				h = gethostbyname(at + 1);
-				if (h != NULL)
-				{
-					af = AF_INET;
-
-					fd = socket(AF_INET, SOCK_STREAM, 0);
-					if (fd < 0)
-					{
-						if (err != NULL)
-							*err = strerror(errno);
-						free(new);
-						return 2;
-					}
-
-					for (c = 0;
-					     h->h_addr_list[c] != NULL;
-					     c++)
-					{
-						memset(&sin4, '\0',
-						       sizeof sin4);
-
-						sin.sin_family = AF_INET;
-						sin.sin_port = port;
-						memcpy(&sin.sin_addr,
-						       h->h_addr_list[c],
-						       sizeof sin.sin_addr);
-
-						status = connect(fd,
-						                 (struct sockaddr *) &sin4,
-						                 sizeof sin4);
-						if (status == 0)
-							break;
-
-						save_errno = errno;
-					}
-
-					close(fd);
-					fd = -1;
-				}
-
-				if (fd == -1)
-				{
-					if (err != NULL)
-						*err = strerror(save_errno);
-					free(new);
-					errno = save_errno;
-					return 2;
-				}
-# endif /* HAVE_GETADDRINFO */
-			}
-
-			if (fd == -1)
-			{
-				int save_errno;
-
-				fd = socket(af, SOCK_STREAM, 0);
-				if (fd < 0)
-				{
-					if (err != NULL)
-						*err = strerror(errno);
-					free(new);
-					return 2;
-				}
-
-# ifdef AF_INET6
-				if (af == AF_INET6)
-				{
-					struct sockaddr_in6 sin6;
-
-					memset(&sin6, '\0', sizeof sin6);
-
-					sin6.sin6_family = AF_INET6;
-					sin6.sin6_port = port;
-					memcpy(&sin6.sin6_addr, &ip6,
-					       sizeof sin6.sin6_addr);
-
-					status = connect(fd,
-					                 (struct sockaddr *) &sin6,
-					                 sizeof sin6);
-
-					if (status != 0)
-					{
-						save_errno = errno;
-						close(fd);
-						if (err != NULL)
-							*err = strerror(save_errno);
-						free(new);
-						return 2;
-					}
-				}
-# endif /* AF_INET6 */
-
-				if (af == AF_INET)
-				{
-					struct sockaddr_in sin4;
-
-					memset(&sin4, '\0', sizeof sin4);
-
-					sin4.sin_family = AF_INET;
-					sin4.sin_port = port;
-					memcpy(&sin4.sin_addr, &ip4,
-					       sizeof sin4.sin_addr);
-
-					status = connect(fd,
-					                 (struct sockaddr *) &sin4,
-					                 sizeof sin4);
-
-					if (status != 0)
-					{
-						save_errno = errno;
-						close(fd);
-						if (err != NULL)
-							*err = strerror(save_errno);
-						free(new);
-						return 2;
-					}
-				}
-			}
-		}
-
-		sdb->sockdb_fd = fd;
-		sdb->sockdb_buf = dkimf_dstring_new(BUFRSZ, 0);
-
-		new->db_handle = sdb;
-
-		break;
-	  }
-#endif /* _FFR_SOCKETDB */
 
 #ifdef USE_MDB
 	  case DKIMF_DB_TYPE_MDB:
@@ -4371,15 +3610,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 
 		dsn = (struct dkimf_db_dsn *) db->db_data;
 
-# ifdef _FFR_DB_HANDLE_POOLS
-		odbx = dkimf_db_hp_get((struct handle_pool *) db->db_handle,
-		                       &err);
-		if (odbx == NULL)
-		{
-			db->db_status = err;
-			return -1;
-		}
-# else /* _FFR_DB_HANDLE_POOLS */
 		if (db->db_lock != NULL)
 			(void) pthread_mutex_lock(db->db_lock);
 
@@ -4400,7 +3630,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 
 		odbx = (odbx_t *) db->db_handle;
 
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 		memset(escaped, '\0', sizeof escaped);
 		elen = sizeof escaped - 1;
@@ -4413,10 +3642,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			if (db->db_lock != NULL)
 				(void) pthread_mutex_unlock(db->db_lock);
 
-# ifdef _FFR_DB_HANDLE_POOLS
-			dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-			                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 			return err;
 		}
@@ -4440,39 +3665,19 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			{
 				if (db->db_lock != NULL)
 					(void) pthread_mutex_unlock(db->db_lock);
-# ifdef _FFR_DB_HANDLE_POOLS
-				dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-				                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 				return err;
 			}
 
 			status = odbx_error_type(odbx, err);
 
-#ifdef _FFR_POSTGRESQL_RECONNECT_HACK
-			if (status >= 0)
-			{
-				const char *estr;
-
-				estr = odbx_error(odbx, db->db_status);
-
-				if (estr != NULL &&
-				    strncmp(estr, "FATAL:", 6) == 0)
-					status = -1;
-			}
-#endif /* _FFR_POSTGRESQL_RECONNECT_HACK */
 
 			if (status < 0)
 			{
 				(void) odbx_unbind(odbx);
 				(void) odbx_finish(odbx);
 
-# ifdef _FFR_DB_HANDLE_POOLS
-				dkimf_db_hp_dead((struct handle_pool *) db->db_handle);
-# else /* _FFR_DB_HANDLE_POOLS */
 				db->db_iflags |= DKIMF_DB_IFLAG_RECONNECT;
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 				if (db->db_lock != NULL)
 					(void) pthread_mutex_unlock(db->db_lock);
@@ -4500,27 +3705,11 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 				{
 					if (db->db_lock != NULL)
 						(void) pthread_mutex_unlock(db->db_lock);
-# ifdef _FFR_DB_HANDLE_POOLS
-					dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-					                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 					return err;
 				}
 
 				status = odbx_error_type(odbx, err);
 
-#ifdef _FFR_POSTGRESQL_RECONNECT_HACK
-				if (status >= 0)
-				{
-					const char *estr;
-
-					estr = odbx_error(odbx, db->db_status);
-
-					if (estr != NULL &&
-					    strncmp(estr, "FATAL:", 6) == 0)
-						status = -1;
-				}
-#endif /* _FFR_POSTGRESQL_RECONNECT_HACK */
 
 				if (result != NULL)
 					(void) odbx_result_finish(result);
@@ -4530,11 +3719,7 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 					(void) odbx_unbind(odbx);
 					(void) odbx_finish(odbx);
 
-# ifdef _FFR_DB_HANDLE_POOLS
-					dkimf_db_hp_dead((struct handle_pool *) db->db_handle);
-# else /* _FFR_DB_HANDLE_POOLS */
 					db->db_iflags |= DKIMF_DB_IFLAG_RECONNECT;
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 					if (db->db_lock != NULL)
 						(void) pthread_mutex_unlock(db->db_lock);
@@ -4546,10 +3731,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 
 				if (db->db_lock != NULL)
 					(void) pthread_mutex_unlock(db->db_lock);
-# ifdef _FFR_DB_HANDLE_POOLS
-				dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-				                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 				return err;
 			}
@@ -4560,10 +3741,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 				err = odbx_result_finish(result);
 				if (db->db_lock != NULL)
 					(void) pthread_mutex_unlock(db->db_lock);
-# ifdef _FFR_DB_HANDLE_POOLS
-				dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-				                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 				return 0;
 			}
@@ -4577,10 +3754,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 					err = odbx_result_finish(result);
 					if (db->db_lock != NULL)
 						(void) pthread_mutex_unlock(db->db_lock);
-# ifdef _FFR_DB_HANDLE_POOLS
-					dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-					                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 					return db->db_status;
 				}
 				else if (err == ODBX_RES_DONE)
@@ -4640,10 +3813,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		if (db->db_lock != NULL)
 			(void) pthread_mutex_unlock(db->db_lock);
 
-# ifdef _FFR_DB_HANDLE_POOLS
-		dkimf_db_hp_put((struct handle_pool *) db->db_handle,
-		                (void *) odbx);
-# endif /* _FFR_DB_HANDLE_POOLS */
 
 		return 0;
 	  }
@@ -4658,11 +3827,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		LDAPMessage *result;
 		LDAPMessage *e;
 		struct dkimf_db_ldap *ldap;
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-		struct dkimf_db_ldap_cache *ldc = NULL;
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 		struct berval **vals;
 		char query[BUFRSZ];
 		char filter[BUFRSZ];
@@ -4690,158 +3854,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			}
 		}
 
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-		if (ldap->ldap_cache != NULL)
-		{
-			_Bool cex = FALSE;
-			struct dkimf_db_data dbd;
-
-			dbd.dbdata_buffer = (char *) &ldc;
-			dbd.dbdata_buflen = sizeof ldc;
-			dbd.dbdata_flags = DKIMF_DB_DATA_BINARY;
-
-			status = dkimf_db_get(ldap->ldap_cache, buf, buflen,
-			                      &dbd, 1, &cex);
-
-			if (cex)
-			{
-				struct timeval now;
-
-				(void) gettimeofday(&now, NULL);
-
-				if (ldc->ldc_state == DKIMF_DB_CACHE_DATA &&
-				    ldc->ldc_absent)
-				{
-					if (exists != NULL)
-						*exists = FALSE;
-
-					pthread_mutex_unlock(&ldap->ldap_lock);
-					return 0;
-				}
-				else if (ldc->ldc_state == DKIMF_DB_CACHE_DATA &&
-				         ldc->ldc_expire <= now.tv_sec)
-				{
-					ldc->ldc_state = DKIMF_DB_CACHE_PENDING;
-				}
-				else if (ldc->ldc_state == DKIMF_DB_CACHE_DATA &&
-				         ldc->ldc_error != 0)
-				{
-					pthread_mutex_unlock(&ldap->ldap_lock);
-					return ldc->ldc_error;
-				}
-				else if (ldc->ldc_state == DKIMF_DB_CACHE_DATA &&
-				         ldc->ldc_expire > now.tv_sec)
-				{
-					if (exists != NULL)
-						*exists = TRUE;
-
-					for (c = 0;
-					     c < reqnum && c < ldc->ldc_nresults;
-					     c++)
-					{
-						req[c].dbdata_buflen = strlcpy(req[c].dbdata_buffer,
-						                               ldc->ldc_results[c],
-						                               req[c].dbdata_buflen);
-					}
-
-					while (c < reqnum)
-						req[c++].dbdata_buflen = 0;
-
-					pthread_mutex_unlock(&ldap->ldap_lock);
-
-					return 0;
-				}
-				else if (ldc->ldc_state == DKIMF_DB_CACHE_PENDING)
-				{
-					struct timespec timeout;
-
-					timeout.tv_sec = now.tv_sec + ldap->ldap_timeout;
-					timeout.tv_nsec = now.tv_usec * 1000;
-
-					ldc->ldc_waiters++;
-
-					while (ldc->ldc_state == DKIMF_DB_CACHE_PENDING)
-					{
-						status = pthread_cond_timedwait(&ldc->ldc_cond,
-						                                &ldap->ldap_lock,
-						                                &timeout);
-						if (status != 0)
-						{
-							pthread_mutex_unlock(&ldap->ldap_lock);
-							return status;
-						}
-					}
-
-					if (ldc->ldc_error != 0)
-					{
-						pthread_mutex_unlock(&ldap->ldap_lock);
-						return ldc->ldc_error;
-					}
-
-					if (ldc->ldc_absent)
-					{
-						if (exists != NULL)
-							*exists = FALSE;
-
-						pthread_mutex_unlock(&ldap->ldap_lock);
-						return 0;
-					}
-
-					for (c = 0;
-					     c < reqnum && c < ldc->ldc_nresults;
-					     c++)
-					{
-						req[c].dbdata_buflen = strlcpy(req[c].dbdata_buffer,
-						                               ldc->ldc_results[c],
-						                               req[c].dbdata_buflen);
-					}
-
-					while (c < reqnum)
-						req[c++].dbdata_buflen = 0;
-
-					ldc->ldc_waiters--;
-
-					pthread_cond_signal(&ldc->ldc_cond);
-
-					pthread_mutex_unlock(&ldap->ldap_lock);
-
-					return 0;
-				}
-			}
-
-			/* add pending info to cache */
-			if (ldc == NULL)
-			{
-				ldc = malloc(sizeof *ldc);
-				if (ldc == NULL)
-				{
-					pthread_mutex_unlock(&ldap->ldap_lock);
-					return errno;
-				}
-
-				memset(ldc, '\0', sizeof *ldc);
-
-				pthread_cond_init(&ldc->ldc_cond, NULL);
-				ldc->ldc_state = DKIMF_DB_CACHE_PENDING;
-
-				status = dkimf_db_put(ldap->ldap_cache,
-				                      buf, buflen,
-				                      &ldc, sizeof ldc);
-				if (status != 0)
-				{
-					pthread_mutex_unlock(&ldap->ldap_lock);
-					return status;
-				}
-			}
-
-			/* unlock so others can try */
-			pthread_mutex_unlock(&ldap->ldap_lock);
-
-			ldc->ldc_error = 0;
-		}
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 
 		memset(query, '\0', sizeof query);
 		memset(filter, '\0', sizeof filter);
@@ -4867,13 +3879,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		{
 			if (exists != NULL)
 				*exists = FALSE;
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-			ldc->ldc_absent = TRUE;
-			ldc->ldc_state = DKIMF_DB_CACHE_DATA;
-			pthread_cond_broadcast(&ldc->ldc_cond);
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 			pthread_mutex_unlock(&ldap->ldap_lock);
 			return 0;
 		}
@@ -4903,14 +3908,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		else if (status != LDAP_SUCCESS)
 		{
 			db->db_status = status;
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-			ldc->ldc_error = status;
-			ldc->ldc_expire = time(NULL) + DKIMF_LDAP_TTL;
-			ldc->ldc_state = DKIMF_DB_CACHE_DATA;
-			pthread_cond_broadcast(&ldc->ldc_cond);
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 			pthread_mutex_unlock(&ldap->ldap_lock);
 			return status;
 		}
@@ -4922,13 +3919,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		{
 			if (exists != NULL)
 				*exists = FALSE;
-#ifdef _FFR_LDAP_CACHING
-# ifdef USE_DB
-			ldc->ldc_absent = TRUE;
-			ldc->ldc_state = DKIMF_DB_CACHE_DATA;
-			pthread_cond_broadcast(&ldc->ldc_cond);
-# endif /* USE_DB */
-#endif /* _FFR_LDAP_CACHING */
 			pthread_mutex_unlock(&ldap->ldap_lock);
 			ldap_msgfree(result);
 			return 0;
@@ -4965,48 +3955,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			req[c++].dbdata_buflen = 0;
 
 		ldap_msgfree(result);
-# ifdef _FFR_LDAP_CACHING
-#  ifdef USE_DB
-		pthread_mutex_lock(&ldap->ldap_lock);
-
-		/* flush anything already cached */
-		if (ldc->ldc_nresults != 0)
-		{
-			for (c = 0; c < ldc->ldc_nresults; c++)
-				free(ldc->ldc_results[c]);
-			free(ldc->ldc_results);
-		}
-
-		/* cache results */
-		ldc->ldc_results = malloc(sizeof(char *) * reqnum);
-		if (ldc->ldc_results == NULL)
-		{
-			ldc->ldc_error = errno;
-			ldc->ldc_expire = time(NULL) + DKIMF_LDAP_TTL;
-			ldc->ldc_state = DKIMF_DB_CACHE_DATA;
-			pthread_mutex_unlock(&ldap->ldap_lock);
-			return errno;
-		}
-		ldc->ldc_nresults = reqnum;
-
-		for (c = 0; c < reqnum; c++)
-		{
-			ldc->ldc_results[c] = strdup(req[c].dbdata_buffer);
-			if (ldc->ldc_results[c] == NULL)
-			{
-				ldc->ldc_error = errno;
-				pthread_mutex_unlock(&ldap->ldap_lock);
-				return errno;
-			}
-		}
-
-		ldc->ldc_state = DKIMF_DB_CACHE_DATA;
-		ldc->ldc_expire = time(NULL) + DKIMF_LDAP_TTL;
-
-		/* notify waiters */
-		pthread_cond_broadcast(&ldc->ldc_cond);
-#  endif /* USE_DB */
-# endif /* _FFR_LDAP_CACHING */
 		pthread_mutex_unlock(&ldap->ldap_lock);
 		return 0;
 	  }
@@ -5105,98 +4053,6 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 #endif /* USE_LIBMEMCACHED */
 
 
-#ifdef _FFR_SOCKETDB
-	  case DKIMF_DB_TYPE_SOCKET:
-	  {
-		int status;
-		size_t len;
-		size_t wlen;
-		fd_set rfds;
-		struct timeval timeout;
-		struct iovec iov[2];
-		struct dkimf_db_socket *sdb;
-		char *tmp;
-		char inbuf[BUFRSZ];
-
-		sdb = (struct dkimf_db_socket *) db->db_handle;
-
-		timeout.tv_sec = DKIMF_SOCKET_TIMEOUT;
-		timeout.tv_usec = 0;
-
-		iov[0].iov_base = buf;
-		iov[0].iov_len = buflen;
-
-		iov[1].iov_base = "\n";
-		iov[1].iov_len = 1;
-
-		/* single-thread readers */
-		if (db->db_lock != NULL)
-			(void) pthread_mutex_lock(db->db_lock);
-
-		wlen = writev(sdb->sockdb_fd, iov, 2);
-		if (wlen < buflen + 1)
-		{
-			db->db_status = errno;
-			if (db->db_lock != NULL)
-				(void) pthread_mutex_unlock(db->db_lock);
-			return -1;
-		}
-
-		FD_ZERO(&rfds);
-		FD_SET(sdb->sockdb_fd, &rfds);
-
-		dkimf_dstring_blank(sdb->sockdb_buf);
-
-		for (;;)
-		{
-			status = select(sdb->sockdb_fd + 1, &rfds, NULL, NULL,
-			                &timeout);
-			if (status != 1)
-			{
-				db->db_status = errno;
-				if (db->db_lock != NULL)
-					(void) pthread_mutex_unlock(db->db_lock);
-				return -1;
-			}
-
-			wlen = read(sdb->sockdb_fd, inbuf, sizeof inbuf);
-			if (wlen == (size_t) -1)
-			{
-				db->db_status = errno;
-				if (db->db_lock != NULL)
-					(void) pthread_mutex_unlock(db->db_lock);
-				return -1;
-			}
-
-			if (wlen == 0)
-				break;
-
-			dkimf_dstring_catn(sdb->sockdb_buf, inbuf, wlen);
-
-			tmp = dkimf_dstring_get(sdb->sockdb_buf);
-			len = dkimf_dstring_len(sdb->sockdb_buf);
-
-			if (tmp[len - 1] == '\n')
-				break;
-		}
-
-		if (len > 0 && exists != NULL)
-			*exists = TRUE;
-
-		if (dkimf_db_datasplit(tmp, len - 1, req, reqnum) != 0)
-		{
-			if (db->db_lock != NULL)
-				(void) pthread_mutex_unlock(db->db_lock);
-			return -1;
-		}
-		else
-		{
-			if (db->db_lock != NULL)
-				(void) pthread_mutex_unlock(db->db_lock);
-			return 0;
-		}
-	  }
-#endif /* _FFR_SOCKETDB */
 
 #ifdef USE_MDB
 	  case DKIMF_DB_TYPE_MDB:
@@ -5384,11 +4240,7 @@ dkimf_db_close(DKIMF_DB db)
 
 #ifdef USE_ODBX
 	  case DKIMF_DB_TYPE_DSN:
-# ifdef _FFR_DB_HANDLE_POOLS
-		dkimf_db_hp_free((struct handle_pool *) db->db_handle);
-# else /* _FFR_DB_HANDLE_POOLS */
 		(void) odbx_finish((odbx_t *) db->db_handle);
-# endif /* _FFR_DB_HANDLE_POOLS */
 		free(db->db_data);
 		free(db);
 		return 0;
@@ -5403,40 +4255,6 @@ dkimf_db_close(DKIMF_DB db)
 
 		ldap_unbind_ext((LDAP *) db->db_handle, NULL, NULL);
 		pthread_mutex_destroy(&ldap->ldap_lock);
-# ifdef _FFR_LDAP_CACHING
-#  ifdef USE_DB
-		if (ldap->ldap_cache != NULL)
-		{
-			_Bool first = TRUE;
-			int c;
-			int status;
-			struct dkimf_db_ldap_cache *ldc;
-			struct dkimf_db_data dbd;
-
-			dbd.dbdata_buffer = (char *) &ldc;
-			dbd.dbdata_buflen = sizeof ldc;
-			dbd.dbdata_flags = DKIMF_DB_DATA_BINARY;
-
-			for (;;)
-			{
-				status = dkimf_db_walk(ldap->ldap_cache, first,
-				                       NULL, NULL, &dbd, 1);
-
-				if (status != 0)
-					break;
-
-				for (c = 0; c < ldc->ldc_nresults; c++)
-					free(ldc->ldc_results[c]);
-				free(ldc->ldc_results);
-				free(ldc);
-
-				first = FALSE;
-			}
-			
-			(void) dkimf_db_close(ldap->ldap_cache);
-		}
-#  endif /* USE_DB */
-# endif /* _FFR_LDAP_CACHING */
 		(void) ldap_free_urldesc(ldap->ldap_descr);
 		free(db->db_data);
 		free(db);
@@ -5472,18 +4290,6 @@ dkimf_db_close(DKIMF_DB db)
 #endif /* USE_LIBMEMCACHED */
 
 
-#ifdef _FFR_SOCKETDB
-	  case DKIMF_DB_TYPE_SOCKET:
-		if (db->db_handle != NULL)
-		{
-			struct dkimf_db_socket *sdb;
-
-			sdb = (struct dkimf_db_socket *) db->db_handle;
-			close(sdb->sockdb_fd);
-		}
-		free(db);
-		return 0;
-#endif /* _FFR_SOCKETDB */
 
 #ifdef USE_MDB
 	  case DKIMF_DB_TYPE_MDB:
@@ -5542,7 +4348,6 @@ dkimf_db_strerror(DKIMF_DB db, char *err, size_t errlen)
 	{
 	  case DKIMF_DB_TYPE_FILE:
 	  case DKIMF_DB_TYPE_CSL:
-	  case DKIMF_DB_TYPE_SOCKET:
 		return strlcpy(err, strerror(db->db_status), errlen);
 
 	  case DKIMF_DB_TYPE_REFILE:
@@ -5644,7 +4449,6 @@ dkimf_db_walk(DKIMF_DB db, _Bool first, void *key, size_t *keylen,
 		return -1;
 
 	if (db->db_type == DKIMF_DB_TYPE_REFILE ||
-	    db->db_type == DKIMF_DB_TYPE_SOCKET ||
 	    db->db_type == DKIMF_DB_TYPE_LUA)
 		return -1;
 
@@ -6418,7 +5222,6 @@ dkimf_db_mkarray(DKIMF_DB db, char ***a, const char **base)
 	assert(a != NULL);
 
 	if (db->db_type == DKIMF_DB_TYPE_REFILE ||
-	    db->db_type == DKIMF_DB_TYPE_SOCKET ||
 	    db->db_type == DKIMF_DB_TYPE_LUA)
 		return -1;
 
