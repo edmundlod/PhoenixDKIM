@@ -1,6 +1,8 @@
 # Copyright (c) 2026 OpenDKIM contributors
 #   All rights reserved.
 
+include(GNUInstallDirs)
+
 if(NOT WITH_LUA)
     return()
 endif()
