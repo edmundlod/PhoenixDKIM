@@ -73,7 +73,7 @@ Common build options:
 |---|---|---|
 | `-DWITH_LUA=ON` | OFF | Enable Lua 5.4 policy scripting |
 | `-DWITH_UNBOUND=ON` | ON | Enable libunbound DNSSEC resolver |
-| `-DCMAKE_BUILD_TYPE=Release` | Debug | Release build |
+| `-DCMAKE_BUILD_TYPE=Release` | `RelWithDebInfo` | Build type (Debug/Release/RelWithDebInfo/MinSizeRel) |
 
 To install:
 

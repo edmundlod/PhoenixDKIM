@@ -6,12 +6,19 @@ project(opendkim
     LANGUAGES C
 )
 
-add_compile_definitions(_GNU_SOURCE)
-enable_testing()
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+                 "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif()
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+add_compile_definitions(_GNU_SOURCE)
+set(OPENDKIM_DISPLAY_VERSION "3.0.0-beta2")
+add_compile_definitions(-DVERSION_STRING="${OPENDKIM_DISPLAY_VERSION}")
+
+enable_testing()
 
 add_subdirectory(libopendkim)
 add_subdirectory(opendkim)
@@ -21,8 +28,6 @@ add_subdirectory(miltertest)
 set(CPACK_PACKAGE_NAME "opendkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
 set(CPACK_PACKAGE_VERSION "3.0.0")
-set(OPENDKIM_DISPLAY_VERSION "3.0.0-beta1")
-add_definitions(-DVERSION_STRING="${OPENDKIM_DISPLAY_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modernised OpenDKIM fork with OpenSSL3 and Ed25519")
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Edmund Lodewijks <edmund@proteamail.com>")
