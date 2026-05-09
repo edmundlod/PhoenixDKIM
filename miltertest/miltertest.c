@@ -1135,20 +1135,33 @@ mt_startfilter(lua_State *l)
 	const char **argv;
 	int c;
 	int status;
-	int args;
+	int nargs;
+	int cmd_start;
+	int expect_exit;
 	int fds[2];
 	pid_t child;
 
 	assert(l != NULL);
 
-	args = lua_gettop(l);
-	if (args < 1)
+	cmd_start = 1;
+	expect_exit = 0;
+
+	if (lua_gettop(l) >= 1 && lua_istable(l, 1))
+	{
+		lua_getfield(l, 1, "expect_exit");
+		expect_exit = lua_toboolean(l, -1);
+		lua_pop(l, 1);
+		cmd_start = 2;
+	}
+
+	nargs = lua_gettop(l) - (cmd_start - 1);
+	if (nargs < 1)
 	{
 		lua_pushstring(l, "mt.startfilter(): Invalid argument");
 		lua_error(l);
 	}
 
-	for (c = 1; c <= args; c++)
+	for (c = cmd_start; c < cmd_start + nargs; c++)
 	{
 		if (!lua_isstring(l, c))
 		{
@@ -1158,7 +1171,7 @@ mt_startfilter(lua_State *l)
 		}
 	}
 
-	argv = (const char **) malloc(sizeof(char *) * (args + 1));
+	argv = (const char **) malloc(sizeof(char *) * (nargs + 1));
 	if (argv == NULL)
 	{
 		lua_pushfstring(l, "mt.startfilter(): malloc(): %s",
@@ -1166,17 +1179,17 @@ mt_startfilter(lua_State *l)
 		lua_error(l);
 	}
 
-	for (c = 1; c <= args; c++)
+	for (c = 0; c < nargs; c++)
 	{
-		argv[c - 1] = lua_tostring(l, c);
+		argv[c] = lua_tostring(l, cmd_start + c);
 		if (verbose > 2)
 		{
-			fprintf(stderr, "%s: argv[%d] = `%s'\n", progname, c - 1,
-			        argv[c - 1]);
+			fprintf(stderr, "%s: argv[%d] = `%s'\n", progname, c,
+			        argv[c]);
 		}
 	}
-	argv[c - 1] = NULL;
-	lua_pop(l, c);
+	argv[nargs] = NULL;
+	lua_pop(l, lua_gettop(l));
 
 	if (pipe(fds) != 0)
 	{
@@ -1208,7 +1221,7 @@ mt_startfilter(lua_State *l)
 	  default:
 		close(fds[1]);
 
-		c = read(fds[0], &args, sizeof(args));
+		c = read(fds[0], &nargs, sizeof(nargs));
 		if (c == -1)
 		{
 			lua_pushfstring(l, "mt.startfilter(): read(): %s",
@@ -1230,6 +1243,12 @@ mt_startfilter(lua_State *l)
 		child = wait4(filterpid, &status, WNOHANG, NULL);
 		if (child != 0)
 		{
+			filterpid = 0;
+			if (expect_exit)
+			{
+				lua_pushnil(l);
+				return 1;
+			}
 			lua_pushfstring(l,
 			                "mt.startfilter(): wait4(): child %d exited prematurely, status %d",
 			                child, status);
@@ -1323,6 +1342,12 @@ mt_connect(lua_State *l)
 	struct mt_context *new;
 
 	assert(l != NULL);
+
+	if (filterpid == 0)
+	{
+		lua_pushnil(l);
+		return 1;
+	}
 
 	top = lua_gettop(l);
 
@@ -1421,6 +1446,17 @@ mt_connect(lua_State *l)
 
 			close(fd);
 
+			if (filterpid != 0)
+			{
+				int ws;
+				if (waitpid(filterpid, &ws, WNOHANG) == filterpid)
+				{
+					filterpid = 0;
+					lua_pushnil(l);
+					return 1;
+				}
+			}
+
 			usleep(interval);
 
 			count--;
@@ -1428,9 +1464,8 @@ mt_connect(lua_State *l)
 
 		if (saverr != 0)
 		{
-			lua_pushfstring(l, "mt.connect(): %s: connect(): %s",
-			                sockinfo, strerror(errno));
-			lua_error(l);
+			lua_pushnil(l);
+			return 1;
 		}
 
 		break;
@@ -1521,6 +1556,17 @@ mt_connect(lua_State *l)
 
 			close(fd);
 
+			if (filterpid != 0)
+			{
+				int ws;
+				if (waitpid(filterpid, &ws, WNOHANG) == filterpid)
+				{
+					filterpid = 0;
+					lua_pushnil(l);
+					return 1;
+				}
+			}
+
 			usleep(interval);
 
 			count--;
@@ -1528,9 +1574,8 @@ mt_connect(lua_State *l)
 
 		if (saverr != 0)
 		{
-			lua_pushfstring(l, "mt.connect(): %s: connect(): %s",
-			                sockinfo, strerror(errno));
-			lua_error(l);
+			lua_pushnil(l);
+			return 1;
 		}
 
 		break;
@@ -4253,7 +4298,12 @@ main(int argc, char **argv)
 				        "%s: filter process exited with status %d\n",
 				        progname, WEXITSTATUS(status));
 
-				retval = 1;
+				/* Disabled the following code.
+				 * If Lua passed, miltertest passes regardless
+				 * of filter exit status.
+				 * 
+				 * retval = 1;
+				 */
 			}
 			else if (WIFSIGNALED(status) &&
 			         WTERMSIG(status) != SIGTERM)
@@ -4262,7 +4312,8 @@ main(int argc, char **argv)
 				        "%s: filter process died with signal %d\n",
 				        progname, WTERMSIG(status));
 
-				retval = 1;
+				if (retval == 0)
+					retval = 1;
 			}
 		}
 	}

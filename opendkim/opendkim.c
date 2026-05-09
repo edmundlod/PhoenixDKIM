@@ -7282,7 +7282,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 
 			int _walkret;
 			while ((_walkret = dkimf_db_walk(conf->conf_signtabledb, first,
-+                                                        NULL, NULL, dbd, 2)) == 0)
+                                                         NULL, NULL, dbd, 2)) == 0)
 			{
 				first = FALSE;
 				found = FALSE;
