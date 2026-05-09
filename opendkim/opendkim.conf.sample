@@ -446,16 +446,6 @@ KeyFile			/var/db/dkim/example.private
 
 # PidFile		filename
 
-##  POPDBFile dataset
-##  	default (none)
-##
-##  Names a database which should be checked for "POP before SMTP" records
-##  as a form of authentication of users who may be sending mail through
-##  the MTA for signing.  Requires special compilation of the filter.
-##  See opendkim.conf(5) for more information.
-
-# POPDBFile		filename
-
 ##  Quarantine { yes | no }
 ##  	default "no"
 ##
@@ -463,17 +453,6 @@ KeyFile			/var/db/dkim/example.private
 ##  which fails verification.  Intended for diagnostic use only.
 
 # Quarantine		No
-
-##  QueryCache { yes | no }
-##  	default "no"
-##
-##  Instructs the DKIM library to maintain its own local cache of keys and
-##  policies retrieved from DNS, rather than relying on the nameserver for
-##  caching service.  Useful if the nameserver being used by the filter is
-##  not local.  The filter must be compiled with the QUERY_CACHE flag to enable
-##  this feature, since it adds a library dependency.
-
-# QueryCache		No
 
 ##  RedirectFailuresTo address
 ##  	default (none)
@@ -606,7 +585,11 @@ Selector		my-selector-name
 ##  	default "rsa-sha256"
 ##
 ##  Signature algorithm to use when generating signatures.  Must be either
-##  "rsa-sha1" or "rsa-sha256".
+##  "rsa-sha256" or "ed25519-sha256".  RSA-SHA1 signing is not supported
+##  (RSA-SHA1 verification of incoming mail is still accepted for
+##  interoperability with legacy senders).  If not set, the algorithm is
+##  inferred from the key type: RSA keys use rsa-sha256, Ed25519 keys use
+##  ed25519-sha256.
 
 # SignatureAlgorithm	rsa-sha256
 
@@ -643,16 +626,6 @@ Selector		my-selector-name
 ##  in multiple signatures being applied.
 
 # SigningTable		filename
-
-##  SingleAuthResult { yes | no}
-##  	default "no"
-##
-##  When DomainKeys verification is enabled, multiple Authentication-Results
-##  will be added, one for DK and one for DKIM.  With this enabled, only
-##  a DKIM result will be reported unless DKIM failed but DK passed, in which
-##  case only a DK result will be reported.
-
-# SingleAuthResult	no
 
 ##  SMTPURI uri
 ##
