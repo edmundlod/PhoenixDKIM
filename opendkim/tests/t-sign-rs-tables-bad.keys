@@ -1,1 +1,1 @@
-testkey		example.com test ./testkey.private
+testkey		example.com:test:./nonexistent.private
