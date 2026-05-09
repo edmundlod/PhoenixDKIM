@@ -17,7 +17,6 @@
 /* system includes */
 #include <sys/types.h>
 #include <arpa/nameser.h>
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,21 +52,23 @@ static int tests_skipped = 0;
 static void
 feed_standard_headers(DKIM *dkim)
 {
-	assert(dkim_header(dkim, HEADER02, strlen(HEADER02)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER03, strlen(HEADER03)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER04, strlen(HEADER04)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER05, strlen(HEADER05)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER06, strlen(HEADER06)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER07, strlen(HEADER07)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER08, strlen(HEADER08)) == DKIM_STAT_OK);
-	assert(dkim_header(dkim, HEADER09, strlen(HEADER09)) == DKIM_STAT_OK);
+	if (dkim_header(dkim, HEADER02, strlen(HEADER02)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER03, strlen(HEADER03)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER04, strlen(HEADER04)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER05, strlen(HEADER05)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER06, strlen(HEADER06)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER07, strlen(HEADER07)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER08, strlen(HEADER08)) != DKIM_STAT_OK ||
+	    dkim_header(dkim, HEADER09, strlen(HEADER09)) != DKIM_STAT_OK)
+		abort();
 }
 
 static void
 feed_standard_body(DKIM *dkim)
 {
-	assert(dkim_body(dkim, BODY00, strlen(BODY00)) == DKIM_STAT_OK);
-	assert(dkim_body(dkim, BODY01, strlen(BODY01)) == DKIM_STAT_OK);
+	if (dkim_body(dkim, BODY00, strlen(BODY00)) != DKIM_STAT_OK ||
+	    dkim_body(dkim, BODY01, strlen(BODY01)) != DKIM_STAT_OK)
+		abort();
 }
 
 static DKIM_LIB *
@@ -76,7 +77,8 @@ make_lib(void)
 	DKIM_LIB *lib;
 
 	lib = dkim_init(NULL, NULL);
-	assert(lib != NULL);
+	if (lib == NULL)
+		abort();
 	return lib;
 }
 
