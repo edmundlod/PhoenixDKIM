@@ -125,12 +125,13 @@ main(int argc, char **argv)
 	assert(nsigs == 2);
 
 	memset(hdr, '\0', sizeof hdr);
-	hdrlen = sizeof hdr - 1;
+	hdrlen = sizeof hdr;
 	status = dkim_get_sigsubstring(dkim, sigs[0], hdr, &hdrlen);
 	assert(status == DKIM_STAT_OK);
 	assert(hdrlen == 8);
 	assert(strcmp(hdr, "V+wiYd1c") == 0);
-	status = dkim_get_sigsubstring(dkim, sigs[1], hdr, &hdrlen);
+	hdrlen = sizeof hdr;
+        status = dkim_get_sigsubstring(dkim, sigs[1], hdr, &hdrlen);
 	assert(status == DKIM_STAT_OK);
 	assert(hdrlen == 8);
 	assert(strcmp(hdr, "12345678") == 0);
@@ -188,15 +189,17 @@ main(int argc, char **argv)
 	assert(nsigs == 3);
 
 	memset(hdr, '\0', sizeof hdr);
-	hdrlen = sizeof hdr - 1;
+	hdrlen = sizeof hdr;
 	status = dkim_get_sigsubstring(dkim, sigs[0], hdr, &hdrlen);
 	assert(status == DKIM_STAT_OK);
 	assert(hdrlen == 10);
 	assert(strcmp(hdr, "V+wiYd1cE7") == 0);
+	hdrlen = sizeof hdr;
 	status = dkim_get_sigsubstring(dkim, sigs[1], hdr, &hdrlen);
 	assert(status == DKIM_STAT_OK);
 	assert(hdrlen == 10);
 	assert(strcmp(hdr, "12345678Y3") == 0);
+	hdrlen = sizeof hdr;
 	status = dkim_get_sigsubstring(dkim, sigs[2], hdr, &hdrlen);
 	assert(status == DKIM_STAT_OK);
 	assert(hdrlen == 10);
