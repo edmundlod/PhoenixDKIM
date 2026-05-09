@@ -1,4 +1,4 @@
-.TH opendkim-lua 3 "The Trusted Domain Project"
+.TH opendkim-lua 3 "OpenDKIM"
 .SH NAME
 .B opendkim-lua
 \- Programming the OpenDKIM filter using Lua scripts
@@ -6,7 +6,7 @@
 The OpenDKIM filter has hooks to run user-provided scripts for making policy
 decisions regarding signatures to add on outbound messages or verification and
 acceptance of messages inbound.  The hooks take the form of multiple Lua
-scripts which, if defined, are run at important points during processing of 
+scripts which, if defined, are run at important points during processing of
 a message.
 
 For a full description of the Lua language, consult Lua programming references
@@ -19,7 +19,7 @@ Unless otherwise noted, all functions described below return a single result;
 on success they return the requested data, and on error they return the Lua
 constant "nil".
 
-Four scripting hooks are provided.  They are as follows:
+Three scripting hooks are provided.  They are as follows:
 .TP
 .I setup
 The setup script is run after all headers for the message have been received
@@ -36,14 +36,6 @@ DKIM signatures and determine which, if any, should be ignored during
 verification.  For example, the user might decide only signatures added by
 domains exactly matching that in the From: domain are acceptable, and the
 rest should be ignored.
-.TP
-.I statistics
-The statistics script is run after all of the DKIM verification and signing
-work has been completed but before any final message handling is done.
-The main purpose of this script is to give the user an opportunity to examine
-the message or its signatures and make arbitrary additional statistical
-observations that should be recorded by the statistics module.
-@STATSEXT_MANNOTICE@
 .TP
 .I final
 The final script is run after all of the DKIM verification and signing work
@@ -110,7 +102,7 @@ have a name associated with it.
 .TP
 .B odkim.get_clientip(ctx)
 Returns the IP address of the client on the other end of the SMTP connection
-sending the current message as a string.  Both IPv4 and IPv6 addresses are 
+sending the current message as a string.  Both IPv4 and IPv6 addresses are
 supported.
 .TP
 .B odkim.get_dbhandle(ctx, db)
@@ -257,8 +249,8 @@ key via a query to the KeyTable (see the
 page for details).  The
 .I keyname
 may be omitted if the KeyTable is not defined, meaning the single signing
-domain, selector and key should be used to sign.  Returns 1 on success
-and 0 on failure.  If a
+domain, selector and key should be used to sign.  Returns 1 on success and
+0 on failure.  If a
 .I signer
 is specified, the string there will be included in the generated signature's
 "i=" tag.  If a
@@ -275,11 +267,6 @@ in the message's From: field.  The
 parameter, if "true" (default is "false"), allows the application of multiple
 signatures.  Returns the number of signatures applied, which may be zero.
 .TP
-.B odkim.spam(ctx)
-Tags the message as spam, for use in developing reputation about domains
-that signed the message.  Returns nothing.
-@REPUTATION_MANNOTICE@
-.TP
 .B odkim.use_ltag(ctx)
 Requests that all signatures added to the message represented by
 .I ctx
@@ -288,8 +275,8 @@ include "l=" (body length) tags.  Always returns the Lua constant "nil".
 .B odkim.verify(ctx)
 Requests that the message represented by
 .I ctx
-be subjected to DKIM signature verification.  Returns the Lua constant
-"nil" on success, or an error string on failure.
+be subjected to DKIM signature verification.  Returns the Lua constant "nil"
+on success, or an error string on failure.
 .TP
 .B odkim.xtag(ctx, tag, value)
 Requests that all signatures added to the message represented by
@@ -316,9 +303,9 @@ descriptions can be found above:
 .B odkim.get_rcpt,
 .B odkim.get_rcptarray,
 .B odkim.log,
-.B odkim.rcpt_count,
+.B odkim.rcpt_count
 and
-.B odkim.spam.
+.B odkim.internal_ip.
 
 The following additional functions are provided for this script:
 .TP
@@ -377,44 +364,6 @@ previously returned by a call to
 .B odkim.get_sighandle().
 Any pending verification of the message will act as if that signature was
 not present on the message.  Always returns the Lua constant "nil".
-.SH STATISTICS SCRIPT FUNCTIONS
-The statistics script has the following functions available to it, whose
-descriptions can be found above:
-.B odkim.export,
-.B odkim.get_envfrom,
-.B odkim.get_header,
-.B odkim.get_mtasymbol,
-.B odkim.get_rcpt,
-.B odkim.get_rcptarray,
-.B odkim.get_sigarray,
-.B odkim.get_sigcount,
-.B odkim.get_sighandle,
-.B odkim.log,
-.B odkim.parse_field,
-.B odkim.rcpt_count,
-.B odkim.sig_getdomain,
-.B odkim.sig_getidentity,
-and
-.B odkim.spam.
-
-The following functions are also available, defined in the next section:
-.B odkim.rbl_check,
-.B odkim.rcpt_count,
-.B odkim.sig_bhresult,
-.B odkim.sig_bodylength,
-.B odkim.sig_canonlength,
-and
-.B odkim.sig_result.
-
-The following additional function is provided for this script:
-.TP
-.B odkim.stats(ctx, name, value)
-Records the additional statistic called
-.I name
-with its associated
-.I value
-for the message represented by
-.I ctx.
 .SH FINAL SCRIPT FUNCTIONS
 The final script has the following functions available to it, whose
 descriptions can be found above:
@@ -434,10 +383,9 @@ descriptions can be found above:
 .B odkim.rcpt_count,
 .B odkim.set_result,
 .B odkim.sig_getdomain,
-.B odkim.sig_getidentity,
-.B odkim.spam,
+.B odkim.sig_getidentity
 and
-.B odkim.xtags.
+.B odkim.xtag.
 
 The following additional functions are provided for this script:
 .TP
@@ -482,24 +430,6 @@ using
 as a text string indicating the reason for the request.  Returns 1 on
 success or the Lua constant "nil" on failure.
 .TP
-.B odkim.rbl_check(ctx, query, qroot[, timeout])
-Makes an RBL query.  The root of the RBL is assumed to be at
-.I qroot
-and the subject of the query is
-.I query,
-so the query performed will be
-.I "query.qroot".
-The context handle
-.I ctx
-must also be provided as it contains a handle to the established DNS service.
-The optional
-.I timeout
-parameter is the timeout to use, in seconds.  Returns "nil" on error, no
-values if the requested record was not present in the RBL, or the four
-octets of the RBL entry if it was.  The octets are returned in big-endian
-order.
-@RBL_MANNOTICE@
-.TP
 .B odkim.set_reply(ctx, rcode, xcode, message)
 Instructs the MTA to return the specified SMTP reply to the client sending
 the message represented by
@@ -521,7 +451,7 @@ the signature handled specified by
 .I sig,
 previously returned by a call to
 .B odkim.get_sighandle().
-Valid values are the DKIM_SIGBH_* constants defined in the 
+Valid values are the DKIM_SIGBH_* constants defined in the
 .B libopendkim
 header file
 .I dkim.h.
@@ -556,7 +486,11 @@ header file
 This man page covers version 3.0.0 of
 .I OpenDKIM.
 .SH COPYRIGHT
-Copyright (c) 2009-2014, The Trusted Domain Project.  All rights reserved.
+Copyright (c) 2009-2014, The Trusted Domain Project.
+.br
+Copyright (c) 2026 OpenDKIM contributors.
+.br
+All rights reserved.
 .SH SEE ALSO
 .I opendkim(8),
 .I opendkim.conf(5)
