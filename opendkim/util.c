@@ -431,6 +431,7 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 		for (bits = 0; bits <= 128; bits++)
 		{
 			size_t sz;
+			int n;
 
 			/* try this one */
 			memset(ipbuf, '\0', sizeof ipbuf);
@@ -450,8 +451,8 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 			dst = &ipbuf[sz];
 			dst_len = sizeof ipbuf - sz;
 
-			sz = snprintf(dst, dst_len, "%d", 128 - bits);
-			if (sz >= sizeof ipbuf)
+			n = snprintf(dst, dst_len, "%d", 128 - bits);
+			if (n < 0 || (size_t)n >= dst_len)
 				return FALSE;
 
 			exists = FALSE;
@@ -482,8 +483,8 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 			dst = &ipbuf[sz];
 			dst_len = sizeof ipbuf - sz;
 
-			sz = snprintf(dst, dst_len, "%d", 128 - bits);
-			if (sz >= sizeof ipbuf)
+			n = snprintf(dst, dst_len, "%d", 128 - bits);
+			if (n < 0 || (size_t)n >= dst_len)
 				return FALSE;
 
 			exists = FALSE;

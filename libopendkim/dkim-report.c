@@ -94,8 +94,10 @@ dkim_repinfo(DKIM *dkim, DKIM_SIGINFO *sig, struct timeval *timeout,
 	if (sdomain == NULL)
 		return DKIM_STAT_INVALID;
 
-	snprintf(query, sizeof query, "%s.%s", DKIM_REPORT_PREFIX,
-	         (char *) sdomain);
+	n = snprintf((char *) query, sizeof query, "%s.%s",
+	             DKIM_REPORT_PREFIX, (char *) sdomain);
+	if (n < 0 || (size_t)n >= sizeof query)
+		return DKIM_STAT_INVALID;
 
 	/* XXX -- add QUERY_CACHE support here */
 
