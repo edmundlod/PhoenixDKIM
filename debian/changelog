@@ -1,3 +1,19 @@
+opendkim-ng (3.0.0~beta2-ng1) unstable; urgency=medium
+
+  * Fix Lua 5.4 C API: correct version guards (== 502 → >= 502) across
+  all hook functions (setup, screen, final, db)
+  * Fix Lua 5.4 C API: remove unguarded lua_load/lua_dump compat shims
+  * Fix Lua 5.4 C API: add missing strip argument to lua_dump call sites
+  * Fix Lua 5.4 C API: remove stale lua_pop() after luaL_newlib/lua_setglobal
+  * Fix signtable validation walk in dkimf_config_load(): missing KeyTable
+  entries were not being caught due to datasplit OPTIONAL flag bug
+  * Port integration tests to CMake out-of-source build layout
+  * Fix miltertest: connect-failure returns nil instead of throwing
+  * Fix miltertest: add expect_exit option to startfilter for conf-check tests
+  * Disable integration tests for permanently removed features:
+  t-lua-rbl, t-sign-atps, t-verify-ss-atps, t-verify-ss-rep,
+  t-sign-ss-replace
+
 opendkim-ng (3.0.0~beta1-ng1) unstable; urgency=medium
 
   * Initial release of the opendkim-ng modernisation fork.
