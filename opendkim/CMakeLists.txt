@@ -265,11 +265,6 @@ if(WITH_LUA)
     add_subdirectory(tests)
 endif()
 
-# ── Miltertest ────────────────────────────────────────────────────────────────
-
-install(TARGETS miltertest DESTINATION bin)
-install(FILES miltertest.8 DESTINATION share/man/man8)
-
 # ── Pkgconfig ─────────────────────────────────────────────────────────────────
 
 set(PKGCONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
