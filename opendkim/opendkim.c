@@ -7229,7 +7229,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		**  missing KeyTable entries.
 		*/
 
-		if (conf->conf_signtabledb != NULL)
+		if (conf->conf_signtabledb != NULL  &&
+			dkimf_db_type(conf->conf_signtabledb) != DKIMF_DB_TYPE_REFILE)
 		{
 			_Bool first = TRUE;
 			_Bool found;
