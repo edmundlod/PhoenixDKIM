@@ -5,37 +5,82 @@ on:
     tags:
       - 'v*'
 
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (tag, branch, or commit)'
+        required: true
+        default: 'master'
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build-deb:
-    runs-on: ubuntu-latest
+    name: Build Debian package
+    runs-on: ubuntu-24.04
+
+    container:
+      image: debian:12
+
     permissions:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y git ca-certificates
+
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Install build dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            build-essential debhelper devscripts
+          apt-get update
+
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential \
+            cmake \
+            debhelper \
+            devscripts \
+            dpkg-dev \
+            fakeroot \
+            equivs \
+            pkg-config \
+            libssl-dev \
+            liblmdb-dev \
+            libmilter-dev \
+            libunbound-dev \
+            liblua5.4-dev
+
+      - name: Show build environment
+        run: |
+          uname -a
+          cat /etc/os-release
+          gcc --version
+          cmake --version
+          openssl version
 
       - name: Build Debian package
-        run: dpkg-buildpackage -us -uc -b
-
-      - name: Collect .deb
         run: |
-          mkdir dist
-          mv ../*.deb dist/
+          dpkg-buildpackage -us -uc -b
 
-      - name: Get .deb filename
-        id: deb
-        run: echo "filename=$(ls dist/*.deb | xargs basename)" >> $GITHUB_OUTPUT
+      - name: Collect build artifacts
+        run: |
+          mkdir -p dist
 
-      - name: Upload to GitHub Release
+          mv ../*.deb dist/ || true
+          mv ../*.changes dist/ || true
+          mv ../*.buildinfo dist/ || true
+
+          ls -lah dist/
+
+      - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.deb
+          files: dist/*
+          overwrite_files: true
+          fail_on_unmatched_files: true
