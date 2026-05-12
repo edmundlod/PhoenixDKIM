@@ -11927,6 +11927,8 @@ mlfi_eom(SMFICTX *ctx)
 
 	if (dfc->mctx_dkimv != NULL && !conf->conf_keepar)
 	{
+		/* nars = number of Authentication-Results: headers */
+		int nars;
 		struct authres *ares;
 
 		ares = (struct authres *) malloc(sizeof(struct authres));
@@ -11939,8 +11941,17 @@ mlfi_eom(SMFICTX *ctx)
 			return SMFIS_TEMPFAIL;
 		}
 
-		c = 0;
+		/* count Authentication-Results: headers so we can use a
+		stable 1-based instance index while deleting from the tail */
+		nars = 0;
 		for (hdr = dfc->mctx_hqhead; hdr != NULL; hdr = hdr->hdr_next)
+		{
+			if (strcasecmp(hdr->hdr_hdr, AUTHRESULTSHDR) == 0)
+				nars++;
+		}
+
+		c = nars;
+		for (hdr = dfc->mctx_hqtail; hdr != NULL; hdr = hdr->hdr_prev)
 		{
 			memset(ares, '\0', sizeof(struct authres));
 
@@ -11951,9 +11962,8 @@ mlfi_eom(SMFICTX *ctx)
 				int arstat;
 				char *slash;
 
-				/* remember index */
-				c++;
-
+				/* work from highest index downward so earlier
+				instance numbers remain valid after deletion */
 				/* parse the header */
 				arstat = ares_parse((u_char *) hdr->hdr_val,
 				                    ares);
@@ -12016,8 +12026,8 @@ mlfi_eom(SMFICTX *ctx)
 					if (dkimf_chgheader(ctx, hdr->hdr_hdr,
 					                    c,
 					                    NULL) != MI_SUCCESS)
-					{
-						if (conf->conf_dolog)
+{
+					if (conf->conf_dolog)
 						{
 							syslog(LOG_WARNING,
 							       "failed to remove %s: header",
@@ -12025,6 +12035,8 @@ mlfi_eom(SMFICTX *ctx)
 						}
 					}
 				}
+
+				c--;
 			}
 		}
 
