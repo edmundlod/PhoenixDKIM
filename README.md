@@ -99,7 +99,7 @@ non_smtpd_milters = unix:/run/opendkim/opendkim.sock
 milter_default_action = accept
 ```
 
-A systemd service unit is included and installed automatically.
+A systemd service unit is in `contrib/systemd`, and for Debian in `debian/`.
 
 ## Key Generation
 
