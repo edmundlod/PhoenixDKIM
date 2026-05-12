@@ -1,3 +1,9 @@
+opendkim-ng (3.0.0~beta4-ng1) unstable; urgency=medium
+
+  * CI: Added GitHub Action workflow for building .deb packages
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Tue, 12 May 2026 12:39:00 +0200
+
 opendkim-ng (3.0.0~beta3-ng1) unstable; urgency=medium
 
   * Hotfix: Fix SigningTable validation
