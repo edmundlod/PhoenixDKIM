@@ -84,8 +84,11 @@ cmake --install build
 ## Configuration
 
 See `opendkim.conf(5)` for the full list of configuration options.
-A sample configuration file is installed at
-`/etc/opendkim/opendkim.conf.sample`.
+A sample configuration file, which needs editing, is installed at
+`/usr/share/doc/opendkim-ng/opendkim.conf.sample`.
+
+For an example on using multiple signatures per e-mail (e.g. Ed25519 with
+an RSA key as fall-back), see `docs/multisigning.md`.
 
 The filter integrates with Postfix and Sendmail via the milter protocol.
 For Postfix, add to `main.cf`:
@@ -100,14 +103,17 @@ A systemd service unit is included and installed automatically.
 
 ## Key Generation
 
-Generate an RSA-4096 or Ed25519 signing keypair with `opendkim-genkey`:
+_Note: Run the following in the directory where you want your keys, e.g.
+`/etc/dkimkeys/domain.com/`, or move the files after generating them._
+
+Generate an RSA-2048 or Ed25519 signing keypair with `opendkim-genkey`:
 
 ```
 # RSA
-opendkim-genkey -b 4096 -d example.com -s mail
+opendkim-genkey -b 2048 -d domain.com -s selector
 
 # Ed25519
-opendkim-genkey -t ed25519 -d example.com -s mail
+opendkim-genkey -t ed25519 -d domain.com -s selector
 ```
 
 ## Platforms
