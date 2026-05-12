@@ -71,3 +71,16 @@ are worth implementing. Design first, then implement.
 Go through all the issues at https://github.com/trusteddomainproject/OpenDKIM/issues and see if any apply to our version.
 
 Also look at distro's (Fedora, OpenSUSE, Debian, Gentoo, e.a.) that might have created their own patches. Something useful for us?
+
+https://codeberg.org/gentoo/gentoo/src/branch/master/mail-filter/opendkim/files
+For OpenRC:
+https://codeberg.org/gentoo/gentoo/src/branch/master/mail-filter/opendkim/files/opendkim-2.10.3-openrc.patch
+
+https://www.freshports.org/mail/opendkim/
+https://codeberg.org/FreeBSD/freebsd-ports/src/branch/main/mail/opendkim/files
+FreeBSD rc.conf:
+https://codeberg.org/FreeBSD/freebsd-ports/src/branch/main/mail/opendkim/files/milter-opendkim.in
+
+https://github.com/openbsd/ports/tree/master/mail/opendkim
+OpenBSD rc.conf
+https://github.com/openbsd/ports/blob/master/mail/opendkim/pkg/opendkim.rc
