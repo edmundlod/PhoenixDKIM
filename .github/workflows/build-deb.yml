@@ -55,6 +55,7 @@ jobs:
             libmilter-dev \
             libunbound-dev \
             liblua5.4-dev \
+            libbsd-dev \
             dh-python \
             python3
 
