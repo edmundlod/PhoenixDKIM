@@ -18,6 +18,7 @@
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
 #include <ctype.h>
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
