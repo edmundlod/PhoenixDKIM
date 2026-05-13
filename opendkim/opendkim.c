@@ -3263,7 +3263,7 @@ dkimf_xs_addheader(lua_State *l)
 
 	if (ctx == NULL)
 		lua_pushnil(l);
-	else if (dkimf_insheader(ctx, 1, name, value) == MI_SUCCESS)
+	else if (dkimf_insheader(ctx, 0, name, value) == MI_SUCCESS)
 		lua_pushnumber(l, 1);
 	else
 		lua_pushnil(l);
@@ -3697,7 +3697,7 @@ dkimf_add_ar_fields(struct msgctx *dfc, struct dkimf_config *conf,
 	assert(conf != NULL);
 	assert(ctx != NULL);
 
-	if (dkimf_insheader(ctx, 1, AUTHRESULTSHDR,
+	if (dkimf_insheader(ctx, 0, AUTHRESULTSHDR,
 	                    (char *) dfc->mctx_dkimar) == MI_FAILURE)
 	{
 		if (conf->conf_dolog)
@@ -11675,7 +11675,7 @@ mlfi_eom(SMFICTX *ctx)
 				header[sizeof(header) - 1] = '\0';
 		}
 
-		if (dkimf_insheader(ctx, 1, AUTHRESULTSHDR,
+		if (dkimf_insheader(ctx, 0, AUTHRESULTSHDR,
 		                    (char *) header) == MI_FAILURE)
 		{
 			if (conf->conf_dolog)
@@ -12504,7 +12504,7 @@ mlfi_eom(SMFICTX *ctx)
 			dkimf_stripcr((char *) start);
 			dkimf_dstring_cat(dfc->mctx_tmpstr, start);
 
-			if (dkimf_insheader(ctx, 1, DKIM_SIGNHEADER,
+			if (dkimf_insheader(ctx, 0, DKIM_SIGNHEADER,
 			                    (char *) dkimf_dstring_get(dfc->mctx_tmpstr)) == MI_FAILURE)
 			{
 				if (conf->conf_dolog)
@@ -12554,7 +12554,7 @@ mlfi_eom(SMFICTX *ctx)
 		         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
 		                                 : (u_char *) JOBIDUNKNOWN);
 
-		if (dkimf_insheader(ctx, 1, SWHEADERNAME, xfhdr) != MI_SUCCESS)
+		if (dkimf_insheader(ctx, 0, SWHEADERNAME, xfhdr) != MI_SUCCESS)
 		{
 			if (conf->conf_dolog)
 			{
