@@ -723,6 +723,25 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 			return DKIM_STAT_SYNTAX;
 		}
 
+		/* confirm the "d=" domain name is well formed */
+		value = dkim_param_get(set, (u_char *) "d");
+		for (p = value; *p != '\0'; p++)
+		{
+			if (!(isalpha(*p) ||
+			      isdigit(*p) ||
+			      *p == '-' ||
+			      *p == '_' ||
+			      *p == '.'))
+			{
+				dkim_error(dkim, "malformed \"d=\" tag value");
+				if (syntax)
+					dkim_set_free(dkim, set);
+				else
+					set->set_bad = TRUE;
+				return DKIM_STAT_SYNTAX;
+			}
+		}
+
 		/* test validity of "t" and "x" */
 		value = dkim_param_get(set, (u_char *) "t");
 		if (value != NULL)
