@@ -121,12 +121,15 @@ jobs:
       - name: Dispatch to apt repository
         if: github.ref_type == 'tag'
         run: |
-          for deb in dist/*.deb; do
-            pkg=$(basename "$deb" | tr '~' '.')
-            url="https://github.com/edmundlod/opendkim-ng/releases/download/${{ github.ref_name }}/${pkg}"
-            curl -s -X POST \
-              -H "Authorization: Bearer ${{ secrets.REPO_DISPATCH_APT_AND_RPM }}" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/edmundlod/apt/dispatches \
-              -d "{\"event_type\":\"package-built\",\"client_payload\":{\"deb_url\":\"${url}\",\"package\":\"${pkg}\",\"codename\":\"${{ matrix.codename }}\"}}"
-          done
+          PKGS_JSON=$(python3 -c "
+import os, json
+debs = sorted(f for f in os.listdir('dist') if f.endswith('.deb'))
+base = 'https://github.com/edmundlod/opendkim-ng/releases/download/${{ github.ref_name }}/'
+urls = [base + d.replace('~', '.') for d in debs]
+print(json.dumps(urls))
+")
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.REPO_DISPATCH_APT_AND_RPM }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/edmundlod/apt/dispatches \
+            -d "{\"event_type\":\"packages-built\",\"client_payload\":{\"deb_urls\":${PKGS_JSON},\"codename\":\"${{ matrix.codename }}\"}}"
