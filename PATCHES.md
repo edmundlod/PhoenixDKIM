@@ -128,3 +128,362 @@ Comparing **FreeBSD** `milter-opendkim.in` and **OpenBSD** `opendkim.rc` against
   `User=opendkim` (systemd). The daemon's own `-u` flag works on all platforms and is a
   useful fallback for deployments without systemd (e.g. Docker, manual invocation). Keep
   `-u` as a documented CLI option even on systemd deployments.
+
+---
+
+## 3. Init/service scripts for contrib/
+
+The following scripts are collected verbatim from upstream distro sources for eventual
+placement in `contrib/`. Each is annotated with its source URL and the version of
+opendkim it was written for. They will need adaptation for opendkim-ng paths
+(`/usr/sbin/opendkim`, `/etc/opendkim.conf`, user name, socket path).
+
+---
+
+### FreeBSD — `contrib/freebsd/milter-opendkim`
+
+Source: `https://codeberg.org/FreeBSD/freebsd-ports/raw/branch/main/mail/opendkim/files/milter-opendkim.in`  
+Upstream version: opendkim 2.10.3
+
+```sh
+#!/bin/sh
+
+# PROVIDE: milter-opendkim
+# REQUIRE: DAEMON
+# BEFORE: mail
+# KEYWORD: shutdown
+
+# Define these milteropendkim_* variables in one of these files:
+#	/etc/rc.conf
+#	/etc/rc.conf.local
+#	/etc/rc.conf.d/milteropendkim
+#
+# milteropendkim_enable (bool):   Set to "NO" by default.
+#                             Set it to "YES" to enable dkim-milter
+# milteropendkim_uid (str):       Set username to run milter.
+# milteropendkim_gid (str):       Set group to run milter.
+# milteropendkim_profiles (list): Set to "" by default.
+#                             Define your profiles here.
+# milteropendkim_cfgfile (str):   Configuration file. See opendkim.conf(5)
+#
+# milteropendkim_${profile}_* :   Variables per profile.
+#                             Sockets must be different from each other.
+#
+# milteropendkim_socket_perms (str):
+#                                 Permissions for local|unix socket.
+#
+#  all parameters below now can be set in opendkim.conf(5).
+# milteropendkim_socket (str):    Path to the milter socket.
+# milteropendkim_domain (str):    Domainpart of From: in mails to sign.
+# milteropendkim_key (str):       Path to the private key file to sign with.
+# milteropendkim_selector (str):  Selector to use when signing
+# milteropendkim_alg (str):       Algorithm to use when signing
+# milteropendkim_flags (str):     Flags passed to start command.
+
+. /etc/rc.subr
+
+name="milteropendkim"
+rcvar=milteropendkim_enable
+
+extra_commands="reload"
+start_precmd="dkim_prepcmd"
+start_postcmd="dkim_start_postcmd"
+stop_postcmd="dkim_postcmd"
+command="%%PREFIX%%/sbin/opendkim"
+_piddir="/var/run/milteropendkim"
+pidfile="${_piddir}/pid"
+sig_reload="USR1"
+
+load_rc_config $name
+
+#
+# DO NOT CHANGE THESE DEFAULT VALUES HERE
+#
+: ${milteropendkim_enable:="NO"}
+: ${milteropendkim_uid:="mailnull"}
+: ${milteropendkim_gid:="mailnull"}
+: ${milteropendkim_cfgfile:="%%PREFIX%%/etc/mail/opendkim.conf"}
+: ${milteropendkim_socket_perms:="0755"}
+
+# Options other than above can be set with $milteropendkim_flags.
+# see dkim-milter documentation for detail.
+
+extra_commands="reload"
+start_precmd="dkim_prepcmd"
+start_postcmd="dkim_start_postcmd"
+stop_postcmd="dkim_cleansockets"
+command="%%PREFIX%%/sbin/opendkim"
+sig_reload="USR1"
+
+dkim_cleansockets()
+{
+    case ${milteropendkim_socket%:*} in
+    local|unix)
+	rm -f "${milteropendkim_socket#*:}"
+	;;
+    esac
+}
+
+dkim_get_pidfile()
+{
+	if get_pidfile_from_conf PidFile ${milteropendkim_cfgfile#-x }; then
+		pidfile="$_pidfile_from_conf"
+	else
+		pidfile="/var/run/milteropendkim/${profile:-pid}"
+	fi
+}
+
+dkim_prepcmd()
+{
+    dkim_cleansockets
+    dkim_get_pidfile
+    if [ ! -d "$(dirname "$pidfile")" ]; then
+        mkdir "$(dirname "$pidfile")"
+    fi
+    case ${milteropendkim_socket%:*} in
+    local|unix)
+	socketfile=${milteropendkim_socket#*:}
+	install -d -o ${milteropendkim_uid%:*} -g $milteropendkim_gid \
+	    -m ${milteropendkim_socket_perms} \
+	       ${pidfile%/*} ${socketfile%/*}
+	;;
+    esac
+}
+
+dkim_start_postcmd()
+{
+    case ${milteropendkim_socket%:*} in
+    local|unix)
+	# postcmd is executed too fast and socket is not created before checking...
+	sleep 1
+	chmod -f ${milteropendkim_socket_perms} ${milteropendkim_socket#*:}
+	;;
+    esac
+}
+
+if [ -n "$2" ]; then
+    profile="$2"
+    if [ -n "${milteropendkim_profiles}" ]; then
+	pidfile="${_piddir}/${profile}.pid"
+	eval milteropendkim_enable="\${milteropendkim_${profile}_enable:-${milteropendkim_enable}}"
+	eval milteropendkim_socket="\${milteropendkim_${profile}_socket:-}"
+	eval milteropendkim_socket_perms="\${milteropendkim_${profile}_socket_perms:-}"
+	if [ -z "${milteropendkim_socket}" ];then
+	    echo "You must define a socket (milteropendkim_${profile}_socket)"
+	    exit 1
+	fi
+	eval milteropendkim_cfgfile="\${milteropendkim_${profile}_cfgfile:-${milteropendkim_cfgfile}}"
+	eval milteropendkim_domain="\${milteropendkim_${profile}_domain:-${milteropendkim_domain}}"
+	eval milteropendkim_key="\${milteropendkim_${profile}_key:-${milteropendkim_key}}"
+	eval milteropendkim_selector="\${milteropendkim_${profile}_selector:-${milteropendkim_selector}}"
+	eval milteropendkim_alg="\${milteropendkim_${profile}_alg:-${milteropendkim_alg}}"
+	eval milteropendkim_flags="\${milteropendkim_${profile}_flags:-${milteropendkim_flags}}"
+	if [ -f "${milteropendkim_cfgfile}" ];then
+	    milteropendkim_cfgfile="-x ${milteropendkim_cfgfile}"
+	else
+	    milteropendkim_cfgfile=""
+	fi
+	if [ -n "${milteropendkim_socket}" ];then
+	    _socket_prefix="-p"
+	fi
+	if [ -n "${milteropendkim_uid}" ];then
+	    _uid_prefix="-u"
+	    if [ -n "${milteropendkim_gid}" ];then
+		milteropendkim_uid=${milteropendkim_uid}:${milteropendkim_gid}
+	    fi
+	fi
+	if [ -n "${milteropendkim_domain}" ];then
+	    milteropendkim_domain="-d ${milteropendkim_domain}"
+	fi
+	if [ -n "${milteropendkim_key}" ];then
+	    milteropendkim_key="-k ${milteropendkim_key}"
+	fi
+	if [ -n "${milteropendkim_selector}" ];then
+	    milteropendkim_selector="-s ${milteropendkim_selector}"
+	fi
+	if [ -n "${milteropendkim_alg}" ];then
+	    milteropendkim_alg="-S ${milteropendkim_alg}"
+	fi
+	dkim_get_pidfile
+	command_args="-l ${_socket_prefix} ${milteropendkim_socket} ${_uid_prefix} ${milteropendkim_uid} -P ${pidfile} ${milteropendkim_cfgfile} ${milteropendkim_domain} ${milteropendkim_key} ${milteropendkim_selector} ${milteropendkim_alg}"
+    else
+	echo "$0: extra argument ignored"
+    fi
+else
+    if [ -n "${milteropendkim_profiles}" ] && [ -n "$1" ]; then
+	if [ "$1" != "restart" ]; then
+	    for profile in ${milteropendkim_profiles}; do
+		echo "===> milteropendkim profile: ${profile}"
+		%%PREFIX%%/etc/rc.d/milter-opendkim $1 ${profile}
+		retcode="$?"
+		if [ "${retcode}" -ne 0 ]; then
+		    failed="${profile} (${retcode}) ${failed:-}"
+		else
+		    success="${profile} ${success:-}"
+		fi
+	    done
+	    exit 0
+	else
+	    restart_precmd=""
+	fi
+    else
+	if [ -f "${milteropendkim_cfgfile}" ];then
+	    milteropendkim_cfgfile="-x ${milteropendkim_cfgfile}"
+	else
+	    milteropendkim_cfgfile=""
+	fi
+	if [ -n "${milteropendkim_socket}" ];then
+	    _socket_prefix="-p"
+	fi
+	if [ -n "${milteropendkim_uid}" ];then
+	    _uid_prefix="-u"
+	    if [ -n "${milteropendkim_gid}" ];then
+		milteropendkim_uid=${milteropendkim_uid}:${milteropendkim_gid}
+	    fi
+	fi
+	if [ -n "${milteropendkim_domain}" ];then
+	    milteropendkim_domain="-d ${milteropendkim_domain}"
+	fi
+	if [ -n "${milteropendkim_key}" ];then
+	    milteropendkim_key="-k ${milteropendkim_key}"
+	fi
+	if [ -n "${milteropendkim_selector}" ];then
+	    milteropendkim_selector="-s ${milteropendkim_selector}"
+	fi
+	if [ -n "${milteropendkim_alg}" ];then
+	    milteropendkim_alg="-S ${milteropendkim_alg}"
+	fi
+	dkim_get_pidfile
+	command_args="-l ${_socket_prefix} ${milteropendkim_socket} ${_uid_prefix} ${milteropendkim_uid} -P ${pidfile} ${milteropendkim_cfgfile} ${milteropendkim_domain} ${milteropendkim_key} ${milteropendkim_selector} ${milteropendkim_alg}"
+    fi
+fi
+
+run_rc_command "$1"
+```
+
+**Adaptation notes for opendkim-ng:**
+- Replace `%%PREFIX%%` with `/usr/local` (FreeBSD) or the install prefix.
+- Default user/group: change `mailnull:mailnull` → `opendkim:opendkim`.
+- Config path: `%%PREFIX%%/etc/mail/opendkim.conf` → `/usr/local/etc/opendkim.conf`.
+- The `dkim_get_pidfile` helper reads `PidFile` from the config at start time —
+  useful if the admin sets a custom pidfile path.
+- The profile mechanism (multiple instances via `milteropendkim_profiles`) is directly
+  useful for the `Resign` / multi-tenant use case in SCOPE.md.
+
+---
+
+### OpenBSD — `contrib/openbsd/opendkim.rc`
+
+Source: `https://raw.githubusercontent.com/openbsd/ports/master/mail/opendkim/pkg/opendkim.rc`  
+Upstream version: opendkim 2.10.3 (revision 3)
+
+```ksh
+#!/bin/ksh
+
+daemon="${TRUEPREFIX}/sbin/opendkim"
+daemon_flags="-x ${SYSCONFDIR}/opendkim.conf -u _opendkim"
+
+. /etc/rc.d/rc.subr
+
+rc_reload=NO
+
+rc_cmd $1
+```
+
+**Adaptation notes for opendkim-ng:**
+- `${TRUEPREFIX}` and `${SYSCONFDIR}` are substituted by the OpenBSD ports framework at
+  package-install time; for a manual install use `/usr/local` and `/etc` respectively.
+- User is `_opendkim` (OpenBSD convention: underscore-prefix for system daemons).
+- `rc_reload=NO` deliberately omits the `USR1` reload — OpenBSD restarts instead.
+  For opendkim-ng, consider enabling reload: set `rc_reload=YES` and add
+  `rc_reload_signal=USR1` (supported in OpenBSD 7.0+).
+
+---
+
+### OpenRC (Alpine Linux) — `contrib/openrc/opendkim.initd`
+
+Source: `https://raw.githubusercontent.com/alpinelinux/aports/master/community/opendkim/opendkim.initd`  
+Upstream version: opendkim as packaged in Alpine community
+
+```sh
+#!/sbin/openrc-run
+
+owner=opendkim
+pidfile=/run/opendkim/opendkim.pid
+cfgfile=/etc/opendkim/opendkim.conf
+command=/usr/sbin/opendkim
+command_args="$command_args -u $owner -f"
+command_background=yes
+required_files="$cfgfile"
+
+depend() {
+	need net
+	before mta
+}
+
+start_pre() {
+	local socket=$(grep ^Socket.*local: $cfgfile | cut -d: -f2)
+	local basedir=$(grep ^BaseDirectory $cfgfile | awk '{print $2}')
+	[ "${socket:0:1}" = "/" ] && checkpath -d -o $owner ${socket%/*}
+	[ "$basedir" ] && checkpath -d -o $owner $basedir
+	checkpath -d -o $owner ${pidfile%/*}
+}
+```
+
+Companion `conf.d/opendkim` (Alpine):
+
+```sh
+# Extra arguments to pass to command line
+#command_args=""
+```
+
+**Adaptation notes for opendkim-ng:**
+- Config path matches our installed location (`/etc/opendkim/opendkim.conf` or
+  `/etc/opendkim.conf` — adjust to whichever the package installs).
+- `start_pre()` parses `Socket` and `BaseDirectory` from opendkim.conf using grep/awk
+  to create required directories before start — this is the OpenRC idiomatic equivalent
+  of systemd's `RuntimeDirectory=`.
+- `command_background=yes` tells OpenRC to manage the pidfile itself; remove if
+  opendkim writes its own pidfile (controlled by the `PidFile` config key).
+- `need net` + `before mta` correctly expresses the dependency: network up, mail daemon
+  not started yet.
+- The `Socket` grep is fragile (`^Socket.*local:`) — it misses `inet:` sockets and
+  breaks if the config has leading whitespace. Consider improving the parser if adopting
+  this script.
+
+---
+
+### Runit (Void Linux) — `contrib/runit/opendkim/run`
+
+Source: `https://raw.githubusercontent.com/void-linux/void-packages/master/srcpkgs/opendkim/files/opendkim/run`  
+Upstream version: opendkim as packaged in Void Linux
+
+```sh
+#!/bin/sh
+exec 2>&1
+[ -r ./conf ] && . ./conf
+exec opendkim -f ${OPTS}
+```
+
+Companion `conf` file (place in the service directory, e.g. `/etc/sv/opendkim/conf`):
+
+```sh
+# OPTS="-x /etc/opendkim.conf -u opendkim"
+OPTS="-x /etc/opendkim.conf -u opendkim"
+```
+
+**Adaptation notes for opendkim-ng:**
+- Void Linux did not ship a `log/run` script; add one if svlogd logging is desired:
+
+  ```sh
+  #!/bin/sh
+  exec svlogd -tt /var/log/opendkim
+  ```
+
+- The `exec 2>&1` redirect merges stderr into stdout so runit/svlogd captures all
+  output. opendkim logs via syslog by default; `-f` keeps it in the foreground without
+  forking (required for runit supervision).
+- `${OPTS}` must include at minimum `-x /path/to/opendkim.conf`. The `-u opendkim`
+  privilege drop is done on the command line here rather than in the config file.
+- The `conf` sourcing pattern is the Void/runit convention for per-service environment
+  variables; it is equivalent to systemd `EnvironmentFile=`.
