@@ -3,6 +3,10 @@
 
 include(GNUInstallDirs)
 
+if(STRL_LIBRARY)
+    target_link_libraries(${test_name} PRIVATE ${STRL_LIBRARY})
+endif()
+
 if(NOT WITH_LUA)
     return()
 endif()
