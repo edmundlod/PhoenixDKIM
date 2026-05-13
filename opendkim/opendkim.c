@@ -5371,7 +5371,13 @@ static void
 dkimf_config_free(struct dkimf_config *conf)
 {
 	assert(conf != NULL);
-	assert(conf->conf_refcnt == 0);
+	if (conf->conf_refcnt != 0)
+	{
+		syslog(LOG_CRIT,
+		       "dkimf_config_free: conf_refcnt = %u, expected 0",
+		       conf->conf_refcnt);
+		return;
+	}
 
 	dkimf_zapkey(conf);
 
