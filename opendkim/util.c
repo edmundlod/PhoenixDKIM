@@ -91,21 +91,9 @@ static char *optlist[] =
 	"QUERY_CACHE",
 #endif /* QUERY_CACHE */
 
-#if USE_DB
-	"USE_DB",
-#endif /* USE_DB */
-
-#if USE_ERLANG
-	"USE_ERLANG",
-#endif /* USE_ERLANG */
-
 #if USE_JANSSON
 	"USE_JANSSON",
 #endif /* USE_JANSSON */
-
-#if USE_LDAP
-	"USE_LDAP",
-#endif /* USE_LDAP */
 
 #if USE_LUA
 	"USE_LUA",
@@ -114,10 +102,6 @@ static char *optlist[] =
 #if USE_MDB
 	"USE_MDB",
 #endif /* USE_MDB */
-
-#if USE_ODBX
-	"USE_ODBX",
-#endif /* USE_ODBX */
 
 #if USE_UNBOUND
 	"USE_UNBOUND",

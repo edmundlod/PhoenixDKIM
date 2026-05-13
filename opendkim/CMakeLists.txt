@@ -50,6 +50,28 @@ if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
 endif()
 
+# ── Redis / Valkey — hiredis or libvalkey (optional) ─────────────────────────
+
+option(WITH_REDIS "Build with Redis/Valkey (hiredis or libvalkey) backend support" OFF)
+
+if(WITH_REDIS)
+    find_library(HIREDIS_LIBRARY NAMES hiredis valkey)
+    find_path(HIREDIS_INCLUDE_DIR NAMES hiredis/hiredis.h valkey/valkey.h)
+    if(NOT HIREDIS_LIBRARY OR NOT HIREDIS_INCLUDE_DIR)
+        message(FATAL_ERROR
+            "hiredis or libvalkey not found. "
+            "Install libhiredis-dev / hiredis-devel, or libvalkey-dev / valkey-devel.")
+    endif()
+    if(EXISTS "${HIREDIS_INCLUDE_DIR}/valkey/valkey.h" AND
+       NOT EXISTS "${HIREDIS_INCLUDE_DIR}/hiredis/hiredis.h")
+        set(REDIS_IMPL_VALKEY TRUE)
+        message(STATUS "Redis backend: using libvalkey")
+    else()
+        set(REDIS_IMPL_VALKEY FALSE)
+        message(STATUS "Redis backend: using hiredis")
+    endif()
+endif()
+
 # ── pthreads ──────────────────────────────────────────────────────────────────
 
 find_package(Threads REQUIRED)
@@ -130,6 +152,15 @@ function(configure_daemon_target tgt)
         target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
         target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
         target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
+    endif()
+
+    if(WITH_REDIS)
+        target_compile_definitions(${tgt} PRIVATE USE_REDIS=1)
+        if(REDIS_IMPL_VALKEY)
+            target_compile_definitions(${tgt} PRIVATE USE_LIBVALKEY=1)
+        endif()
+        target_include_directories(${tgt} PRIVATE ${HIREDIS_INCLUDE_DIR})
+        target_link_libraries(${tgt} PRIVATE ${HIREDIS_LIBRARY})
     endif()
 endfunction()
 
@@ -263,4 +294,23 @@ install(FILES opendkim-lua.3 DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
 
 if(WITH_LUA)
     add_subdirectory(tests)
+endif()
+
+# ── Redis/Valkey DB unit test ─────────────────────────────────────────────────
+
+if(WITH_REDIS)
+    add_executable(t-db-redis
+        tests/t-db-redis.c
+        opendkim-db.c
+        util.c
+    )
+    configure_daemon_target(t-db-redis)
+    add_test(
+        NAME t-db-redis
+        COMMAND t-db-redis
+    )
+    set_tests_properties(t-db-redis PROPERTIES
+        TIMEOUT 10
+        SKIP_RETURN_CODE 77
+    )
 endif()

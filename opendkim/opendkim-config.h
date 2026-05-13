@@ -67,22 +67,6 @@ struct configdef dkimf_config[] =
 	{ "KeepTemporaryFiles",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "KeyFile",			CONFIG_TYPE_STRING,	FALSE },
 	{ "KeyTable",			CONFIG_TYPE_STRING,	FALSE },
-#ifdef USE_LDAP
-	{ "LDAPAuthMechanism",		CONFIG_TYPE_STRING,	FALSE },
-# ifdef USE_SASL
-	{ "LDAPAuthName",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPAuthRealm",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPAuthUser",		CONFIG_TYPE_STRING,	FALSE },
-# endif /* USE_SASL */
-	{ "LDAPBindPassword",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPBindUser",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPDisableCache",		CONFIG_TYPE_BOOLEAN,	FALSE },
-	{ "LDAPKeepaliveIdle",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPKeepaliveInterval",	CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPKeepaliveProbes",	CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPTimeout",		CONFIG_TYPE_STRING,	FALSE },
-	{ "LDAPUseTLS",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* USE_LDAP */
 	{ "LogResults",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "LogWhy",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "MaximumHeaders",		CONFIG_TYPE_INTEGER,	FALSE },
@@ -151,9 +135,6 @@ struct configdef dkimf_config[] =
 #endif /* HAVE_CURL_EASY_STRERROR */
 	{ "Socket",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SoftwareHeader",		CONFIG_TYPE_BOOLEAN,	FALSE },
-#if defined(USE_ODBX) || defined(USE_LDAP)
-	{ "SoftStart",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* defined(USE_ODBX) || defined(USE_LDAP) */
 	{ "StrictHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictTestMode",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "SubDomains",			CONFIG_TYPE_BOOLEAN,	FALSE },
