@@ -65,6 +65,10 @@ foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
         target_link_libraries(${test_name} PRIVATE ${RESOLV_LIBRARY})
     endif()
 
+    if(STRL_LIBRARY)
+        target_link_libraries(${test_name} PRIVATE ${STRL_LIBRARY})
+    endif()
+
     add_test(
         NAME ${test_name}
         COMMAND ${test_name}
