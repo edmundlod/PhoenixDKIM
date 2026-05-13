@@ -11597,7 +11597,7 @@ mlfi_eom(SMFICTX *ctx)
 	struct dkimf_config *conf;
 	DKIM_SIGINFO *sig = NULL;
 	Header hdr;
-	unsigned char header[DKIM_MAXHEADER + 1];
+	unsigned char header[DKIM_MAXHEADER + sizeof(AUTHRESULTSHDR) + 2];
 
 	assert(ctx != NULL);
 
