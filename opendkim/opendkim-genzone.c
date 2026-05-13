@@ -686,7 +686,7 @@ main(int argc, char **argv)
 			fprintf(out, "zone %s\n", domain);
 
 			snprintf(tmpbuf, sizeof tmpbuf,
-			         "update add %s%s%s%s%s %d TXT \"",
+			         "update add %s%s%s%s%s %d TXT \"v=DKIM1; k=rsa; p=",
 			         selector, suffix ? DKIMZONE : "",
 			         fqdnsuffix ? "." : "",
 			         fqdnsuffix ? domain : "",
