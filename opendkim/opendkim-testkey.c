@@ -277,20 +277,7 @@ main(int argc, char **argv)
 
 	if (conffile != NULL)
 	{
-#ifdef USE_LDAP
-		_Bool ldap_usetls = FALSE;
-#endif /* USE_LDAP */
 		u_int line = 0;
-#ifdef USE_LDAP
-		char *ldap_authmech = NULL;
-# ifdef USE_SASL
-		char *ldap_authname = NULL;
-		char *ldap_authrealm = NULL;
-		char *ldap_authuser = NULL;
-# endif /* USE_SASL */
-		char *ldap_bindpw = NULL;
-		char *ldap_binduser = NULL;
-#endif /* USE_LDAP */
 		struct config *cfg;
 		char path[MAXPATHLEN + 1];
 
@@ -330,53 +317,6 @@ main(int argc, char **argv)
 			if (p != NULL)
 				strlcpy(keypath, p, sizeof keypath);
 		}
-
-#ifdef USE_LDAP
-		(void) config_get(cfg, "LDAPUseTLS",
-		                  &ldap_usetls, sizeof ldap_usetls);
-
-		if (ldap_usetls)
-			dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_USETLS, "y");
-		else
-			dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_USETLS, "n");
-
-		(void) config_get(cfg, "LDAPAuthMechanism",
-		                  &ldap_authmech, sizeof ldap_authmech);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHMECH,
-		                        ldap_authmech);
-
-# ifdef USE_SASL
-		(void) config_get(cfg, "LDAPAuthName",
-		                  &ldap_authname, sizeof ldap_authname);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHNAME,
-		                        ldap_authname);
-
-		(void) config_get(cfg, "LDAPAuthRealm",
-		                  &ldap_authrealm, sizeof ldap_authrealm);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHREALM,
-		                        ldap_authrealm);
-
-		(void) config_get(cfg, "LDAPAuthUser",
-		                  &ldap_authuser, sizeof ldap_authuser);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHUSER,
-		                        ldap_authuser);
-# endif /* USE_SASL */
-
-		(void) config_get(cfg, "LDAPBindPassword",
-		                  &ldap_bindpw, sizeof ldap_bindpw);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_BINDPW, ldap_bindpw);
-
-		(void) config_get(cfg, "LDAPBindUser",
-		                  &ldap_binduser, sizeof ldap_binduser);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_BINDUSER,
-		                        ldap_binduser);
-#endif /* USE_LDAP */
 
 		(void) config_get(cfg, "TrustAnchorFile",
 		                  &trustanchor, sizeof trustanchor);

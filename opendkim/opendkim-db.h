@@ -29,28 +29,9 @@
 #define	DKIMF_DB_TYPE_FILE	0
 #define	DKIMF_DB_TYPE_REFILE	1
 #define	DKIMF_DB_TYPE_CSL	2
-#define DKIMF_DB_TYPE_BDB	3
-#define DKIMF_DB_TYPE_DSN	4
-#define DKIMF_DB_TYPE_LDAP	5
 #define DKIMF_DB_TYPE_LUA	6
-#define DKIMF_DB_TYPE_MEMCACHE	7
-#define DKIMF_DB_TYPE_REPUTE	8
 #define DKIMF_DB_TYPE_MDB	10
-#define DKIMF_DB_TYPE_ERLANG	11
-
-#define	DKIMF_LDAP_PARAM_BINDUSER	0
-#define	DKIMF_LDAP_PARAM_BINDPW		1
-#define	DKIMF_LDAP_PARAM_AUTHMECH	2
-#define	DKIMF_LDAP_PARAM_USETLS		3
-#define	DKIMF_LDAP_PARAM_AUTHREALM	4
-#define	DKIMF_LDAP_PARAM_AUTHUSER	5
-#define	DKIMF_LDAP_PARAM_AUTHNAME	6
-#define	DKIMF_LDAP_PARAM_TIMEOUT	7
-#define	DKIMF_LDAP_PARAM_KA_IDLE	8
-#define	DKIMF_LDAP_PARAM_KA_PROBES	9
-#define	DKIMF_LDAP_PARAM_KA_INTERVAL	10
-
-#define DKIMF_LDAP_PARAM_MAX		10
+#define DKIMF_DB_TYPE_REDIS	12
 
 #ifdef __STDC__
 # ifndef __P
@@ -90,7 +71,6 @@ extern int dkimf_db_open __P((DKIMF_DB *, char *, u_int flags,
 extern int dkimf_db_put __P((DKIMF_DB, void *, size_t, void *, size_t));
 extern int dkimf_db_rewalk __P((DKIMF_DB, char *, DKIMF_DBDATA, unsigned int,
                                 void **));
-extern void dkimf_db_set_ldap_param __P((int, char *));
 extern int dkimf_db_strerror __P((DKIMF_DB, char *, size_t));
 extern int dkimf_db_type __P((DKIMF_DB));
 extern int dkimf_db_walk __P((DKIMF_DB, _Bool, void *, size_t *,

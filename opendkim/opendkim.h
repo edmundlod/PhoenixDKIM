@@ -137,10 +137,6 @@ extern sfsistat mlfi_close __P((SMFICTX *));
 extern DKIM *dkimf_getdkim __P((void *));
 extern struct signreq *dkimf_getsrlist __P((void *));
 
-#ifdef USE_LDAP
-extern char *dkimf_get_ldap_param __P((int));
-#endif /* USE_LDAP */
-
 #ifdef USE_LUA
 # ifdef DKIMF_LUA_PROTOTYPES
 extern void dkimf_import_globals __P((void *, lua_State *));

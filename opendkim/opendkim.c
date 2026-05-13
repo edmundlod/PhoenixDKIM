@@ -170,9 +170,6 @@ struct lua_global
 struct dkimf_config
 {
 	_Bool		conf_disablecryptoinit;	/* initialize SSL libs? */
-#if defined(USE_LDAP) || defined(USE_ODBX)
-	_Bool		conf_softstart;		/* do LDAP/SQL soft starts */
-#endif /* defined(USE_LDAP) || defined(USE_ODBX) */
 	_Bool		conf_weaksyntax;	/* do weaker syntax checking */
 	_Bool		conf_passmalformed;	/* pass malformed messages */
 	_Bool		conf_logresults;	/* log all results */
@@ -206,9 +203,6 @@ struct dkimf_config
 	_Bool		conf_singleauthres;	/* single Auth-Results */
 	_Bool		conf_safekeys;		/* check key permissions */
 	_Bool		conf_resignall;		/* resign unverified mail */
-#ifdef USE_LDAP
-	_Bool		conf_ldap_usetls;	/* LDAP TLS */
-#endif /* USE_LDAP */
 	unsigned int	conf_mode;		/* operating mode */
 	unsigned int	conf_refcnt;		/* reference count */
 	unsigned int	conf_dnstimeout;	/* DNS timeout */
@@ -265,20 +259,6 @@ struct dkimf_config
 	char *		conf_reportaddrbcc;	/* report repcipient address as bcc */
 	char *		conf_mtacommand;	/* MTA command (reports) */
 	char *		conf_redirect;		/* redirect failures to */
-#ifdef USE_LDAP
-	char *		conf_ldap_timeout;	/* LDAP timeout */
-	char *		conf_ldap_kaidle;	/* LDAP keepalive idle */
-	char *		conf_ldap_kaprobes;	/* LDAP keepalive probes */
-	char *		conf_ldap_kainterval;	/* LDAP keepalive interval */
-	char *		conf_ldap_binduser;	/* LDAP bind user */
-	char *          conf_ldap_bindpw;	/* LDAP bind password */
-	char *          conf_ldap_authmech;	/* LDAP auth mechanism */
-# ifdef USE_SASL
-	char *		conf_ldap_authname;	/* LDAP auth name */
-	char *		conf_ldap_authuser;	/* LDAP auth user */
-	char *		conf_ldap_authrealm;	/* LDAP auth realm */
-# endif /* USE_SASL */
-#endif /* USE_LDAP */
 #ifdef USE_LUA
 	char *		conf_screenscript;	/* Lua script: screening */
 	void *		conf_screenfunc;	/* Lua function: screening */
@@ -5602,9 +5582,6 @@ static int
 dkimf_config_load(struct config *data, struct dkimf_config *conf,
                   char *err, size_t errlen, char *become)
 {
-#ifdef USE_LDAP
-	_Bool btmp;
-#endif /* USE_LDAP */
 	int maxsign;
 	int dbflags = 0;
 	char *str;
@@ -5620,12 +5597,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (data != NULL)
 	{
 		int tmpint;
-
-#ifdef USE_LDAP
-		(void) config_get(data, "LDAPSoftStart",
-		                  &conf->conf_softstart,
-		                  sizeof conf->conf_softstart);
-#endif /* USE_LDAP */
 
 		(void) config_get(data, "DNSConnect",
 		                  &conf->conf_dnsconnect,
@@ -5937,96 +5908,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  &conf->conf_allowsha1only,
 		                  sizeof conf->conf_allowsha1only);
 
-#ifdef USE_LDAP
-		btmp = FALSE;
-		(void) config_get(data, "LDAPDisableCache", &btmp, sizeof btmp);
-		if (btmp)
-			dkimf_db_flags(DKIMF_DB_FLAG_NOCACHE);
-		else
-			dkimf_db_flags(0);
-
-		(void) config_get(data, "LDAPUseTLS",
-		                  &conf->conf_ldap_usetls,
-		                  sizeof conf->conf_ldap_usetls);
-
-		if (conf->conf_ldap_usetls)
-			dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_USETLS, "y");
-		else
-			dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_USETLS, "n");
-
-		(void) config_get(data, "LDAPTimeout",
-		                  &conf->conf_ldap_timeout,
-		                  sizeof conf->conf_ldap_timeout);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_TIMEOUT,
-		                        conf->conf_ldap_timeout);
-
-		(void) config_get(data, "LDAPKeepaliveIdle",
-		                  &conf->conf_ldap_kaidle,
-		                  sizeof conf->conf_ldap_kaidle);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_KA_IDLE,
-		                        conf->conf_ldap_kaidle);
-
-		(void) config_get(data, "LDAPKeepaliveProbes",
-		                  &conf->conf_ldap_kaprobes,
-		                  sizeof conf->conf_ldap_kaprobes);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_KA_PROBES,
-		                        conf->conf_ldap_kaprobes);
-
-		(void) config_get(data, "LDAPKeepaliveInterval",
-		                  &conf->conf_ldap_kainterval,
-		                  sizeof conf->conf_ldap_kainterval);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_KA_INTERVAL,
-		                        conf->conf_ldap_kainterval);
-
-		(void) config_get(data, "LDAPAuthMechanism",
-		                  &conf->conf_ldap_authmech,
-		                  sizeof conf->conf_ldap_authmech);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHMECH,
-		                        conf->conf_ldap_authmech);
-
-# ifdef USE_SASL
-		(void) config_get(data, "LDAPAuthName",
-		                  &conf->conf_ldap_authname,
-		                  sizeof conf->conf_ldap_authname);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHNAME,
-		                        conf->conf_ldap_authname);
-
-		(void) config_get(data, "LDAPAuthRealm",
-		                  &conf->conf_ldap_authrealm,
-		                  sizeof conf->conf_ldap_authrealm);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHREALM,
-		                        conf->conf_ldap_authrealm);
-
-		(void) config_get(data, "LDAPAuthUser",
-		                  &conf->conf_ldap_authuser,
-		                  sizeof conf->conf_ldap_authuser);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_AUTHUSER,
-		                        conf->conf_ldap_authuser);
-# endif /* USE_SASL */
-
-		(void) config_get(data, "LDAPBindPassword",
-		                  &conf->conf_ldap_bindpw,
-		                  sizeof conf->conf_ldap_bindpw);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_BINDPW,
-		                        conf->conf_ldap_bindpw);
-
-		(void) config_get(data, "LDAPBindUser",
-		                  &conf->conf_ldap_binduser,
-		                  sizeof conf->conf_ldap_binduser);
-
-		dkimf_db_set_ldap_param(DKIMF_LDAP_PARAM_BINDUSER,
-		                        conf->conf_ldap_binduser);
-#endif /* USE_LDAP */
-
 		(void) config_get(data, "Nameservers",
 		                  &conf->conf_nslist,
 		                  sizeof conf->conf_nslist);
@@ -6296,11 +6177,6 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                  sizeof become);
 		}
 	}
-
-#if defined(USE_LDAP) || defined(USE_ODBX)
-	if (conf->conf_softstart)
-		dbflags |= DKIMF_DB_FLAG_SOFTSTART;
-#endif /* defined(USE_LDAP) || defined(USE_ODBX) */
 
 	if (basedir[0] != '\0')
 	{
@@ -13365,25 +13241,12 @@ main(int argc, char **argv)
 			fprintf(stdout, "\tcsl:entry1[,entry2[,...]]\n"
 			                "\tfile:path\n"
 			                "\trefile:path\n"
-			                "\tdb:path\n"
-#ifdef USE_ODBX
-			                "\tdsn:<backend>://[user[:pwd]@][port+]host/dbase[/key=val[?...]]\n"
-#endif /* USE_ODBX */
-#ifdef USE_LDAP
-			                "\tldapscheme://host[:port][/dn[?attrs[?scope[?filter[?exts]]]]]\n"
-#endif /* USE_LDAP */
 #ifdef USE_LUA
 			                "\tlua:path\n"
 #endif /* USE_LUA */
-#ifdef USE_LIBMEMCACHED
-			                "\tmemcache:host[:port][,...]/prefix\n"
-#endif /* USE_LIBMEMCACHED */
 #ifdef USE_MDB
 			                "\tmdb:path\n"
 #endif /* USE_MDB */
-#ifdef USE_ERLANG
-					"\terlang:node@host[,...]:cookie:module:function\n"
-#endif /* USE_ERLANG */
 			                "> ");
 		}
 
