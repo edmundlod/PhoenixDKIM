@@ -302,6 +302,7 @@ if(WITH_REDIS)
     add_executable(t-db-redis
         tests/t-db-redis.c
         opendkim-db.c
+        opendkim-lua.c
         util.c
     )
     configure_daemon_target(t-db-redis)
