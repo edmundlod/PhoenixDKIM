@@ -54,7 +54,9 @@ jobs:
             liblmdb-dev \
             libmilter-dev \
             libunbound-dev \
-            liblua5.4-dev
+            liblua5.4-dev \
+            dh-python \
+            python3
 
       - name: Show build environment
         run: |
