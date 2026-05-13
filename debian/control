@@ -5,7 +5,7 @@ Maintainer: Edmund Lodewijks <edmund@proteamail.com>
 Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  libmilter-dev, liblmdb-dev,  libunbound-dev [linux-any],
  liblua5.4-dev, libssl-dev (>=3.0.0), libbsd-dev,
- libevent-dev, nettle-dev, dh-python
+ libevent-dev, nettle-dev, libhiredis-dev, dh-python
 Standards-Version: 4.6.2
 Homepage: http://github.org/edmundlod/opendkim-ng
 Vcs-Browser: https://github.com/edmundlod/opendkim-ng

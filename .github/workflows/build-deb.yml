@@ -58,6 +58,7 @@ jobs:
             libbsd-dev \
             libevent-dev \
             nettle-dev \
+            libhiredis-dev \
             dh-python \
             python3
 

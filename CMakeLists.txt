@@ -15,8 +15,6 @@ endif()
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 add_compile_definitions(_GNU_SOURCE)
-set(OPENDKIM_DISPLAY_VERSION "3.0.0-beta2")
-add_compile_definitions(VERSION_STRING="${OPENDKIM_DISPLAY_VERSION}")
 
 enable_testing()
 

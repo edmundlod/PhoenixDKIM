@@ -15,7 +15,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DWITH_LUA=ON \
-		-DVERSION=13.0.0
+		-DWITH_REDIS=ON
 
 # Test results on kfreebsd-* are inconsistent, but not due to package bugs.
 override_dh_auto_test:
