@@ -1,3 +1,18 @@
+opendkim-ng (3.0.0~beta5-ng1) unstable; urgency=medium
+
+  * Rename and move sample configuration to /usr/share/doc/opendkim-ng/
+  * Modernise SystemD management: Run as simple, not forking, and without PID
+  * Added patches for Lua 5.5+
+  * Removed older or unwanted db backends (BDB, OpenDBX, LDAP, SASL,
+    libmemchaced, Erlang)
+  * Fixed 2 bugs in the LMDB code
+  * Added Redis/Valkey as db backend (PostgreSQL still planned)
+  * Fixed all relevant issues from the pre-fork Github Issues tracker
+  * Applied patches from Debian, Fedora, and Gentoo, or fixed the issues in
+    a slightly different way (distro patch authors credited)
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Wed, 13 May 2026 20:23:00 +0200
+
 opendkim-ng (3.0.0~beta4-ng1) unstable; urgency=medium
 
   * CI: Added GitHub Action workflow for building .deb packages
