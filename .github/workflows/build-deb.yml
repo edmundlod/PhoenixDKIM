@@ -57,7 +57,7 @@ jobs:
             liblua5.4-dev \
             libbsd-dev \
             libevent-dev \
-            libnettle-dev \
+            nettle-dev \
             dh-python \
             python3
 
