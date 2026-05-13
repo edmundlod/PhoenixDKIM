@@ -78,6 +78,13 @@ jobs:
           cmake --version
           openssl version
 
+      - name: Append backport version suffix (bookworm)
+        if: matrix.codename == 'bookworm'
+        run: |
+          export DEBEMAIL="edmund@proteamail.com"
+          export DEBFULLNAME="Edmund Lodewijks"
+          dch --local "~bpo12+" --distribution bookworm "Rebuild for Debian bookworm"
+
       - name: Build Debian package
         run: |
           dpkg-buildpackage -us -uc -b
