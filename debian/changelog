@@ -1,3 +1,9 @@
+opendkim-ng (3.0.0~beta9-ng1) unstable; urgency=medium
+
+  * CI: Batch apt dispatch — one event per codename, all packages in one run
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Wed, 13 May 2026 23:45:00 +0200
+
 opendkim-ng (3.0.0~beta8-ng1) unstable; urgency=medium
 
   * CI: Add ~bpo12+ version suffix for bookworm builds to avoid pool conflicts
