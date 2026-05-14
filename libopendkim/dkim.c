@@ -4955,6 +4955,13 @@ dkim_sign(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 			signalg = DKIM_SIGN_RSASHA1;
 	}
 
+	if (!dkim_strisprint((u_char *) domain) ||
+	    !dkim_strisprint((u_char *) selector))
+	{
+		*statp = DKIM_STAT_INVALID;
+		return NULL;
+	}
+
 	new = dkim_new(libhandle, id, memclosure, hdrcanonalg, bodycanonalg,
 	               signalg, statp);
 
