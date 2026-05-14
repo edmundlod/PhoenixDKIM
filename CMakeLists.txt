@@ -16,6 +16,10 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 add_compile_definitions(_GNU_SOURCE)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(Sanitizers)   # must precede Hardening — defines options checked there
+include(Hardening)
+
 enable_testing()
 
 add_subdirectory(libopendkim)

@@ -187,6 +187,8 @@ add_executable(opendkim_daemon
 set_target_properties(opendkim_daemon PROPERTIES OUTPUT_NAME opendkim)
 
 configure_daemon_target(opendkim_daemon)
+apply_hardening(opendkim_daemon)
+apply_sanitizers(opendkim_daemon)
 
 target_link_libraries(opendkim_daemon PRIVATE ${MILTER_LIB})
 
@@ -215,6 +217,8 @@ add_executable(opendkim-testkey
 )
 
 configure_daemon_target(opendkim-testkey)
+apply_hardening(opendkim-testkey)
+apply_sanitizers(opendkim-testkey)
 
 if(WITH_LUA AND MILTER_INCLUDE_DIR)
     target_include_directories(opendkim-testkey PRIVATE ${MILTER_INCLUDE_DIR})
@@ -236,6 +240,8 @@ add_executable(opendkim-genzone
 )
 
 configure_daemon_target(opendkim-genzone)
+apply_hardening(opendkim-genzone)
+apply_sanitizers(opendkim-genzone)
 
 install(TARGETS opendkim-genzone
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
@@ -249,6 +255,8 @@ add_executable(opendkim-testmsg
 )
 
 configure_daemon_target(opendkim-testmsg)
+apply_hardening(opendkim-testmsg)
+apply_sanitizers(opendkim-testmsg)
 
 install(TARGETS opendkim-testmsg
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
@@ -306,6 +314,8 @@ if(WITH_REDIS)
         util.c
     )
     configure_daemon_target(t-db-redis)
+    apply_hardening(t-db-redis)
+    apply_sanitizers(t-db-redis)
     add_test(
         NAME t-db-redis
         COMMAND t-db-redis

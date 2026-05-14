@@ -26,5 +26,8 @@ if(BSD_LIBRARY)
     target_link_libraries(miltertest PRIVATE ${BSD_LIBRARY})
 endif()
 
+apply_hardening(miltertest)
+apply_sanitizers(miltertest)
+
 install(TARGETS miltertest DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES miltertest.8 DESTINATION ${CMAKE_INSTALL_MANDIR}/man8)

@@ -377,6 +377,11 @@ endfunction()
 configure_opendkim_target(opendkim)
 configure_opendkim_target(opendkim_static)
 
+apply_hardening(opendkim)
+apply_hardening(opendkim_static)
+apply_sanitizers(opendkim)
+apply_sanitizers(opendkim_static)
+
 # ── Public header install ─────────────────────────────────────────────────────
 
 install(FILES dkim.h

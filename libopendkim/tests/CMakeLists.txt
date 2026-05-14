@@ -70,6 +70,9 @@ foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
         target_link_libraries(${test_name} PRIVATE ${STRL_LIBRARY})
     endif()
 
+    apply_hardening(${test_name})
+    apply_sanitizers(${test_name})
+
     add_test(
         NAME ${test_name}
         COMMAND ${test_name}
