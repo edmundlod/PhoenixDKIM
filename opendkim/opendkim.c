@@ -9521,15 +9521,16 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 				n += r;                                         \
 			} while (0)
 
-			APPEND("%s%sdkim=%s%s (%u-bit key%s%s) header.d=%s header.i=%s header.a=%s header.s=%s%s%s",
+			APPEND("%s%sdkim=%s%s (%u-bit key%s%s) header.d=%s header.i=%s header.a=%s header.s=%s%s%s%s",
 				c == 0 ? "" : ";",
 				DELIMITER, result, comment,
 				keybits,
 				dnssec == NULL ? "" : "; ",
 				dnssec == NULL ? "" : dnssec,
 				domain, val, algorithm, selector,
-				ts == DKIM_STAT_OK ? " header.b=" : "",
-				ts == DKIM_STAT_OK ? ss : "");
+				ts == DKIM_STAT_OK ? " header.b=\"" : "",
+				ts == DKIM_STAT_OK ? ss : "",
+				ts == DKIM_STAT_OK ? "\"" : "");
 
 			#undef APPEND
 		}
