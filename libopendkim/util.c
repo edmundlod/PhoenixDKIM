@@ -939,3 +939,29 @@ dkim_clobber_array(char **in)
 
 	free(in);
 }
+
+/*
+**  DKIM_STRISPRINT -- return TRUE if a string contains only printable chars
+**
+**  Parameters:
+**  	str -- string to evaluate
+**
+**  Return value:
+**  	TRUE unless a non-printable character was found.
+*/
+
+_Bool
+dkim_strisprint(unsigned char *str)
+{
+	unsigned char *p;
+
+	assert(str != NULL);
+
+	for (p = str; *p != '\0'; p++)
+	{
+		if (!isprint(*p))
+			return FALSE;
+	}
+
+	return TRUE;
+}
