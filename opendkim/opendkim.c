@@ -563,7 +563,8 @@ struct dkimf_config *curconf;			/* current configuration */
 DKIMF_DB popdb;					/* POP auth DB */
 #endif /* POPAUTH */
 char reportcmd[BUFRSZ + 1];			/* reporting command */
-char reportaddr[MAXADDRESS + 1];		/* reporting address */
+/* user@host: each part bounded by DKIM_MAXHOSTNAMELEN (same value as LOGIN_NAME_MAX on Linux) */
+char reportaddr[2 * DKIM_MAXHOSTNAMELEN + 2];	/* reporting address */
 char myhostname[DKIM_MAXHOSTNAMELEN + 1];	/* hostname */
 pthread_mutex_t conf_lock;			/* config lock */
 pthread_mutex_t pwdb_lock;			/* passwd/group lock */
