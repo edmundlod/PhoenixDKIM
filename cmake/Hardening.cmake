@@ -171,15 +171,15 @@ function(apply_hardening tgt)
     # generate immediate noise with no actionable signal.
 
     foreach(_probe_var
-        WSHADOW
-        WIMPLICIT_FALLTHROUGH
-        WMISSING_PROTOTYPES
-        WSTRICT_PROTOTYPES
-        WMISSING_DECLARATIONS
-        WWRITE_STRINGS
-        WPOINTER_ARITH
-        WCAST_QUAL
-        WUNDEF
+        SHADOW
+        IMPLICIT_FALLTHROUGH
+        MISSING_PROTOTYPES
+        STRICT_PROTOTYPES
+        MISSING_DECLARATIONS
+        WRITE_STRINGS
+        POINTER_ARITH
+        CAST_QUAL
+        UNDEF
     )
         if(HARDEN_CC_${_probe_var})
             string(TOLOWER "${_probe_var}" _flag)
