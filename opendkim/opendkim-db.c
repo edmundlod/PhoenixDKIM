@@ -1678,6 +1678,12 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 
 		r = (struct dkimf_db_redis *) db->db_data;
 
+		if (buflen > (size_t) INT_MAX)
+		{
+			db->db_status = ENOMEM;
+			return -1;
+		}
+
 		n = snprintf(query, sizeof query, "%s%.*s",
 		             r->redis_prefix, (int) buflen, (char *) buf);
 		if (n < 0 || (size_t) n >= sizeof query)
