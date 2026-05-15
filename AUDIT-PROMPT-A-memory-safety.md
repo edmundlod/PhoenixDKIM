@@ -5,8 +5,8 @@
 Perform a thorough C memory-safety audit of the opendkim-ng codebase.
 This is an **internet-facing milter daemon** that processes every inbound
 and outbound email on a mail server.  Any crafted email can exercise the
-DKIM verification path.  The code is written in C17 and must be assumed
-hostile-input-safe.
+DKIM verification path.  The code is written in older style C and is
+supposed to be hostile-input-safe.
 
 Do not modify any source files.  Produce only findings, as described below.
 
@@ -27,7 +27,7 @@ signature verification succeeds or fails.
 
 ## What is already known / fixed
 
-Do not re-report these.  They are resolved in the working tree:
+The following issues are supposed to be resolved in the working tree:
 
 - CVE-2020-35766: `/tmp/testkeys` TOCTOU — fixed in test harness only, no daemon impact
 - CVE-2022-48521: A-R header stripping ordinal bug — fixed (reverse-order traversal)
@@ -43,7 +43,8 @@ Do not re-report these.  They are resolved in the working tree:
 ## Files to read and audit
 
 Work through these in order.  Read each file completely before reporting
-findings for it.
+findings for it.  If any potential security flaw / error is missing from the list,
+check for it, and report it as well.
 
 ### 1. `libopendkim/dkim-keys.c` — DNS TXT record parser
    **Focus**: `dkim_get_key_dns()`.  This function parses a raw DNS wire-format
