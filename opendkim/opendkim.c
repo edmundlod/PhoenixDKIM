@@ -11892,7 +11892,18 @@ mlfi_eom(SMFICTX *ctx)
 				slash = strchr((char *) ares->ares_host, '/');
 				if (slash != NULL)
 					*slash = '\0';
-					
+
+				/* strip a single trailing root-label dot so a
+				   fully-qualified authserv-id (e.g. "host.") is
+				   not compared as a distinct string against the
+				   locally configured authservid */
+				{
+					size_t hlen = strlen((char *) ares->ares_host);
+					if (hlen > 0 &&
+					    ares->ares_host[hlen - 1] == '.')
+						ares->ares_host[hlen - 1] = '\0';
+				}
+
 				if (conf->conf_remardb != NULL)
 				{
 					status = dkimf_db_get(conf->conf_remardb,
