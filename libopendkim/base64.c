@@ -12,8 +12,9 @@
 /* libopendkim includes */
 #include "base64.h"
 
-/* base64 alphabet */
-static unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+/* base64 alphabet — byte-indexed only, not NUL-terminated */
+static unsigned char alphabet[64]
+    __attribute__((nonstring)) = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /* base64 decode stuff */
 static int decoder[256] =
