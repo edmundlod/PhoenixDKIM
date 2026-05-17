@@ -5739,6 +5739,14 @@ dkim_diffheaders(DKIM *dkim, dkim_canon_t canon, int maxcost,
                  char **ohdrs, int nohdrs,
                  struct dkim_hdrdiff **out, int *nout)
 {
+	(void) dkim;
+	(void) canon;
+	(void) maxcost;
+	(void) ohdrs;
+	(void) nohdrs;
+	(void) out;
+	(void) nout;
+	return DKIM_STAT_NOTIMPLEMENT;
 }
 
 /*
