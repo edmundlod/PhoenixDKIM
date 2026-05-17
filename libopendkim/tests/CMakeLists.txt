@@ -70,7 +70,7 @@ foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
         target_link_libraries(${test_name} PRIVATE ${STRL_LIBRARY})
     endif()
 
-    target_compile_options(${test_name} PRIVATE -Wno-pointer-sign)
+    target_compile_options(${test_name} PRIVATE -Wno-pointer-sign -Wno-unused-parameter)
 
     apply_hardening(${test_name})
     apply_sanitizers(${test_name})
