@@ -732,7 +732,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 				}
 			}
 
-			dkimf_trimspaces((u_char *) line);
+			dkimf_trimspaces(line);
 			if (strlen(line) == 0)
 				continue;
 
@@ -953,7 +953,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 				}
 			}
 
-			dkimf_trimspaces((u_char *) line);
+			dkimf_trimspaces(line);
 			if (strlen(line) == 0)
 				continue;
 

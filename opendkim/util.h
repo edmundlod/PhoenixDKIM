@@ -48,7 +48,7 @@ extern int dkimf_socket_cleanup __P((char *));
 extern void dkimf_stripbrackets __P((char *));
 extern void dkimf_stripcr __P((char *));
 extern _Bool dkimf_subdomain __P((char *d1, char *d2));
-extern void dkimf_trimspaces __P((u_char *));
+extern void dkimf_trimspaces __P((char *));
 
 extern struct dkimf_dstring *dkimf_dstring_new __P((int, int));
 extern void dkimf_dstring_free __P((struct dkimf_dstring *));
