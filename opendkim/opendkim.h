@@ -109,6 +109,7 @@ typedef struct signreq * SIGNREQ;
 struct signreq
 {
 	ssize_t			srq_signlen;
+	size_t			srq_keydatalen;
 	void *			srq_keydata;
 	u_char *		srq_domain;
 	u_char *		srq_selector;

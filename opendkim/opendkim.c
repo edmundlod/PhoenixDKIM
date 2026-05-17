@@ -4544,6 +4544,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 	new->srq_domain = NULL;
 	new->srq_selector = NULL;
 	new->srq_keydata = NULL;
+	new->srq_keydatalen = 0;
 	new->srq_signlen = signlen;
 	if (signer != NULL && signer[0] != '\0')
 		new->srq_signer = (u_char *) strdup(signer);
@@ -4564,6 +4565,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 			free(new);
 			return -1;
 		}
+		new->srq_keydatalen = keydatasz + 1;
 		memset(new->srq_keydata, '\0', keydatasz + 1);
 		memcpy(new->srq_keydata, dbd[2].dbdata_buffer, keydatasz);
 	}
@@ -8027,7 +8029,13 @@ dkimf_cleanup(SMFICTX *ctx)
 
 				if (sr->srq_dkim != NULL)
 					dkim_free(sr->srq_dkim);
-				TRYFREE(sr->srq_keydata);
+				if (sr->srq_keydata != NULL)
+				{
+					memset(sr->srq_keydata, '\0',
+					       sr->srq_keydatalen);
+					free(sr->srq_keydata);
+					sr->srq_keydata = NULL;
+				}
 				TRYFREE(sr->srq_domain);
 				TRYFREE(sr->srq_selector);
 				TRYFREE(sr->srq_signer);
