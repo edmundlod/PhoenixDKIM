@@ -1277,23 +1277,16 @@ dkimf_xs_parsefield(lua_State *l)
 	strlcpy(field, lua_tostring(l, 1), sizeof field);
 	lua_pop(l, 1);
 
-	if (field == NULL)
+	if (dkim_mail_parse(field, &user, &domain) != 0 ||
+	    user == NULL || domain == NULL)
 	{
 		lua_pushnil(l);
 		return 1;
 	}
-	else if (dkim_mail_parse(field, &user, &domain) != 0 ||
-	         user == NULL || domain == NULL)
-	{
-		lua_pushnil(l);
-		return 1;
-	}
-	else
-	{
-		lua_pushstring(l, user);
-		lua_pushstring(l, domain);
-		return 2;
-	}
+
+	lua_pushstring(l, user);
+	lua_pushstring(l, domain);
+	return 2;
 }
 
 /*
