@@ -160,6 +160,7 @@ dkimf_lua_reader(lua_State *l, void *data, size_t *size)
 {
 	struct dkimf_lua_io *io;
 
+	(void) l;
 	assert(l != NULL);
 	assert(data != NULL);
 	assert(size != NULL);
@@ -197,6 +198,7 @@ dkimf_lua_writer(lua_State *l, const void *buf, size_t sz, void *data)
 {
 	struct dkimf_lua_io *io;
 
+	(void) l;
 	assert(l != NULL);
 	assert(buf != NULL);
 	assert(data != NULL);
@@ -248,6 +250,7 @@ dkimf_lua_writer(lua_State *l, const void *buf, size_t sz, void *data)
 static void *
 dkimf_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 {
+	(void) ud;
 	if (nsize == 0 && osize != 0)
 	{
 		free(ptr);

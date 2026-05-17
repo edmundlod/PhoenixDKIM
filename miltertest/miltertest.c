@@ -268,6 +268,7 @@ mt_lua_reader(lua_State *l, void *data, size_t *size)
 {
 	struct mt_lua_io *io;
 
+	(void) l;
 	assert(l != NULL);
 	assert(data != NULL);
 	assert(size != NULL);
@@ -320,6 +321,7 @@ mt_lua_reader(lua_State *l, void *data, size_t *size)
 void *
 mt_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 {
+	(void) ud;
 	if (nsize == 0 && osize != 0)
 	{
 		free(ptr);

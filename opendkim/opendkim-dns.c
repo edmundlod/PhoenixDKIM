@@ -731,6 +731,7 @@ dkimf_filedns_query(void *srv, int type, unsigned char *query,
 	struct dkimf_fquery *fq;
 	size_t qlen;
 
+	(void) srv;
 	assert(srv != NULL);
 	assert(query != NULL);
 	assert(buf != NULL);
@@ -777,6 +778,7 @@ dkimf_filedns_cancel(void *srv, void *q)
 {
 	struct dkimf_fquery *fq;
 
+	(void) srv;
 	assert(srv != NULL);
 	assert(q != NULL);
 
@@ -820,6 +822,9 @@ dkimf_filedns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	HEADER hdr;
 	struct dkimf_db_data dbd;
 
+	(void) srv;
+	(void) to;
+	(void) error;
 	assert(srv != NULL);
 	assert(qh != NULL);
 

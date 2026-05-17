@@ -135,6 +135,7 @@ dkimf_test_getpriv(void *ctx)
 int
 dkimf_test_progress(void *ctx)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -159,6 +160,7 @@ dkimf_test_progress(void *ctx)
 int
 dkimf_test_setreply(void *ctx, char *rcode, char *xcode, char *replytxt)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -188,6 +190,7 @@ dkimf_test_setreply(void *ctx, char *rcode, char *xcode, char *replytxt)
 int
 dkimf_test_insheader(void *ctx, int idx, char *hname, char *hvalue)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -216,6 +219,7 @@ dkimf_test_insheader(void *ctx, int idx, char *hname, char *hvalue)
 int
 dkimf_test_chgheader(void *ctx, char *hname, int idx, char *hvalue)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -242,6 +246,7 @@ dkimf_test_chgheader(void *ctx, char *hname, int idx, char *hvalue)
 int
 dkimf_test_quarantine(void *ctx, char *reason)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -268,6 +273,7 @@ dkimf_test_quarantine(void *ctx, char *reason)
 int
 dkimf_test_addheader(void *ctx, char *hname, char *hvalue)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 
 	if (tverbose > 1)
@@ -294,6 +300,7 @@ dkimf_test_addheader(void *ctx, char *hname, char *hvalue)
 int
 dkimf_test_delrcpt(void *ctx, char *addr)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 	assert(addr != NULL);
 
@@ -317,6 +324,7 @@ dkimf_test_delrcpt(void *ctx, char *addr)
 int
 dkimf_test_addrcpt(void *ctx, char *addr)
 {
+	(void) ctx;
 	assert(ctx != NULL);
 	assert(addr != NULL);
 
@@ -388,6 +396,7 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	char buf[MAXBUFRSZ];
 	char line[MAXBUFRSZ];
 
+	(void) libopendkim;
 	assert(libopendkim != NULL);
 	assert(tctx != NULL);
 	assert(f != NULL);

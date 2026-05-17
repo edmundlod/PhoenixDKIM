@@ -1312,6 +1312,8 @@ dkimf_db_delete(DKIMF_DB db, void *buf, size_t buflen)
 {
 	int ret = EINVAL;
 
+	(void) buf;
+	(void) buflen;
 	assert(db != NULL);
 	assert(buf != NULL);
 
