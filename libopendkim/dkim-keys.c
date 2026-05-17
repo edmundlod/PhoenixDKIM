@@ -238,9 +238,13 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 	     qdcount--)
 	{
 		/* copy it first */
-		(void) dn_expand((unsigned char *) &ansbuf, eom, cp,
-		                 (char *) qname, sizeof qname);
- 
+		if (dn_expand((unsigned char *) &ansbuf, eom, cp,
+		              (char *) qname, sizeof qname) < 0)
+		{
+			dkim_error(dkim, "reply corrupt");
+			return DKIM_STAT_KEYFAIL;
+		}
+
 		if ((n = dn_skipname(cp, eom)) < 0)
 		{
 			dkim_error(dkim, "'%s' reply corrupt", qname);
