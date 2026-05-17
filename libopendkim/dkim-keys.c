@@ -103,9 +103,9 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 
 	lib = dkim->dkim_libhandle;
 
-	n = snprintf((char *) qname, sizeof qname - 1, "%s.%s.%s",
+	n = snprintf((char *) qname, sizeof qname, "%s.%s.%s",
 	             sig->sig_selector, DKIM_DNSKEYNAME, sig->sig_domain);
-	if (n == -1 || n > sizeof qname - 1)
+	if (n == -1 || (size_t) n >= sizeof qname)
 	{
 		dkim_error(dkim, "key query name too large");
 		return DKIM_STAT_NORESOURCE;
@@ -465,7 +465,7 @@ dkim_get_key_file(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 
 	n = snprintf(name, sizeof name, "%s.%s.%s", sig->sig_selector,
 	             DKIM_DNSKEYNAME, sig->sig_domain);
-	if (n == -1 || n > sizeof name)
+	if (n == -1 || (size_t) n >= sizeof name)
 	{
 		dkim_error(dkim, "key query name too large");
 		fclose(f);
