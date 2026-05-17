@@ -380,6 +380,12 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 	{
 		c = *cp++;
 		rdlength--;
+		/* clamp the per-chunk length byte against the remaining
+		   rdata so a forged TXT record cannot advance cp past the
+		   end of the answer buffer (an OOB read on the stack-
+		   resident ansbuf, surfaced via the returned key bytes) */
+		if (c > rdlength)
+			c = rdlength;
 		while (c > 0 && p < eob)
 		{
 			*p++ = *cp++;
