@@ -132,8 +132,9 @@ struct dkimf_dstring
 	u_char *		ds_buf;
 };
 
-/* base64 alphabet */
-static unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+/* base64 alphabet — byte-indexed only, not NUL-terminated */
+static unsigned char alphabet[64]
+    __attribute__((nonstring)) = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /*
 **  DKIMF_ISBLANK -- return TRUE iff a string contains only whitespace
@@ -435,6 +436,8 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 			dst = &ipbuf[sz];
 			dst_len = sizeof ipbuf - sz;
 
+			if (dst_len < 4)
+				return FALSE;
 			n = snprintf(dst, dst_len, "%d", 128 - bits);
 			if (n < 0 || (size_t)n >= dst_len)
 				return FALSE;
@@ -467,6 +470,8 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 			dst = &ipbuf[sz];
 			dst_len = sizeof ipbuf - sz;
 
+			if (dst_len < 4)
+				return FALSE;
 			n = snprintf(dst, dst_len, "%d", 128 - bits);
 			if (n < 0 || (size_t)n >= dst_len)
 				return FALSE;
@@ -1156,11 +1161,11 @@ dkimf_dstring_catn(struct dkimf_dstring *dstr, unsigned char *str,
 	needed = dstr->ds_len + nbytes;
 
 	/* too big? */
-	if (dstr->ds_max > 0 && needed >= dstr->ds_max)
+	if (dstr->ds_max > 0 && needed >= (size_t) dstr->ds_max)
 		return FALSE;
 
 	/* fits now? */
-	if (dstr->ds_alloc <= needed)
+	if ((size_t) dstr->ds_alloc <= needed)
 	{
 		/* nope; try to resize */
 		if (!dkimf_dstring_resize(dstr, needed + 1))
