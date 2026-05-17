@@ -745,7 +745,7 @@ dkimf_filedns_query(void *srv, int type, unsigned char *query,
 	fq->fq_rbuf = buf;
 	fq->fq_rbuflen = buflen;
 
-	qlen = res_mkquery(QUERY, query, C_IN, type, NULL, 0, NULL,
+	qlen = res_mkquery(QUERY, (const char *) query, C_IN, type, NULL, 0, NULL,
 	                   fq->fq_qbuf, sizeof fq->fq_qbuf);
 	if (qlen == (size_t) -1)
 	{
@@ -811,9 +811,9 @@ dkimf_filedns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	int n;
 	int status;
 	int qdcount;
-	char *cp;
-	char *eom;
-	char *qstart;
+	unsigned char *cp;
+	unsigned char *eom;
+	unsigned char *qstart;
 	struct dkimf_fquery *fq;
 	char qname[BUFRSZ + 1];
 	char buf[BUFRSZ + 1];
@@ -839,7 +839,7 @@ dkimf_filedns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	     qdcount--)
 	{
 		/* copy it first */
-		(void) dn_expand((unsigned char *) fq->fq_qbuf, eom, cp,
+		(void) dn_expand(fq->fq_qbuf, eom, cp,
 		                 (char *) qname, sizeof qname);
  
 		if ((n = dn_skipname(cp, eom)) < 0)
@@ -937,7 +937,7 @@ dkimf_filedns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 		while (slen > 0)
 		{
 			elen = MIN(slen, 255);
-			*cp = (char) elen;
+			*cp = (unsigned char) elen;
 			cp++;
 			olen++;
 			memcpy(cp, q, elen);
