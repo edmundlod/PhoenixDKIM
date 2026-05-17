@@ -1214,6 +1214,7 @@ mt_startfilter(lua_State *l)
 		lua_pushfstring(l, "mt.startfilter(): fork(): %s",
 		                strerror(errno));
 		lua_error(l);
+		__attribute__((fallthrough));
 
 	  case 0:
 		close(fds[0]);
