@@ -718,12 +718,12 @@ dkimf_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 */
 
 void
-dkimf_trimspaces(u_char *str)
+dkimf_trimspaces(char *str)
 {
 	size_t len = 0;
-	u_char *p;
-	u_char *last;
-	u_char *firsttext = NULL;
+	char *p;
+	char *last;
+	char *firsttext = NULL;
 
 	assert(str != NULL);
 
