@@ -11685,7 +11685,12 @@ mlfi_eom(SMFICTX *ctx)
 		if (conf->conf_passmalformed)
 			return SMFIS_ACCEPT;
 
-		const char *ar;
+		/*
+		** Default to "permerror" so a release build (NDEBUG, assert
+		** no-op) still emits a defined value if mctx_status holds a
+		** code that should not reach this branch.
+		*/
+		const char *ar = "permerror";
 
 		switch (dfc->mctx_status)
 		{
