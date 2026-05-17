@@ -1,0 +1,104 @@
+ All real-bug warnings are fixed. Remaining warning categories are noise:
+
+  ┌───────┬───────────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+  │ Count │         Category          │                                Why not a real bug                                 │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 217   │ -Wpointer-sign            │ u_char * vs char * API mismatches throughout                                      │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 113   │ -Wsign-compare            │ int vs size_t comparisons in tests/loops                                          │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 44    │ -Wunused-parameter        │ Callback stubs (some addressed in prior commits)                                  │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 29    │ -Wunused-but-set-variable │ Mostly in t-test*.c test files                                                    │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 15    │ -Wunused-variable         │ Locals in tests                                                                   │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 9     │ -Wignored-qualifiers      │ Header decls like const int foo()                                                 │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 7     │ -Wformat-truncation=      │ snprintf calls where the return is checked or buffer is provably-sized (verified) │
+  ├───────┼───────────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ 1     │ -Wunused-function         │ dkimf_checkfsnode defined but unused                                              │
+  └───────┴───────────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
+
+Build the project in /home/edmund/0data/devel/projects/opendkim-ng and
+  work through the remaining compiler warning categories from a clean
+  cmake build:
+
+    cd build && cmake --build . --clean-first 2>&1 | tee /tmp/build.log
+
+  After my last session, 0 errors but ~435 warnings remain across these
+  categories (counts approximate):
+
+    217  -Wpointer-sign            u_char* vs char* API mismatches
+    113  -Wsign-compare            int vs size_t comparisons
+     44  -Wunused-parameter        callback stubs
+     29  -Wunused-but-set-variable mostly in libopendkim/tests/t-test*.c
+     15  -Wunused-variable         locals in tests
+      9  -Wignored-qualifiers      e.g. `const int foo()` return-type qual
+      7  -Wformat-truncation=      already verified safe — SKIP these
+      1  -Wunused-function         dkimf_checkfsnode in opendkim.c
+
+  Treat each warning as suspect, not as something to silence. Before
+  fixing, decide whether it points at a real bug:
+
+    -Wsign-compare:   sometimes hides off-by-one or signed wrap. Look
+                      at the actual range of values, not just the types.
+                      If a count is genuinely size_t, change the loop
+                      variable's type; only cast when the producer
+                      really returns int.
+    -Wpointer-sign:   the libopendkim API uses u_char* (DKIM byte data),
+                      the daemon uses char* (printable strings). Most
+                      warnings are at the boundary. Prefer narrow casts
+                      at call sites over flipping API signatures
+                      (touching dkim.h is high-blast-radius). If you do
+                      change a signature, run the build to verify all
+                      call sites compile.
+    -Wunused-parameter: in callback stubs that must match a function
+                      pointer signature, annotate with `(void) param;`
+                      casts at the top of the body — that's the pattern
+                      commit 56b5a27d already used. Don't change the
+                      signature.
+    -Wunused-but-set / -Wunused-variable: in test files (t-test*.c) the
+                      set-but-unused write often documents a return
+                      value that the test ignores. Safe to delete the
+                      write OR add a `(void) var;` after the assignment
+                      if it's load-bearing for readability. Prefer
+                      delete.
+    -Wignored-qualifiers: `const int foo()` is meaningless — drop the
+                      qualifier on the prototype AND the definition.
+    -Wunused-function: dkimf_checkfsnode — grep for callers across the
+                      whole tree. If genuinely dead, delete it. If
+                      behind an #ifdef that's currently off, wrap the
+                      function in the same #ifdef.
+
+  Workflow:
+    - One logical fix per commit, matching the existing "Fix: …" commit
+      style (see `git log --oneline`). A "logical fix" can be one file
+      or one warning subcategory — group mechanically-identical fixes
+      (e.g. all -Wignored-qualifiers in libopendkim/dkim-tables.h) into
+      one commit, but keep different bug shapes separate.
+    - After each commit, rebuild and confirm the warning count for that
+      category dropped by the expected amount.
+    - Skip the 7 -Wformat-truncation warnings — I already verified each
+      one is either return-checked (opendkim.c:9536/11286, opendkim-db.c
+      :1689) or has a provably-sufficient buffer (opendkim.c:12371).
+    - Stop and report (don't guess) if a -Wpointer-sign fix needs an API
+      signature change — those decisions belong to the user.
+
+  Suggested order (cheapest → noisiest):
+    1. -Wignored-qualifiers   (9, mostly in one header)
+    2. -Wunused-variable      (15, deletes in tests)
+    3. -Wunused-but-set-variable (29, deletes in tests)
+    4. -Wunused-function      (1, investigate then delete or guard)
+    5. -Wunused-parameter     (44, `(void)` casts)
+    6. -Wsign-compare         (113, type-fix; watch for real bugs)
+    7. -Wpointer-sign         (217, casts at boundaries; ask before
+                               flipping API signatures)
+Sonnet for most of it. The first 5 categories (-Wignored-qualifiers, -Wunused-variable, -Wunused-but-set-variable, -Wunused-function, -Wunused-parameter) are mechanical — (void) casts,
+  deletions, qualifier removal. Sonnet handles that fine, faster and cheaper, and 130+ warnings means cost adds up.
+
+  Switch to Opus for -Wsign-compare (113) and especially -Wpointer-sign (217). Those are where warnings can hide real bugs: a signed→unsigned compare that wraps, a u_char buffer passed to a
+   function that mutates it as char, etc. The judgment "is this a type noise fix or am I papering over a bug?" is exactly where Opus's deeper reasoning pays off, and the API-vs-cast
+  decision on -Wpointer-sign benefits from it too.
+  
+  Practically: start with /model sonnet, knock out categories 1–5, then /model opus for 6–7.
