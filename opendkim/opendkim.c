@@ -9758,10 +9758,24 @@ mlfi_connect(SMFICTX *ctx, char *host, _SOCK_ADDR *ip)
 
 	dkimf_config_reload();
 
-	if (!dkimf_dns_init(curconf->conf_libopendkim, curconf, &err))
+	/* Snapshot curconf and bump its refcnt before dereferencing any
+	   field, so a concurrent reload that drops the previous curconf
+	   to refcnt 0 cannot free it out from under this thread. */
+	pthread_mutex_lock(&conf_lock);
+	conf = curconf;
+	conf->conf_refcnt++;
+	pthread_mutex_unlock(&conf_lock);
+
+	if (!dkimf_dns_init(conf->conf_libopendkim, conf, &err))
 	{
-		if (curconf->conf_dolog)
+		if (conf->conf_dolog)
 			syslog(LOG_ERR, "can't initialize resolver: %s", err);
+
+		pthread_mutex_lock(&conf_lock);
+		conf->conf_refcnt--;
+		if (conf->conf_refcnt == 0 && conf != curconf)
+			dkimf_config_free(conf);
+		pthread_mutex_unlock(&conf_lock);
 
 		return SMFIS_TEMPFAIL;
 	}
@@ -9773,14 +9787,16 @@ mlfi_connect(SMFICTX *ctx, char *host, _SOCK_ADDR *ip)
 		cc = malloc(sizeof(struct connctx));
 		if (cc == NULL)
 		{
-			pthread_mutex_lock(&conf_lock);
-
-			if (curconf->conf_dolog)
+			if (conf->conf_dolog)
 			{
 				syslog(LOG_ERR, "%s malloc(): %s", host,
 				       strerror(errno));
 			}
 
+			pthread_mutex_lock(&conf_lock);
+			conf->conf_refcnt--;
+			if (conf->conf_refcnt == 0 && conf != curconf)
+				dkimf_config_free(conf);
 			pthread_mutex_unlock(&conf_lock);
 
 			/* XXX result should depend on On-InternalError */
@@ -9789,19 +9805,24 @@ mlfi_connect(SMFICTX *ctx, char *host, _SOCK_ADDR *ip)
 
 		memset(cc, '\0', sizeof(struct connctx));
 
-		pthread_mutex_lock(&conf_lock);
-
-		cc->cctx_config = curconf;
-		curconf->conf_refcnt++;
-
-		conf = curconf;
-
-		pthread_mutex_unlock(&conf_lock);
+		/* refcnt was already taken on the snapshot above; that
+		   refcnt is now owned by cc and will be released by
+		   mlfi_close. */
+		cc->cctx_config = conf;
 
 		dkimf_setpriv(ctx, cc);
 	}
 	else
 	{
+		/* cc already holds a refcnt on its cctx_config (taken in
+		   mlfi_negotiate). Drop the snapshot refcnt we just took
+		   and continue with cc's existing config. */
+		pthread_mutex_lock(&conf_lock);
+		conf->conf_refcnt--;
+		if (conf->conf_refcnt == 0 && conf != curconf)
+			dkimf_config_free(conf);
+		pthread_mutex_unlock(&conf_lock);
+
 		conf = cc->cctx_config;
 	}
 
