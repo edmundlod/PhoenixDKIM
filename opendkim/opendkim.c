@@ -1048,6 +1048,9 @@ dkimf_xs_signfor(lua_State *l)
 		lua_pushnumber(l, status);
 		return 1;
 	}
+
+	/* lua_error() does not return; this satisfies the compiler */
+	return 0;
 }
 
 /*
