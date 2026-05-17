@@ -55,9 +55,15 @@ check_include_files("paths.h" HAVE_PATHS_H)
 check_include_files("sys/vfs.h" HAVE_SYS_VFS_H)
 check_include_files("sys/statfs.h" HAVE_SYS_STATFS_H)
 
-# ── OpenSSL 3 (required) ──────────────────────────────────────────────────────
+# ── OpenSSL 3+ (required) ─────────────────────────────────────────────────────
+# Do not pass a version to find_package: OpenSSL 4's config file marks itself
+# as incompatible with any major-version < 4 request, causing CMake to silently
+# fall back to system OpenSSL.  Enforce the minimum here instead.
 
-find_package(OpenSSL 3.0 REQUIRED)
+find_package(OpenSSL REQUIRED)
+if(OPENSSL_VERSION VERSION_LESS "3.0")
+    message(FATAL_ERROR "OpenSSL 3.0 or newer required; found ${OPENSSL_VERSION}")
+endif()
 
 # ── LMDB (required) ───────────────────────────────────────────────────────────
 
