@@ -460,6 +460,16 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 	state = 0;
 	spaced = FALSE;
 
+	/* reject pathological len so that len + 1 cannot wrap to 0 and
+	   turn DKIM_MALLOC into malloc(0) (which on some allocators
+	   returns a non-NULL pointer of zero size); the subsequent
+	   uninitialized walk over hcopy would then OOB-read */
+	if (len >= (size_t) -1)
+	{
+		dkim_error(dkim, "header value too large");
+		return DKIM_STAT_NORESOURCE;
+	}
+
 	hcopy = (u_char *) DKIM_MALLOC(dkim, len + 1);
 	if (hcopy == NULL)
 	{
