@@ -232,7 +232,7 @@ static int
 dkimf_db_datasplit(char *buf, size_t buflen,
                    DKIMF_DBDATA req, unsigned int reqnum)
 {
-	int ridx;
+	u_int ridx;
 	int ret = 0;
 	size_t clen;
 	size_t remain;
@@ -301,7 +301,7 @@ dkimf_db_datasplit(char *buf, size_t buflen,
 	/* mark the ones that got no data */
 	if (ridx < reqnum)
 	{
-		int c;
+		u_int c;
 
 		for (c = ridx; c < reqnum; c++)
 		{
@@ -488,7 +488,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 				new->db_type = dbtypes[c].code;
 		}
 
-		if (new->db_type == DKIMF_DB_TYPE_UNKNOWN)
+		if (new->db_type == (u_int) DKIMF_DB_TYPE_UNKNOWN)
 		{
 			free(new);
 			if (err != NULL)
@@ -1586,7 +1586,7 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 #ifdef USE_LUA
 	  case DKIMF_DB_TYPE_LUA:
 	  {
-		int c;
+		u_int c;
 		int status;
 		struct dkimf_db_lua *lua;
 		struct dkimf_lua_script_result lres;
@@ -1606,7 +1606,7 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			*exists = (lres.lrs_rcount != 0);
 
 		/* copy results */
-		for (c = 0; c < reqnum && c < lres.lrs_rcount; c++)
+		for (c = 0; c < reqnum && c < (u_int) lres.lrs_rcount; c++)
 		{
 			req[c].dbdata_buflen = strlcpy(req[c].dbdata_buffer,
 			                               lres.lrs_results[c],
@@ -1618,7 +1618,7 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 			req[c++].dbdata_buflen = 0;
 
 		/* clean up */
-		for (c = 0; c < lres.lrs_rcount; c++)
+		for (c = 0; c < (u_int) lres.lrs_rcount; c++)
 			free(lres.lrs_results[c]);
 		if (lres.lrs_results != NULL)
 			free(lres.lrs_results);
@@ -1994,7 +1994,6 @@ dkimf_db_walk(DKIMF_DB db, _Bool first, void *key, size_t *keylen,
 		MDB_val d;
 		MDB_cursor *dbc;
 		struct dkimf_db_mdb *mdb;
-		char databuf[BUFRSZ + 1];
 
 		mdb = (struct dkimf_db_mdb *) db->db_data;
 
@@ -2373,4 +2372,5 @@ dkimf_db_chown(DKIMF_DB db, uid_t uid)
 	assert(db != NULL);
 	assert(uid >= 0);
 
+	return 0;
 }
