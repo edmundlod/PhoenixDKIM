@@ -4,9 +4,15 @@ include(GNUInstallDirs)
 include(CheckFunctionExists)
 include(CheckIncludeFile)
 
-# ── OpenSSL 3 ─────────────────────────────────────────────────────────────────
+# ── OpenSSL 3+ ────────────────────────────────────────────────────────────────
+# Do not pass a version to find_package: OpenSSL 4's config file marks itself
+# as incompatible with any major-version < 4 request, causing CMake to silently
+# fall back to system OpenSSL.  Enforce the minimum here instead.
 
-find_package(OpenSSL 3.0 REQUIRED)
+find_package(OpenSSL REQUIRED)
+if(OPENSSL_VERSION VERSION_LESS "3.0")
+    message(FATAL_ERROR "OpenSSL 3.0 or newer required; found ${OPENSSL_VERSION}")
+endif()
 
 # ── LMDB ──────────────────────────────────────────────────────────────────────
 # find_library/find_path calls return cached results from the libopendkim pass.
