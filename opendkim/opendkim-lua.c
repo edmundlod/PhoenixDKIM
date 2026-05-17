@@ -393,6 +393,44 @@ dkimf_lua_gc_cleanup(struct dkimf_lua_gc *gc)
 	}
 }
 
+/*
+**  DKIMF_LUA_SANDBOX -- remove dangerous globals exposed by luaL_openlibs()
+**
+**  Policy scripts run with the privileges of the opendkim daemon and have
+**  read access to private signing keys.  The default Lua standard library
+**  set (loaded by luaL_openlibs) includes os, io, debug, and package, which
+**  provide process execution, arbitrary file I/O, introspection, and native
+**  module loading respectively, plus the top-level loaders (require,
+**  loadfile, dofile, loadstring, load) that re-enable arbitrary code
+**  execution from disk or strings.  Nil them out so a policy script can do
+**  only what the registered odkim API allows.
+**
+**  Parameters:
+**  	l -- Lua state to sandbox
+**
+**  Return value:
+**  	None.
+*/
+
+static void
+dkimf_lua_sandbox(lua_State *l)
+{
+	static const char * const strip[] = {
+		"os", "io", "debug", "package",
+		"require", "loadfile", "dofile", "loadstring", "load",
+		NULL
+	};
+	int i;
+
+	assert(l != NULL);
+
+	for (i = 0; strip[i] != NULL; i++)
+	{
+		lua_pushnil(l);
+		lua_setglobal(l, strip[i]);
+	}
+}
+
 #ifdef DKIMF_LUA_CONTEXT_HOOKS
 /*
 **  DKIMF_LUA_SETUP_HOOK -- hook to Lua for handling a message during setup
@@ -453,6 +491,7 @@ dkimf_lua_setup_hook(void *ctx, const char *script, size_t scriptlen,
 		return -1;
 
 	luaL_openlibs(l);
+	dkimf_lua_sandbox(l);
 
 	/*
 	**  Register functions.
@@ -613,6 +652,7 @@ dkimf_lua_screen_hook(void *ctx, const char *script, size_t scriptlen,
 		return -1;
 
 	luaL_openlibs(l);
+	dkimf_lua_sandbox(l);
 
 	/*
 	**  Register functions.
@@ -763,6 +803,7 @@ dkimf_lua_final_hook(void *ctx, const char *script, size_t scriptlen,
 		return -1;
 
 	luaL_openlibs(l);
+	dkimf_lua_sandbox(l);
 
 	/*
 	**  Register functions.
@@ -995,6 +1036,7 @@ dkimf_lua_db_hook(const char *script, size_t scriptlen, const char *query,
 		return -1;
 
 	luaL_openlibs(l);
+	dkimf_lua_sandbox(l);
 
 	/* query string */
 	if (query == NULL)
