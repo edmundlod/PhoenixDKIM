@@ -3405,7 +3405,7 @@ dkim_eoh_verify(DKIM *dkim)
 	if ((lib->dkiml_flags & DKIM_LIBFLAGS_EOHCHECK) != 0)
 	{
 		_Bool good = FALSE;
-		DKIM_SIGINFO *sig;
+		DKIM_SIGINFO *sig = NULL;
 
 		for (c = 0; c < dkim->dkim_sigcount; c++)
 		{
@@ -3433,8 +3433,9 @@ dkim_eoh_verify(DKIM *dkim)
 		/* no good ones */
 		if (!good)
 		{
-			/* report error on the last one */
-			if (sig->sig_error != DKIM_SIGERROR_UNKNOWN &&
+			/* report error on the last one, if any */
+			if (sig != NULL &&
+			    sig->sig_error != DKIM_SIGERROR_UNKNOWN &&
 			    sig->sig_error != DKIM_SIGERROR_OK)
 			{
 				dkim_error(dkim,
