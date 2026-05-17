@@ -11727,7 +11727,7 @@ mlfi_eom(SMFICTX *ctx)
 				syslog(LOG_WARNING,
 					   "mlfi_eom: Authentication-Results header truncated");
 
-				header[sizeof(header) - 1] = '\0';
+			header[sizeof(header) - 1] = '\0';
 		}
 
 		if (dkimf_insheader(ctx, 0, AUTHRESULTSHDR,
