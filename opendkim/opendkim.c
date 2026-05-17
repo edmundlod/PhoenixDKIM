@@ -9513,8 +9513,8 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			algorithm = dkim_sig_getalgorithm(sigs[c]);
 
 			#define APPEND(...) do {                            \
-			if (n >= hdrlen)                                    \
-				break;                                          \
+				if (n >= hdrlen)                                \
+					break;                                      \
                                                                 \
 				r = snprintf(hdr + n, hdrlen - n, __VA_ARGS__); \
                                                                 \
