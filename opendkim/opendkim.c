@@ -14155,7 +14155,7 @@ main(int argc, char **argv)
 	{
 		if (curconf->conf_dolog)
 			syslog(LOG_ERR, "can't configure DKIM library: %s", p);
-			fprintf(stderr, "%s: can't configure DKIM library: %s", progname, p);
+		fprintf(stderr, "%s: can't configure DKIM library: %s", progname, p);
 		return EX_SOFTWARE;
 	}
 
