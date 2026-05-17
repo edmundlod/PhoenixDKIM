@@ -13107,7 +13107,7 @@ main(int argc, char **argv)
 			printf("%s: %s v%s\n", progname, DKIMF_PRODUCT,
 			       VERSION);
 			printf("\tCompiled with %s\n",
-			       OpenSSL_version(OPENSSL_VERSION_STR));
+			       OpenSSL_version(OPENSSL_VERSION));
 			printf("\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
 #ifdef HAVE_SMFI_VERSION
 			(void) smfi_version(&mvmajor, &mvminor, &mvrelease);
