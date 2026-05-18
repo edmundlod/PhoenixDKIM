@@ -355,6 +355,8 @@ dkimf_test_getsymval(void *ctx, char *sym)
 {
 	static char symout[MAXBUFRSZ];
 
+	(void) ctx;
+
 	assert(ctx != NULL);
 	assert(sym != NULL);
 
