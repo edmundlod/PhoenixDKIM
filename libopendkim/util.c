@@ -95,7 +95,7 @@ dkim_hdrlist(u_char *buf, size_t buflen, u_char **hdrlist, _Bool first)
 {
 	_Bool escape = FALSE;
 	int c;
-	int len;
+	size_t len;
 	u_char *p;
 	u_char *q;
 	u_char *end;
