@@ -410,11 +410,11 @@ dkim_dstring_cat(struct dkim_dstring *dstr, unsigned char *str)
 	needed = dstr->ds_len + len;
 
 	/* too big? */
-	if (dstr->ds_max > 0 && needed >= dstr->ds_max)
+	if (dstr->ds_max > 0 && needed >= (size_t) dstr->ds_max)
 		return FALSE;
 
 	/* fits now? */
-	if (dstr->ds_alloc <= needed)
+	if ((size_t) dstr->ds_alloc <= needed)
 	{
 		/* nope; try to resize */
 		if (!dkim_dstring_resize(dstr, needed + 1))
@@ -496,11 +496,11 @@ dkim_dstring_catn(struct dkim_dstring *dstr, unsigned char *str, size_t nbytes)
 	needed = dstr->ds_len + nbytes;
 
 	/* too big? */
-	if (dstr->ds_max > 0 && needed >= dstr->ds_max)
+	if (dstr->ds_max > 0 && needed >= (size_t) dstr->ds_max)
 		return FALSE;
 
 	/* fits now? */
-	if (dstr->ds_alloc <= needed)
+	if ((size_t) dstr->ds_alloc <= needed)
 	{
 		/* nope; try to resize */
 		if (!dkim_dstring_resize(dstr, needed + 1))
