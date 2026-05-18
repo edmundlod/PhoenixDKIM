@@ -470,7 +470,8 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 	if (expl > 0)
 	{
 		rlen = read(fd, (void *) buf, expl);
-		if (rlen != expl)
+		/* expl > 0 guards the cast; rlen is size_t, expl is int */
+		if (rlen != (size_t) expl)
 		{
 			fprintf(stderr,
 			        "%s: read(%d): returned %ld, expected %ld\n",
@@ -488,7 +489,11 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 
 	*len = rlen;
 
-	return (expl == rlen);
+	/*
+	**  At this point either expl was 0 (rlen left at 0) or expl > 0
+	**  and the read matched.  Cast to a common type for the return.
+	*/
+	return ((size_t) expl == rlen);
 }
 
 /*
@@ -2919,7 +2924,7 @@ mt_bodyrandom(lua_State *l)
 	char rcmd;
 	unsigned long rw;
 	unsigned long rl;
-	int c;
+	unsigned long c;
 	size_t buflen;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
@@ -3016,7 +3021,7 @@ mt_bodyfile(lua_State *l)
 	char rcmd;
 	char *file;
 	FILE *f;
-	ssize_t rlen;
+	size_t rlen;
 	struct mt_context *ctx;
 	char chunk[CHUNKSZ];
 
