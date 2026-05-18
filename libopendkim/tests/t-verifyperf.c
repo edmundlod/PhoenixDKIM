@@ -300,9 +300,12 @@ main(int argc, char **argv)
 	srandom(time(NULL));
 
 	/* prepare a random body buffer */
-	for (c = 0, w = 0; c < sizeof body; c++)
+	/* c is reused as getopt()'s int (with -1 sentinel) elsewhere in
+	 * this function, so cast at the size_t comparisons rather than
+	 * retyping the local. */
+	for (c = 0, w = 0; (size_t) c < sizeof body; c++)
 	{
-		if (w >= 75 && c < sizeof body - 2)
+		if (w >= 75 && (size_t) c < sizeof body - 2)
 		{
 			body[c++] = '\r';
 			body[c++] = '\n';
