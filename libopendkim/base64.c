@@ -80,6 +80,11 @@ dkim_base64_decode(u_char *str, u_char *buf, size_t buflen)
 		/* everything else gets decoded */
 		bits += decoder[(int) *c];
 		char_count++;
+		/*
+		**  Test in size_t to silence -Wsign-compare without trusting
+		**  that 'n' stays in int range; guard with buflen < N first so
+		**  the buflen - N subtraction can't underflow size_t.
+		*/
 		if (buflen < 3 || (size_t) n > buflen - 3)
 			return -2;
 		if (char_count == 4)
@@ -109,12 +114,14 @@ dkim_base64_decode(u_char *str, u_char *buf, size_t buflen)
 		return -1;
 
 	  case 2:
+		/* see above: buflen < N guard prevents size_t underflow */
 		if (buflen < 1 || (size_t) n > buflen - 1)
 			return -2;
 		buf[n++] = (bits >> 10);
 		break;
 
 	  case 3:
+		/* see above: buflen < N guard prevents size_t underflow */
 		if (buflen < 2 || (size_t) n > buflen - 2)
 			return -2;
 		buf[n++] = (bits >> 16);
