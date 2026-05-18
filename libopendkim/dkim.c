@@ -5189,10 +5189,6 @@ dkim_resign(DKIM *new, DKIM *old, _Bool hdrbind)
 
 	if (new->dkim_hdrbind)
 	{
-		_Bool keep;
-
-		keep = ((lib->dkiml_flags & DKIM_LIBFLAGS_KEEPFILES) != 0);
-
 		/* initialize all canonicalizations */
 		status = dkim_canon_init(new, tmp, keep);
 		if (status != DKIM_STAT_OK)
