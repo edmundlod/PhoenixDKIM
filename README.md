@@ -67,6 +67,13 @@ cmake --build build
 ctest --test-dir build
 ```
 
+> **RHEL / Fedora / AlmaLinux / Rocky Linux:** the DEFAULT system crypto
+> policy disables SHA1 for signature operations.  CMake will warn during
+> configuration, and approximately 26 libopendkim tests that verify
+> legacy RSA-SHA1-signed mail will fail.  This is not a build defect.
+> See [docs/crypto-policy.md](docs/crypto-policy.md) for an explanation
+> and instructions for enabling SHA1 if needed.
+
 Common build options:
 
 | Option | Default | Description |
@@ -143,6 +150,16 @@ regenerate `sendmail.cf` from your M4 configuration.
 DNS queries for key records may exceed the default MTA milter timeout.
 Increase `milter_timeout` in Postfix, or the milter timeout in Sendmail
 if you encounter this.
+
+### SHA1 RSA signatures reported as key-decode errors
+
+On RHEL 9+, Fedora 38+, and derivatives running the DEFAULT crypto
+policy, OpenSSL disables SHA1 for signature verification.  Incoming
+mail signed with RSA-SHA1 will be reported with a key-decode error
+instead of a signature-mismatch error, and will appear unsigned.
+This is a system policy decision, not a bug.  See
+[docs/crypto-policy.md](docs/crypto-policy.md) for details and
+options.
 
 ### EVP key decode failures
 

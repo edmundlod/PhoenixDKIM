@@ -26,6 +26,10 @@ add_subdirectory(libopendkim)
 add_subdirectory(opendkim)
 add_subdirectory(miltertest)
 
+# Probe SHA1 RSA verify support after OpenSSL has been found by the
+# subdirectories, so OpenSSL::Crypto is available to the check.
+include(CheckSHA1Verify)
+
 # CPack for creating .deb files
 set(CPACK_PACKAGE_NAME "opendkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
