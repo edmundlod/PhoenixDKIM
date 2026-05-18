@@ -7869,8 +7869,8 @@ dkim_ssl_version(void)
 DKIM_STAT
 dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 {
-	int c;
-	int d;
+	u_int c;
+	u_int d;
 	int x;
 	int b1len;
 	int b2len;
@@ -7887,7 +7887,13 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 	{
 		dkim->dkim_minsiglen = MINSIGLEN;
 
-		for (c = 0; c < dkim->dkim_sigcount - 1; c++)
+		/*
+		**  Iterate pairs (c, d) with c < d.  Use c + 1 < sigcount
+		**  rather than c < sigcount - 1 so the bound is safe when
+		**  sigcount is 0 (u_int underflow would otherwise wrap to
+		**  UINT_MAX and enter the loop).
+		*/
+		for (c = 0; c + 1 < dkim->dkim_sigcount; c++)
 		{
 			b1 = (char *) dkim_param_get(dkim->dkim_siglist[c]->sig_taglist,
 			                             (u_char *) "b");
