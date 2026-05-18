@@ -112,7 +112,14 @@ typedef int DKIM_CBSTAT;
 
 typedef int DKIM_SIGERROR;
 
-#define DKIM_SIGERROR_UNKNOWN		(-1)	/* unknown error */
+/*
+**  DKIM_SIGERROR_UNKNOWN is the "no error reported yet" sentinel.  The
+**  internal struct field that holds it (DKIM_SIGINFO.sig_error) is
+**  u_int, so define the sentinel as (u_int) -1 (i.e. UINT_MAX) to keep
+**  the comparison u_int == u_int and avoid -Wsign-compare at every use
+**  site.  The numeric value is unchanged from the historical -1.
+*/
+#define DKIM_SIGERROR_UNKNOWN		((u_int) -1)	/* unknown error */
 #define DKIM_SIGERROR_OK		0	/* no error */
 #define DKIM_SIGERROR_VERSION		1	/* unsupported version */
 #define DKIM_SIGERROR_DOMAIN		2	/* invalid domain (d=/i=) */
@@ -335,7 +342,13 @@ typedef struct dkim_siginfo DKIM_SIGINFO;
 #define DKIM_SIGFLAG_NOSUBDOMAIN	0x10
 #define DKIM_SIGFLAG_KEYLOADED		0x20
 
-#define DKIM_SIGBH_UNTESTED		(-1)
+/*
+**  DKIM_SIGBH_UNTESTED is the "body hash not yet checked" sentinel.
+**  DKIM_SIGINFO.sig_bh is u_int, so define this as (u_int) -1 for the
+**  same reason as DKIM_SIGERROR_UNKNOWN above (silences
+**  -Wsign-compare; the numeric value is unchanged).
+*/
+#define DKIM_SIGBH_UNTESTED		((u_int) -1)
 #define DKIM_SIGBH_MATCH		0
 #define DKIM_SIGBH_MISMATCH		1
 
