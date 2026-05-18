@@ -154,7 +154,9 @@ loadkey(char *buf, size_t *buflen)
 		rlen = read(fd, buf, *buflen);
 		close(fd);
 
-		if (rlen < *buflen)
+		/* read() returns -1 on error; treat short reads (or any
+		 * negative rlen) as failure rather than silently casting */
+		if (rlen < 0 || (size_t) rlen < *buflen)
 			return FALSE;
 	}
 	else
