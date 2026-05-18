@@ -2022,24 +2022,33 @@ dkim_siglist_setup(DKIM *dkim)
 		if (param != NULL)
 		{
 			char *q;
+			unsigned long ul;
 
-			errno = 0;
+			/*
+			**  Parse "l=" into unsigned long (strtoul's native
+			**  type) and only convert to ssize_t once we've
+			**  cleared overflow.  signlen is ssize_t because
+			**  dkim_add_canon() takes ssize_t length with -1
+			**  meaning "unlimited"; values that don't fit are
+			**  rejected so they can't alias the sentinel or
+			**  flip sign on the cast.
+			*/
 			if (param[0] == '-')
-			{
-				errno = ERANGE;
-				signlen = ULONG_MAX;
-			}
-			else
-			{
-				signlen = (ssize_t) strtoul((char *) param,
-				                          &q, 10);
-			}
-
-			if (signlen == ULONG_MAX || errno != 0 || *q != '\0')
 			{
 				dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_INVALID_L;
 				continue;
 			}
+
+			errno = 0;
+			ul = strtoul((char *) param, &q, 10);
+			if (ul == ULONG_MAX || errno != 0 || *q != '\0' ||
+			    ul > (unsigned long) SSIZE_MAX)
+			{
+				dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_INVALID_L;
+				continue;
+			}
+
+			signlen = (ssize_t) ul;
 		}
 
 		/* query method */
