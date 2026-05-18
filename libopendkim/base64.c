@@ -80,7 +80,7 @@ dkim_base64_decode(u_char *str, u_char *buf, size_t buflen)
 		/* everything else gets decoded */
 		bits += decoder[(int) *c];
 		char_count++;
-		if (n + 3 > buflen)
+		if (buflen < 3 || (size_t) n > buflen - 3)
 			return -2;
 		if (char_count == 4)
 		{
@@ -109,13 +109,13 @@ dkim_base64_decode(u_char *str, u_char *buf, size_t buflen)
 		return -1;
 
 	  case 2:
-		if (n + 1 > buflen)
+		if (buflen < 1 || (size_t) n > buflen - 1)
 			return -2;
 		buf[n++] = (bits >> 10);
 		break;
 
 	  case 3:
-		if (n + 2 > buflen)
+		if (buflen < 2 || (size_t) n > buflen - 2)
 			return -2;
 		buf[n++] = (bits >> 16);
 		buf[n++] = ((bits >> 8) & 0xff);
@@ -143,7 +143,7 @@ int
 dkim_base64_encode(u_char *data, size_t datalen, u_char *buf, size_t buflen)
 {
 	int bits;
-	int c;
+	size_t c;
 	int char_count;
 	size_t n;
 
