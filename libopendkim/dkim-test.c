@@ -165,7 +165,12 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		return -1;
 	}
 	cp += n;
-	if (end - cp < 2 * sizeof(uint16_t))
+	/*
+	**  Check cp < end explicitly first: end - cp is signed (ptrdiff_t),
+	**  and a negative result cast to size_t becomes huge, masking an
+	**  upstream overrun.
+	*/
+	if (cp >= end || (size_t) (end - cp) < 2 * sizeof(uint16_t))
 	{
 		DKIM_FREE(dkim, td);
 		return -1;
@@ -193,7 +198,9 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	}
 	cp += n;
 
-	if (end - cp < 2 * sizeof(uint16_t) + sizeof(uint32_t))
+	/* see above: cp >= end short-circuits the signed ptrdiff comparison */
+	if (cp >= end ||
+	    (size_t) (end - cp) < 2 * sizeof(uint16_t) + sizeof(uint32_t))
 	{
 		DKIM_FREE(dkim, td);
 		return -1;
@@ -211,7 +218,9 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		/* figure out how many bytes we need total */
 		n = strlen((char *) td->dns_reply);
 		len = n + n / 255 + 1;
-		if (end - cp < len + sizeof(uint16_t))
+		/* see above: cp >= end short-circuits the signed ptrdiff comparison */
+		if (cp >= end ||
+		    (size_t) (end - cp) < (size_t) len + sizeof(uint16_t))
 		{
 			DKIM_FREE(dkim, td);
 			return -1;
@@ -235,7 +244,8 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		break;
 
 	  case T_MX:
-		if (end - cp < sizeof(uint16_t))
+		/* see above: cp >= end short-circuits the signed ptrdiff comparison */
+		if (cp >= end || (size_t) (end - cp) < sizeof(uint16_t))
 		{
 			DKIM_FREE(dkim, td);
 			return -1;
