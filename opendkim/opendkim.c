@@ -1699,7 +1699,6 @@ dkimf_xs_replaceheader(lua_State *l)
 	SMFICTX *ctx;
 	struct connctx *cc;
 	struct msgctx *dfc;
-	struct dkimf_config *conf;
 	Header hdr;
 
 	assert(l != NULL);
@@ -1729,7 +1728,6 @@ dkimf_xs_replaceheader(lua_State *l)
 	{
 		cc = (struct connctx *) dkimf_getpriv(ctx);
 		dfc = cc->cctx_msg;
-		conf = cc->cctx_config;
 	}
 
 	lua_pop(l, 3);
@@ -1852,7 +1850,6 @@ dkimf_xs_getheader(lua_State *l)
 	SMFICTX *ctx;
 	struct connctx *cc;
 	struct msgctx *dfc;
-	struct dkimf_config *conf;
 	Header hdr;
 
 	assert(l != NULL);
@@ -1879,7 +1876,6 @@ dkimf_xs_getheader(lua_State *l)
 	{
 		cc = (struct connctx *) dkimf_getpriv(ctx);
 		dfc = cc->cctx_msg;
-		conf = cc->cctx_config;
 	}
 
 	lua_pop(l, 3);
@@ -1921,7 +1917,6 @@ int
 dkimf_xs_popauth(lua_State *l)
 {
 	SMFICTX *ctx;
-	struct connctx *cc;
 
 	assert(l != NULL);
 
@@ -1948,8 +1943,6 @@ dkimf_xs_popauth(lua_State *l)
 		return 1;
 	}
 
-	cc = (struct connctx *) dkimf_getpriv(ctx);
-
 #ifdef POPAUTH
 	if (popdb == NULL)
 	{
@@ -1958,8 +1951,10 @@ dkimf_xs_popauth(lua_State *l)
 	}
 	else
 	{
+		struct connctx *cc;
 		_Bool popauth;
 
+		cc = (struct connctx *) dkimf_getpriv(ctx);
 		popauth = dkimf_checkpopauth(popdb, &cc->cctx_ip);
 
 		lua_pushnumber(l, popauth ? 1 : 0);
@@ -2270,7 +2265,6 @@ dkimf_xs_rcptcount(lua_State *l)
 	int rcnt;
 	SMFICTX *ctx;
 	struct connctx *cc;
-	struct dkimf_config *conf;
 	struct msgctx *dfc;
 	struct addrlist *addr;
 
@@ -2299,7 +2293,6 @@ dkimf_xs_rcptcount(lua_State *l)
 	}
 
 	cc = (struct connctx *) dkimf_getpriv(ctx);
-	conf = cc->cctx_config;
 	dfc = cc->cctx_msg;
 
 	rcnt = 0;
@@ -5267,49 +5260,6 @@ dkimf_zapkey(struct dkimf_config *conf)
 		free(conf->conf_seckey);
 		conf->conf_seckey = NULL;
 	}
-}
-
-/*
-**  DKIMF_AUTHORSIGOK -- return TRUE iff a message was signed with an
-**                       author signature that passed
-**
-**  Parameters:
-**  	msg -- a message context handle
-**
-**  Return value:
-**  	TRUE iff the message referenced by "dkim" was signed with an
-**  	author signature and that signature passed.
-*/
-
-static _Bool
-dkimf_authorsigok(msgctx msg)
-{
-	DKIM_STAT status;
-	int c;
-	int nsigs;
-	DKIM_SIGINFO **sigs;
-
-	assert(msg != NULL);
-
-	status = dkim_getsiglist(msg->mctx_dkimv, &sigs, &nsigs);
-	if (status != DKIM_STAT_OK)
-		return FALSE;
-
-	for (c = 0; c < nsigs; c++)
-	{
-		/* skip signatures with errors */
-		if (dkim_sig_geterror(sigs[c]) != DKIM_SIGERROR_UNKNOWN &&
-		    dkim_sig_geterror(sigs[c]) != DKIM_SIGERROR_OK)
-			continue;
-
-		if (strcasecmp((char *) dkim_sig_getdomain(sigs[c]),
-		               (char *) msg->mctx_domain) == 0 &&
-		    (dkim_sig_getflags(sigs[c]) & DKIM_SIGFLAG_PASSED) != 0 &&
-		    dkim_sig_getbh(sigs[c]) == DKIM_SIGBH_MATCH)
-			return TRUE;
-	}
-
-	return FALSE;
 }
 
 /*
@@ -11619,7 +11569,6 @@ sfsistat
 mlfi_eom(SMFICTX *ctx)
 {
 	_Bool testkey = FALSE;
-	_Bool authorsig;
 	int status = DKIM_STAT_OK;
 	int c;
 	sfsistat ret = SMFIS_ACCEPT;
@@ -12152,8 +12101,6 @@ mlfi_eom(SMFICTX *ctx)
 #endif /* ! SMFIF_QUARANTINE */
 			break;
 		}
-
-		authorsig = dkimf_authorsigok(dfc);
 
 		if (conf->conf_diagdir != NULL &&
 		    dfc->mctx_status == DKIMF_STATUS_BAD)
