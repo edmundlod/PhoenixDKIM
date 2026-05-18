@@ -459,7 +459,7 @@ dkim_canon_header(DKIM *dkim, DKIM_CANON *canon, struct dkim_header *hdr,
 static void
 dkim_canon_flushblanks(DKIM_CANON *canon)
 {
-	int c;
+	u_int c;
 
 	assert(canon != NULL);
 
@@ -725,7 +725,7 @@ dkim_add_canon(DKIM *dkim, _Bool hdr, dkim_canon_t canon, int hashtype,
 		for (cur = dkim->dkim_canonhead; cur != NULL; cur = cur->canon_next)
 		{
 			if (cur->canon_hdr ||
-			    cur->canon_hashtype != hashtype ||
+			    cur->canon_hashtype != (u_int) hashtype ||
 			    cur->canon_canon != canon)
 				continue;
 
