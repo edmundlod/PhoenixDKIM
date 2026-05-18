@@ -17,7 +17,10 @@ actively maintained dependencies.
 - **CMake** — replaces autoconf/automake
 - **Lua 5.4** — updated from Lua 5.1
 - Removed: VBR, ATPS, RBL, reputation subsystems, LDAP, SQL/OpenDBX,
-  GnuTLS, BerkeleyDB, `diffheaders` (tre dependency)
+  GnuTLS, BerkeleyDB (and its `QUERY_CACHE` DNS-result cache),
+  `diffheaders` (tre dependency).  See
+  [docs/removed-features.md](docs/removed-features.md) for the rationale
+  behind each.
 - RSA-SHA1 signing dropped; RSA-SHA1 verification retained for
   interoperability with legacy signed mail
 - Minimum RSA signing key size: 2048 bits

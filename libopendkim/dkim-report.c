@@ -68,9 +68,6 @@ dkim_repinfo(DKIM *dkim, DKIM_SIGINFO *sig, struct timeval *timeout,
 	int error;
 	int n;
 	unsigned int c;
-#ifdef QUERY_CACHE
-	uint32_t ttl;
-#endif /* QUERY_CACHE */
 	size_t anslen;
 	DKIM_LIB *lib;
 	u_char *sdomain;
@@ -98,8 +95,6 @@ dkim_repinfo(DKIM *dkim, DKIM_SIGINFO *sig, struct timeval *timeout,
 	             DKIM_REPORT_PREFIX, (char *) sdomain);
 	if (n < 0 || (size_t)n >= sizeof query)
 		return DKIM_STAT_INVALID;
-
-	/* XXX -- add QUERY_CACHE support here */
 
 	if (lib->dkiml_dns_service == NULL &&
 	    lib->dkiml_dns_init != NULL &&
@@ -208,13 +203,8 @@ dkim_repinfo(DKIM *dkim, DKIM_SIGINFO *sig, struct timeval *timeout,
 		GETSHORT(type, cp);
 		GETSHORT(class, cp);
 
-#ifdef QUERY_CACHE
-		/* get the TTL */
-		GETLONG(ttl, cp);
-#else /* QUERY_CACHE */
 		/* skip the TTL */
 		cp += INT32SZ;
-#endif /* QUERY_CACHE */
 
 		/* skip CNAME if found; assume it was resolved */
 		if (type == T_CNAME)

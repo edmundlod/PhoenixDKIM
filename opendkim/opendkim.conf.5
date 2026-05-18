@@ -712,13 +712,6 @@ Requests that messages which fail verification be quarantined by the
 MTA.  (Requires a sufficiently recent version of the milter library.)
 
 .TP
-.I QueryCache (Boolean)
-Instructs the DKIM library to maintain its own local cache of keys and
-policies retrieved from DNS, rather than relying on the nameserver for
-caching service.  Useful if the nameserver being used by the filter is
-not local.
-
-.TP
 .I RedirectFailuresTo (address)
 Messages bearing signatures that failed to verify are redirected to the
 specified address.  The original envelope recipient set is recorded in

@@ -25,7 +25,6 @@
 #include "dkim-internal.h"
 #include "dkim-types.h"
 #include "dkim-keys.h"
-#include "dkim-cache.h"
 #include "dkim-test.h"
 #include "util.h"
 
@@ -69,10 +68,6 @@ extern void dkim_error __P((DKIM *, const char *, ...));
 DKIM_STAT
 dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 {
-#ifdef QUERY_CACHE
-	_Bool cached = FALSE;
-	uint32_t ttl = 0;
-#endif /* QUERY_CACHE */
 	int status;
 	int qdcount;
 	int ancount;
@@ -110,26 +105,6 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 		dkim_error(dkim, "key query name too large");
 		return DKIM_STAT_NORESOURCE;
 	}
-
-#ifdef QUERY_CACHE
-	/* see if we have this data already cached */
-	if (dkim->dkim_libhandle->dkiml_cache != NULL)
-	{
-		int err = 0;
-		size_t blen = buflen;
-
-		dkim->dkim_cache_queries++;
-
-		status = dkim_cache_query(dkim->dkim_libhandle->dkiml_cache,
-		                          qname, 0, buf, &blen, &err);
-		if (status == 0)
-		{
-			dkim->dkim_cache_hits++;
-			return DKIM_STAT_OK;
-		}
-		/* XXX -- do something with errors here */
-	}
-#endif /* QUERY_CACHE */
 
 	/* see if there's a simulated reply queued; if so, use it */
 	anslen = dkim_test_dns_get(dkim, ansbuf, sizeof ansbuf);
@@ -313,13 +288,8 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 
 		GETSHORT(type, cp);			/* TYPE */
 		GETSHORT(class, cp);			/* CLASS */
-#ifdef QUERY_CACHE
-		/* get the TTL */
-		GETLONG(ttl, cp);			/* TTL */
-#else /* QUERY_CACHE */
 		/* skip the TTL */
 		cp += INT32SZ;				/* TTL */
-#endif /* QUERY_CACHE */
 		GETSHORT(n, cp);			/* RDLENGTH */
 
 		/* skip CNAME if found; assume it was resolved */
@@ -397,18 +367,6 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 			rdlength--;
 		}
 	}
-
-#ifdef QUERY_CACHE
-	if (!cached && buf[0] != '\0' &&
-	    dkim->dkim_libhandle->dkiml_cache != NULL)
-	{
-		int err = 0;
-
-		status = dkim_cache_insert(dkim->dkim_libhandle->dkiml_cache,
-		                           qname, buf, ttl, &err);
-		/* XXX -- do something with errors here */
-	}
-#endif /* QUERY_CACHE */
 
 	return DKIM_STAT_OK;
 }
