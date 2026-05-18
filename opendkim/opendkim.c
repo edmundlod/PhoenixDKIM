@@ -3872,7 +3872,6 @@ dkimf_reptoken(u_char *out, size_t outlen, u_char *in, u_char *sub)
 	return ret;
 }
 
-#ifdef HAVE_REALPATH
 /*
 **  DKIMF_CHECKFSNODE -- check a filesystem node for safety
 **
@@ -4109,7 +4108,6 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 
 	return 1;
 }
-#endif /* HAVE_REALPATH */
 
 /*
 **  DKIMF_SECUREFILE -- determine whether a file at a specific path is "safe"
