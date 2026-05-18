@@ -2352,27 +2352,3 @@ dkimf_db_rewalk(DKIMF_DB db, char *str, DKIMF_DBDATA req, unsigned int reqnum,
 
 	return 1;
 }
-
-
-/*
-**  DKIMF_DB_CHOWN -- set ownership and permissions on a DB
-**
-**  Parameters:
-**  	db -- DKIMF_DB handle
-**  	uid -- target uid
-**
-**  Return value:
-**  	1 -- success
-**  	0 -- not a DB that can be chowned
-**  	-1 -- fchown() failed
-*/
-
-int
-dkimf_db_chown(DKIMF_DB db, uid_t uid)
-{
-
-	assert(db != NULL);
-	assert(uid >= 0);
-
-	return 0;
-}
