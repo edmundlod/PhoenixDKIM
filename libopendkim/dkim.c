@@ -5324,6 +5324,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 				           dkim_sig_getdomain(sig));
 
 				sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+				sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 				return DKIM_STAT_OK;
 			}
@@ -5346,6 +5347,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 				           dkim_sig_getdomain(sig));
 
 				sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+				sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 				return DKIM_STAT_OK;
 			}
@@ -5362,6 +5364,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 				EVP_MD_CTX_free(mdctx);
 
 				sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+				sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 				return DKIM_STAT_OK;
 			}
@@ -5423,6 +5426,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 				BIO_free(key);
 
 				sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+				sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 				return DKIM_STAT_OK;
 			}
@@ -5458,6 +5462,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 					BIO_free(key);
 
 					sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+					sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 					return DKIM_STAT_OK;
 				}
@@ -5477,6 +5482,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 					BIO_free(key);
 
 					sig->sig_error = DKIM_SIGERROR_KEYDECODE;
+					sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
 
 					return DKIM_STAT_OK;
 				}
