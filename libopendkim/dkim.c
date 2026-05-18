@@ -1328,7 +1328,15 @@ dkim_key_hashok(DKIM_SIGINFO *sig, u_char *hashlist)
 				tmp[y - x] = '\0';
 				hashalg = dkim_name_to_code(hashes,
 				                            (char *) tmp);
-				if (hashalg == sig->sig_hashtype)
+				/*
+				**  dkim_name_to_code() returns -1 if the
+				**  name isn't in the table; sig_hashtype is
+				**  u_int, so guard before casting to avoid
+				**  -1 turning into UINT_MAX and matching
+				**  nothing real.
+				*/
+				if (hashalg >= 0 &&
+				    (u_int) hashalg == sig->sig_hashtype)
 					return TRUE;
 			}
 
@@ -4352,7 +4360,8 @@ dkim_error(DKIM *dkim, const char *format, ...)
 		if (flen == -1)
 			flen = dkim->dkim_errlen * 2;
 
-		if (flen >= dkim->dkim_errlen)
+		/* flen >= 0 here (the -1 branch above replaced it) */
+		if ((size_t) flen >= dkim->dkim_errlen)
 		{
 			new = DKIM_MALLOC(dkim, flen + 1);
 			if (new == NULL)
@@ -5895,7 +5904,8 @@ dkim_header(DKIM *dkim, u_char *hdr, size_t len)
 		return DKIM_STAT_NORESOURCE;
 	}
 
-	h->hdr_namelen = end != NULL ? end - hdr : len;
+	/* end >= hdr by construction (end was walked back from colon) */
+	h->hdr_namelen = end != NULL ? (size_t) (end - hdr) : len;
 	h->hdr_textlen = len;
 	if (colon == NULL)
 		h->hdr_colon = NULL;
@@ -6747,7 +6757,7 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 
 	for (p = hdrlist; ; p++)
 	{
-		len = -1;
+		len = (size_t) -1;
 
 		if (*p == ':')
 		{
@@ -6786,7 +6796,7 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 			break;
 		}
 
-		if (len != -1)
+		if (len != (size_t) -1)
 		{
 			if (strncasecmp((char *) hdr, (char *) start,
 			                len) == 0)
@@ -7068,7 +7078,9 @@ dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 
 		len = snprintf((char *) val, vallen, "@%s", param);
 
-		return (len < vallen ? DKIM_STAT_OK : DKIM_STAT_NORESOURCE);
+		/* snprintf() returns -1 on encoding error; treat that as overflow */
+		return (len >= 0 && (size_t) len < vallen
+		        ? DKIM_STAT_OK : DKIM_STAT_NORESOURCE);
 	}
 	else
 	{
@@ -7079,7 +7091,7 @@ dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 		{
 			return DKIM_STAT_SYNTAX;
 		}
-		else if (len >= vallen)
+		else if ((size_t) len >= vallen)
 		{
 			return DKIM_STAT_NORESOURCE;
 		}
@@ -8100,7 +8112,8 @@ dkim_sig_getsignedhdrs(DKIM *dkim, DKIM_SIGINFO *sig,
 
 	*nhdrs = status;
 
-	for (n = 0; n < status; n++)
+	/* status >= 0 here (the -1 branch returned above) */
+	for (n = 0; n < (u_int) status; n++)
 		strlcpy(&hdrs[n * hdrlen], sighdrs[n]->hdr_text, hdrlen);
 
 	DKIM_FREE(dkim, sighdrs);
