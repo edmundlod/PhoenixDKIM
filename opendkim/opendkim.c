@@ -971,7 +971,6 @@ dkimf_xs_signfor(lua_State *l)
 	_Bool multi = FALSE;
 	int top;
 	int status;
-	struct lua_global *lg;
 	SMFICTX *ctx;
 	unsigned char *user = NULL;
 	unsigned char *domain = NULL;
@@ -1799,13 +1798,9 @@ dkimf_xs_replaceheader(lua_State *l)
 int
 dkimf_xs_getenvfrom(lua_State *l)
 {
-	int idx;
-	const char *hdrname;
 	SMFICTX *ctx;
 	struct connctx *cc;
 	struct msgctx *dfc;
-	struct dkimf_config *conf;
-	Header hdr;
 
 	assert(l != NULL);
 

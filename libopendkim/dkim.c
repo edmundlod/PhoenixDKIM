@@ -2591,8 +2591,6 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 static DKIM_STAT
 dkim_getsender(DKIM *dkim)
 {
-	int c;
-	size_t hlen;
 	DKIM_STAT status;
 	unsigned char *domain;
 	unsigned char *user;
