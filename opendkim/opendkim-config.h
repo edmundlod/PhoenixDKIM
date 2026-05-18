@@ -99,9 +99,6 @@ struct configdef dkimf_config[] =
 	{ "POPDBFile",			CONFIG_TYPE_STRING,	FALSE },
 #endif /* POPAUTH */
 	{ "Quarantine",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#ifdef QUERY_CACHE
-	{ "QueryCache",			CONFIG_TYPE_BOOLEAN,	FALSE },
-#endif /* QUERY_CACHE */
 	{ "RedirectFailuresTo",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RemoveARAll",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RemoveARFrom",		CONFIG_TYPE_STRING,	FALSE },

@@ -284,7 +284,6 @@ configure_file(
 
 set(LIBOPENDKIM_SOURCES
     base64.c
-    dkim-cache.c
     dkim-canon.c
     dkim-dns.c
     dkim-keys.c

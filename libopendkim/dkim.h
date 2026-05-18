@@ -266,7 +266,6 @@ typedef int dkim_opts_t;
 #define	DKIM_LIBFLAGS_TMPFILES		0x00000001
 #define	DKIM_LIBFLAGS_KEEPFILES		0x00000002
 #define	DKIM_LIBFLAGS_SIGNLEN		0x00000004
-#define DKIM_LIBFLAGS_CACHE		0x00000008
 #define DKIM_LIBFLAGS_ZTAGS		0x00000010
 #define DKIM_LIBFLAGS_DELAYSIGPROC	0x00000020
 #define DKIM_LIBFLAGS_EOHCHECK		0x00000040
@@ -573,44 +572,6 @@ extern DKIM_STAT dkim_sig_syntax __P((DKIM *dkim, u_char *str, size_t len));
 */
 
 extern const char *dkim_getid __P((DKIM *dkim));
-
-/*
-**  DKIM_GETCACHESTATS -- retrieve cache statistics
-**
-**  Parameters:
-**  	lib -- DKIM library handle
-**  	queries -- number of queries handled (returned)
-**  	hits -- number of cache hits (returned)
-**  	expired -- number of expired hits (returned)
-**  	reset -- if true, reset the queries, hits, and expired counters
-**
-**  Return value:
-**  	DKIM_STAT_OK -- statistics returned
-**  	DKIM_STAT_INVALID -- cache not initialized
-**  	DKIM_STAT_NOTIMPLEMENT -- function not implemented
-**
-**  Notes:
-**  	Any of the parameters may be NULL if the corresponding datum
-**  	is not of interest.
-*/
-
-extern DKIM_STAT dkim_getcachestats __P((DKIM_LIB *, u_int *queries, u_int *hits,
-                                         u_int *expired, u_int *keys,
-                                         _Bool reset));
-
-/*
-**  DKIM_FLUSH_CACHE -- purge expired records from the database, reclaiming
-**                      space for use by new data
-**
-**  Parameters:
-**  	lib -- DKIM library whose cache should be flushed
-**
-**  Return value:
-**  	-1 -- caching is not in effect
-**  	>= 0 -- number of flushed records
-*/
-
-extern int dkim_flush_cache __P((DKIM_LIB *lib));
 
 /*
 **  DKIM_MINBODY -- return number of bytes still expected
@@ -1370,7 +1331,6 @@ extern unsigned long dkim_ssl_version __P((void));
 #define DKIM_FEATURE_DIFFHEADERS	0
 #define DKIM_FEATURE_UNUSED		1
 #define DKIM_FEATURE_PARSE_TIME		2
-#define DKIM_FEATURE_QUERY_CACHE	3
 #define DKIM_FEATURE_SHA256		4
 #define DKIM_FEATURE_OVERSIGN		5
 #define DKIM_FEATURE_DNSSEC		6

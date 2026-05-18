@@ -87,10 +87,6 @@ static char *optlist[] =
 	"POPAUTH",
 #endif /* POPAUTH */
 
-#if QUERY_CACHE
-	"QUERY_CACHE",
-#endif /* QUERY_CACHE */
-
 #if USE_JANSSON
 	"USE_JANSSON",
 #endif /* USE_JANSSON */

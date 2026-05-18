@@ -77,9 +77,6 @@
 #include "dkim-util.h"
 #include "dkim-canon.h"
 #include "dkim-dns.h"
-#ifdef QUERY_CACHE
-# include "dkim-cache.h"
-#endif /* QUERY_CACHE */
 #include "util.h"
 #include "base64.h"
 
@@ -4161,17 +4158,6 @@ dkim_new(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 
 	*statp = DKIM_STAT_OK;
 
-#ifdef QUERY_CACHE
-	if ((libhandle->dkiml_flags & DKIM_LIBFLAGS_CACHE) != 0 &&
-	    libhandle->dkiml_cache == NULL)
-	{
-		int err = 0;
-
-		libhandle->dkiml_cache = dkim_cache_init(&err,
-		                                         libhandle->dkiml_tmpdir);
-	}
-#endif /* QUERY_CACHE */
-
 	return new;
 }
 
@@ -4222,9 +4208,6 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 	libhandle->dkiml_querymethod = DKIM_QUERY_UNKNOWN;
 	memset(libhandle->dkiml_queryinfo, '\0',
 	       sizeof libhandle->dkiml_queryinfo);
-#ifdef QUERY_CACHE
-	libhandle->dkiml_cache = NULL;
-#endif /* QUERY_CACHE */
 	libhandle->dkiml_fixedtime = 0;
 	libhandle->dkiml_sigttl = 0;
 	libhandle->dkiml_clockdrift = DEFCLOCKDRIFT;
@@ -4259,9 +4242,6 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 	memset(libhandle->dkiml_flist, '\0',
 	       sizeof(u_int) * libhandle->dkiml_flsize);
 
-#ifdef QUERY_CACHE
-	FEATURE_ADD(libhandle, DKIM_FEATURE_QUERY_CACHE);
-#endif /* QUERY_CACHE */
 #ifdef HAVE_SHA256
 	FEATURE_ADD(libhandle, DKIM_FEATURE_SHA256);
 #endif /* HAVE_SHA256 */
@@ -4292,11 +4272,6 @@ void
 dkim_close(DKIM_LIB *lib)
 {
 	assert(lib != NULL);
-
-#ifdef QUERY_CACHE
-	if (lib->dkiml_cache != NULL)
-		(void) dkim_cache_close(lib->dkiml_cache);
-#endif /* QUERY_CACHE */
 
 	if (lib->dkiml_skipre)
 		(void) regfree(&lib->dkiml_skiphdrre);
@@ -7875,83 +7850,6 @@ unsigned long
 dkim_ssl_version(void)
 {
 	return OPENSSL_VERSION_NUMBER;
-}
-
-/*
-**  DKIM_FLUSH_CACHE -- purge expired records from the cache
-**
-**  Parameters:
-**  	lib -- DKIM library handle, returned by dkim_init()
-**
-**  Return value:
-**  	-1 -- caching is not in effect
-**  	>= 0 -- number of purged records
-*/
-
-int
-dkim_flush_cache(DKIM_LIB *lib)
-{
-#ifdef QUERY_CACHE
-	int err;
-#endif /* QUERY_CACHE */
-
-	assert(lib != NULL);
-
-#ifdef QUERY_CACHE
-	if (lib->dkiml_cache == NULL)
-		return -1;
-
-	return dkim_cache_expire(lib->dkiml_cache, 0, &err);
-#else /* QUERY_CACHE */
-	return -1;
-#endif /* QUERY_CACHE */
-}
-
-/*
-**  DKIM_GETCACHESTATS -- retrieve cache statistics
-**
-**  Parameters:
-**  	lib -- DKIM library handle, returned by dkim_init()
-**  	queries -- number of queries handled (returned)
-**  	hits -- number of cache hits (returned)
-**  	expired -- number of expired hits (returned)
-**  	keys -- number of keys in the cache (returned)
-**  	reset -- if TRUE, resets the queries, hits, and expired counters
-**
-**  Return value:
-**  	DKIM_STAT_OK -- request completed
-**  	DKIM_STAT_INVALID -- cache not initialized
-**  	DKIM_STAT_NOTIMPLEMENT -- function not implemented
-**
-**  Notes:
-**  	Any of the parameters may be NULL if the corresponding datum
-**  	is not of interest.
-*/
-
-DKIM_STAT
-dkim_getcachestats(DKIM_LIB *lib, u_int *queries, u_int *hits, u_int *expired,
-                   u_int *keys, _Bool reset)
-{
-#ifndef QUERY_CACHE
-	(void) lib;
-	(void) queries;
-	(void) hits;
-	(void) expired;
-	(void) keys;
-	(void) reset;
-#endif /* ! QUERY_CACHE */
-#ifdef QUERY_CACHE
-	assert(lib != NULL);
-
-	if (lib->dkiml_cache == NULL)
-		return DKIM_STAT_INVALID;
-
-	dkim_cache_stats(lib->dkiml_cache, queries, hits, expired, keys, reset);
-
-	return DKIM_STAT_OK;
-#else /* QUERY_CACHE */
-	return DKIM_STAT_NOTIMPLEMENT;
-#endif /* QUERY_CACHE */
 }
 
 /*

@@ -33,11 +33,6 @@
 # include <openssl/err.h>
 # include <openssl/evp.h>
 
-#ifdef QUERY_CACHE
-/* libdb includes */
-# include <db.h>
-#endif /* QUERY_CACHE */
-
 /* libopendkim includes */
 #include "dkim.h"
 #include "dkim-internal.h"
@@ -242,10 +237,6 @@ struct dkim
 	int			dkim_hdrcnt;
 	int			dkim_minsiglen;
 	u_int			dkim_refcnt;
-#ifdef QUERY_CACHE
-	u_int			dkim_cache_queries;
-	u_int			dkim_cache_hits;
-#endif /* QUERY_CACHE */
 	u_int			dkim_version;
 	u_int			dkim_sigcount;
 	size_t			dkim_margin;
@@ -319,9 +310,6 @@ struct dkim_lib
 	u_char **		dkiml_requiredhdrs;
 	u_char **		dkiml_oversignhdrs;
 	u_char **		dkiml_mbs;
-#ifdef QUERY_CACHE
-	DB *			dkiml_cache;
-#endif /* QUERY_CACHE */
 	regex_t			dkiml_hdrre;
 	regex_t			dkiml_skiphdrre;
 	DKIM_CBSTAT		(*dkiml_key_lookup) (DKIM *dkim,
