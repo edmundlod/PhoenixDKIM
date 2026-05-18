@@ -138,6 +138,8 @@ dkim_res_close(void *srv)
 int
 dkim_res_cancel(void *srv, void *qh)
 {
+	(void) srv;
+
 	if (qh != NULL)
 		free(qh);
 
@@ -234,6 +236,9 @@ dkim_res_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 {
 	struct dkim_res_qh *rq;
 
+	(void) srv;
+	(void) to;
+
 	assert(qh != NULL);
 
 	rq = qh;
@@ -263,6 +268,10 @@ dkim_res_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 int
 dkim_res_nslist(void *srv, const char *nslist)
 {
+#ifndef HAVE_RES_SETSERVERS
+	(void) srv;
+	(void) nslist;
+#endif /* ! HAVE_RES_SETSERVERS */
 #ifdef HAVE_RES_SETSERVERS
 	int nscount = 0;
 	char *tmp;

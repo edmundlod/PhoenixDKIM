@@ -5201,6 +5201,8 @@ dkimf_reloader(/* UNUSED */ void *vp)
 	int sig;
 	sigset_t mask;
 
+	(void) vp;
+
 	(void) pthread_detach(pthread_self());
 
 	sigemptyset(&mask);
@@ -9539,6 +9541,9 @@ mlfi_negotiate(SMFICTX *ctx,
 	                            SMFIP_SKIP );
 	connctx cc;
 	struct dkimf_config *conf;
+
+	(void) f2;
+	(void) f3;
 
 	dkimf_config_reload();
 

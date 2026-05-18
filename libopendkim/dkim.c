@@ -893,6 +893,8 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 static void
 dkim_load_ssl_errors(DKIM *dkim, int status)
 {
+	(void) status;
+
 	assert(dkim != NULL);
 
 	if (dkim->dkim_sslerrbuf == NULL)
@@ -947,6 +949,8 @@ dkim_load_ssl_errors(DKIM *dkim, int status)
 static void
 dkim_sig_load_ssl_errors(DKIM *dkim, DKIM_SIGINFO *sig, int status)
 {
+	(void) status;
+
 	assert(dkim != NULL);
 	assert(sig != NULL);
 
@@ -7928,6 +7932,14 @@ DKIM_STAT
 dkim_getcachestats(DKIM_LIB *lib, u_int *queries, u_int *hits, u_int *expired,
                    u_int *keys, _Bool reset)
 {
+#ifndef QUERY_CACHE
+	(void) lib;
+	(void) queries;
+	(void) hits;
+	(void) expired;
+	(void) keys;
+	(void) reset;
+#endif /* ! QUERY_CACHE */
 #ifdef QUERY_CACHE
 	assert(lib != NULL);
 
