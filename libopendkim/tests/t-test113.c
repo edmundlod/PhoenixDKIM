@@ -42,7 +42,7 @@ struct dkim_dstring;
 int
 main(int argc, char **argv)
 {
-	int c;
+	size_t c;
 	DKIM_STAT status;
 	DKIM_LIB *lib;
 	DKIM *dkim;
