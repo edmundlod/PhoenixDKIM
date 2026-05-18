@@ -136,6 +136,10 @@ check_function_exists(inet_pton HAVE_INET_PTON)
 check_function_exists(inet_ntop HAVE_INET_NTOP)
 check_function_exists(getaddrinfo HAVE_GETADDRINFO)
 
+# Path-resolution helpers used by opendkim's secure-file check
+check_function_exists(realpath HAVE_REALPATH)
+check_function_exists(strsep HAVE_STRSEP)
+
 # ── libunbound (optional DNSSEC async resolver) ──────────────────────────────
 option(WITH_UNBOUND "Enable libunbound DNSSEC async resolver support" ON)
 

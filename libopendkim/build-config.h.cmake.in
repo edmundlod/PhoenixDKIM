@@ -32,6 +32,10 @@
 #cmakedefine HAVE_INET_NTOP 1
 #cmakedefine HAVE_GETADDRINFO 1
 
+/* Path-resolution helpers (opendkim secure-file check) */
+#cmakedefine HAVE_REALPATH 1
+#cmakedefine HAVE_STRSEP 1
+
 /* Standard system headers */
 #cmakedefine HAVE_LIMITS_H 1
 #cmakedefine HAVE_STDBOOL_H 1
