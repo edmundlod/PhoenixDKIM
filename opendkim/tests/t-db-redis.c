@@ -74,7 +74,7 @@ seed_del(redisContext *ctx, const char *key)
 /* ── main ────────────────────────────────────────────────────────────────────── */
 
 int
-main(int argc, char **argv)
+main(void)
 {
 	int status;
 	_Bool exists;
