@@ -392,8 +392,17 @@ main(int argc, char **argv)
 		for (;;)
 		{
 			rlen = read(tfd, buf, sizeof buf);
-			(void) fwrite(buf, 1, rlen, stdout);
-			if (rlen < sizeof buf)
+			/*
+			**  rlen is ssize_t; passing a negative value as
+			**  fwrite()'s nmemb (size_t) would copy garbage past
+			**  the buffer, and bare rlen < sizeof buf would
+			**  cast the negative to a huge size_t and loop.
+			**  Bail on read error or EOF first.
+			*/
+			if (rlen <= 0)
+				break;
+			(void) fwrite(buf, 1, (size_t) rlen, stdout);
+			if ((size_t) rlen < sizeof buf)
 				break;
 		}
 	}
