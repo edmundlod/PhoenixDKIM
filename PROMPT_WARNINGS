@@ -14,8 +14,8 @@ Current state on `master` after a full clean rebuild:
 | -Wsign-compare            | 113 | 113 | DONE
 | -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
-| -Wdiscarded-qualifiers    |3776 |3770 | next
-| -Wcast-qual               | 391 | 340 | next
+| -Wdiscarded-qualifiers    |3776 | 816 | next
+| -Wcast-qual               | 391 |  17 | DONE (10 unique sites; all annotated)
 | -Wmissing-prototypes      | 111 | 111 | next
 | -Wundef                   |  33 |  33 | next
 | -Wshadow                  |  25 |  25 | next
@@ -65,21 +65,64 @@ That matches the file's existing 61+ such casts.  Those will all be
 swept together when the -Wcast-qual cleanup begins; using U_STR
 there would just create -Wdiscarded-qualifiers warnings now.
 
-### -Wdiscarded-qualifiers (3766) and -Wcast-qual (340) — next big waves
+### -Wcast-qual (DONE)
 
-Both surfaced after the cmake fix (commit 757d784c) that re-enabled
-nine optional hardening warnings the build had been silently
-dropping.  These are almost entirely string-literal/u_char/char
-plumbing issues in legacy C code — same shape as -Wpointer-sign,
-just a different cell of the (signedness × const-ness) matrix.
-Recommended approach when starting this:
+Worked from 340 down to 17 (10 unique sites), all of which now carry
+explicit /* Legacy API constraint: ... */ annotations documenting
+why the const-strip is intentional.  The cleanup proceeded in three
+broad phases:
 
-1. Finish -Wpointer-sign in dkim.c first so the diff stays focused.
-2. Then -Wcast-qual: most are `(u_char *) "literal"` patterns;
-   convert to `(const u_char *)` where the destination is const-safe,
-   or look for a U_STR-style helper per file.
-3. -Wdiscarded-qualifiers will partly evaporate as -Wcast-qual is
-   fixed — the two often fire on the same line.
+1. **Internal-only const widening** — static helpers and intra-libopendkim
+   read-only inputs were retyped to `const u_char *`:
+   dkim_canon_buffer/_write, dkim_canon_bodychunk, dkim_canon_fixcrlf,
+   dkim_qp_encode, dkim_strdup, dkim_qp_decode pos local, the
+   dkim_add_querymethod/_xtag scan loops, and dkimf_findheader.
+2. **Public-API const widening (binary-compatible)** — same shape as
+   the earlier dkim_qp_decode widening in bff884e8.  Widened
+   dkim_header, dkim_body, dkim_chunk, dkim_key_syntax, dkim_sig_syntax,
+   dkim_process_set, and dkim_test_dns_put to take `const u_char *`
+   for their read-only inputs.  Daemon-side: opendkim/util.c's
+   dkimf_dstring_copy/_cat/_catn followed the same pattern, and
+   dkimf_checkbldb / dkimf_log_ssl_errors took `const char *jobid`.
+3. **Structural cleanup** — the DKIM_LIB header-name array fields
+   (dkiml_requiredhdrs / _oversignhdrs / _mbs) became
+   `const u_char *const *` so the static `dkim_required_signhdrs`
+   table no longer needs an `(u_char **)` cast at assignment or
+   comparison.  dkim_copy_array returns its natural `char **`
+   ownership type; dkim_clobber_array takes `const char *const *`
+   and routes the unavoidable free() const-strip through
+   `(void *)(uintptr_t)` at the single sink site (requires
+   <stdint.h>).  dkim_hdrlist takes `const u_char *const *`.  The
+   daemon's `mctx_jobid` field became `const u_char *` and the
+   `JOBID(x)` macro returns `const char *`.  The dq_name struct
+   member dropped its spurious `const` (it must be writable to be
+   snprintf'd at construction; the accessor still returns
+   `const char *`).  The two `(dkim_sigkey_t)` literal casts in
+   t-conformance.c's ed25519 round-trip tests were replaced with
+   `unsigned char privkey[] = RFC8463_ED_PRIVKEY_PEM;` local
+   initializers.
+
+The remaining 10 annotated sites:
+
+- **libopendkim/dkim.c** (7) — sig_domain / sig_selector (1872, 1889),
+  sig_b64key (2921), dkim_add_canon hdrlist (2234), dkim_ohdrs
+  strtok_r through plist storage (5669), dkim_sig_getalgorithm via
+  dkim_code_to_name (7806), dkim_sig_gettagvalue via dkim_param_get
+  (8076).  Each carries a "Legacy API constraint" comment block
+  explaining the documented u_char * vs. const u_char * mismatch
+  between the public signatures and the read-only plist/nametable
+  storage.
+- **opendkim/opendkim.c** (3) — dkimf_sendprogress's three
+  `(SMFICTX *) ctx` casts (7810/7816/7819), forced by
+  dkim_set_dns_callback's `void (*func)(const void *context)`
+  prototype; the registered context is a live, mutable SMFICTX *.
+
+### -Wdiscarded-qualifiers (816) — next big wave
+
+Dropped from 3776 to 816 as a side effect of the -Wcast-qual work
+(the two warnings often fire on the same line).  Remaining sites
+are almost entirely the string-literal/u_char/char plumbing pattern
+not yet touched by the const-widening passes.
 
 ### -Wmissing-prototypes / -Wundef / -Wshadow
 
