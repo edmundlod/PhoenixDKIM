@@ -558,7 +558,8 @@ extern DKIM_STAT dkim_eom __P((DKIM *dkim, _Bool *testkey));
 **  	A DKIM_STAT constant.
 */
 
-extern DKIM_STAT dkim_key_syntax __P((DKIM *dkim, u_char *str, size_t len));
+extern DKIM_STAT dkim_key_syntax __P((DKIM *dkim, const u_char *str,
+                                      size_t len));
 
 /*
 **  DKIM_SIG_SYNTAX -- process a signature parameter set for valid syntax
@@ -572,7 +573,8 @@ extern DKIM_STAT dkim_key_syntax __P((DKIM *dkim, u_char *str, size_t len));
 **  	A DKIM_STAT constant.
 */
 
-extern DKIM_STAT dkim_sig_syntax __P((DKIM *dkim, u_char *str, size_t len));
+extern DKIM_STAT dkim_sig_syntax __P((DKIM *dkim, const u_char *str,
+                                      size_t len));
 
 /*
 **  DKIM_GETID -- retrieve "id" pointer from a handle
