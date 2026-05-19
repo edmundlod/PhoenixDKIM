@@ -1,100 +1,26 @@
-# Resume warning-cleanup + investigate test failures
+# Resume warning-cleanup
 
 ## Status as of last session
 
-Started from 435 warnings across 8 categories.  Cleared the cheap
-mechanical categories.  Current state on `master`:
+Current state on `master` after a full clean rebuild:
 
 | Category                  | Was | Now |
 |---------------------------|-----|-----|
 | -Wignored-qualifiers      |   9 |   0 | DONE
 | -Wunused-variable         |  15 |   0 | DONE
 | -Wunused-but-set-variable |  29 |   0 | DONE (via -UNDEBUG, see below)
-| -Wunused-function         |   1 |   1 | next
-| -Wunused-parameter        |  44 |  44 | next
-| -Wsign-compare            | 113 | 113 | next
-| -Wpointer-sign            | 217 | 217 | next
+| -Wunused-function         |   1 |   1 | DONE
+| -Wunused-parameter        |  44 |  44 | DONE
+| -Wsign-compare            | 113 | 113 | DONE
+| -Wpointer-sign            | 217 |  78 | in progress — dkim.c only
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
+| -Wdiscarded-qualifiers    |3776 |3766 | next
+| -Wcast-qual               | 391 | 340 | next
+| -Wmissing-prototypes      | 111 | 111 | next
+| -Wundef                   |  33 |  33 | next
+| -Wshadow                  |  25 |  25 | next
 
-Commits added on top of the prior session (`git log --oneline`):
-
-    7a9b434b  Fix: build libopendkim tests with -UNDEBUG so asserts fire
-    e27bab95  Fix: drop set-but-unused locals in libopendkim and opendkim
-    d8a9beaa  Fix: honour idx argument in dkimf_xs_delheader
-    280e6c33  Fix: delete unused locals in libopendkim tests
-    7cdca515  Fix: remove dead local declarations in three functions
-    d8a870ca  Fix: drop ignored const qualifier on dkim_name_to_code return
-
-## URGENT — test failures unearthed
-
-The most recent commit `7a9b434b` added `-UNDEBUG` to
-`libopendkim/tests/CMakeLists.txt` so that `assert()` actually runs in
-the test binaries.  Until then the entire libopendkim test suite was
-compiled with `-DNDEBUG`, which turned every `assert()` into `((void)0)`
-and made the tests trivially "pass" without checking anything.
-
-After the fix, `ctest` reports **26 of 175 tests failing**.  These are
-real pre-existing bugs (either in libopendkim or in the test fixtures)
-that were silently masked.  Examples seen so far:
-
-  - t-test102: `dkim_sig_geterror(sig) == DKIM_SIGERROR_MBSFAILED` —
-    must-be-signed handling does not surface the expected error code.
-
-Partial list of failing tests (from `--output-on-failure` tail; rerun
-ctest in `build/` for the full list):
-
-    t-test80   t-test88   t-test89   t-test93   t-test94   t-test99
-    t-test102  t-test114  t-test115  t-test117  t-test118  t-test128
-    t-test129  t-test136  t-test138  t-test139  t-test142  t-test149
-    t-test153
-
-To get the full list:
-
-    cd build
-    ctest 2>&1 | grep -E "Failed|aborted"
-
-These failures are unrelated to the warning cleanup and warrant their
-own investigation session.
-
-## Suggested next-session plan
-
-1.  **First, debug the test failures.**  Pick one (t-test102 is the
-    obvious starting point — its assertion is concrete and the test
-    sets up a clearly-named scenario).  Decide whether the bug is in:
-      a. libopendkim — error reporting / must-be-signed code path
-      b. the test scaffolding (key files, query setup)
-      c. the test's expectations (stale after a behaviour change)
-    Investigate them in groups by feature area, not one at a time —
-    similar tests likely share a root cause.
-
-2.  **Then resume warning cleanup** with the remaining categories in
-    the order below.  Order is cheapest → noisiest.
-
-## Remaining warning categories (in order)
-
-### 4. -Wunused-function (1 warning)
-
-    opendkim/opendkim.c:3912: dkimf_checkfsnode defined but not used
-
-Grep the tree for callers; if dead, delete the function and any
-companions.  If gated behind a `#ifdef` that's currently off, wrap
-the function in the same `#ifdef`.
-
-### 5. -Wunused-parameter (44 warnings)
-
-In callback stubs that must match a function-pointer signature, the
-project pattern is `(void) param;` casts at the top of the body —
-see commit 56b5a27d.  Do not change the signature.
-
-### 6. -Wsign-compare (113 warnings)
-
-`int` vs `size_t` comparisons.  These sometimes hide off-by-one or
-signed wrap.  Look at the actual range of values:
-  - If the count is genuinely `size_t`, change the loop variable's
-    type.
-  - Only cast when the producer really returns `int`.
-
-### 7. -Wpointer-sign (217 warnings)
+### -Wpointer-sign (78 remaining, all in libopendkim/dkim.c)
 
 `u_char *` (libopendkim API — DKIM byte data) vs `char *` (daemon —
 printable strings).  Most warnings are at the boundary.  Prefer narrow
@@ -102,29 +28,81 @@ casts at call sites over flipping API signatures (touching `dkim.h` is
 high-blast-radius).  **Stop and report if a fix needs an API signature
 change — that decision belongs to the user.**
 
-## Workflow notes (carried over)
+Static helpers in dkim.c follow the file's `u_char *`-for-strings
+convention even when they only read ASCII; do NOT retype them as
+`char *` or `const char *` for local readability, even though it would
+be technically correct — it breaks the file's visual consistency.
+
+### Pattern: U_STR macro for static const tables
+
+The three sign-recommendation tables at the top of dkim.c use a
+file-scoped helper:
+
+```c
+#define U_STR(s) ((const u_char *) (s))
+
+const u_char *dkim_should_signhdrs[] =
+{
+    U_STR("from"),
+    U_STR("reply-to"),
+    ...
+};
+...
+#undef U_STR
+```
+
+Scope it to *just the table block* with `#undef U_STR` immediately
+after.  Do NOT extend `U_STR` to non-table call sites — when passing
+a string literal to a function taking non-const `u_char *` (e.g. the
+static `dkim_get_header`), use an inline `(u_char *) "lit"` cast.
+That matches the file's existing 61+ such casts.  Those will all be
+swept together when the -Wcast-qual cleanup begins; using U_STR
+there would just create -Wdiscarded-qualifiers warnings now.
+
+### -Wdiscarded-qualifiers (3766) and -Wcast-qual (340) — next big waves
+
+Both surfaced after the cmake fix (commit 757d784c) that re-enabled
+nine optional hardening warnings the build had been silently
+dropping.  These are almost entirely string-literal/u_char/char
+plumbing issues in legacy C code — same shape as -Wpointer-sign,
+just a different cell of the (signedness × const-ness) matrix.
+Recommended approach when starting this:
+
+1. Finish -Wpointer-sign in dkim.c first so the diff stays focused.
+2. Then -Wcast-qual: most are `(u_char *) "literal"` patterns;
+   convert to `(const u_char *)` where the destination is const-safe,
+   or look for a U_STR-style helper per file.
+3. -Wdiscarded-qualifiers will partly evaporate as -Wcast-qual is
+   fixed — the two often fire on the same line.
+
+### -Wmissing-prototypes / -Wundef / -Wshadow
+
+Smaller, mostly mechanical.  Address after the big two are tame.
+
+## Workflow notes (carried over and updated)
 
 - This is a CMake project, not autotools.  Build with
-  `cd build && make -j$(nproc) 2>&1 | tee ../build.log`.
+  `cmake --build build --parallel 2>&1 | tee build.log`.
+  Do NOT invoke `make` directly — use `cmake --build` so configure
+  changes are picked up automatically.
+- After a CMakeLists.txt or cmake/*.cmake change, reconfigure with
+  `cmake -B build` (or `cmake build` from the repo root) before
+  building.  `cmake --build` will do this for you when needed.
 - One logical fix per commit, matching the existing "Fix: …" style.
 - Group mechanically-identical fixes into one commit; keep different
   bug shapes separate.
 - **Bug fixes get their own commits** — do not bundle a real
   behavioural fix with surrounding cleanup, even within one file.
-  Example from this session: the `dkimf_xs_delheader` idx-arg fix
+  Example from a prior session: the `dkimf_xs_delheader` idx-arg fix
   (d8a9beaa) was committed alone, separate from the cleanup commit
   (e27bab95) that touched the same file.
 - No `Co-Authored-By: Claude` lines on commits.
 - Don't commit unrelated dirty files — `PROMPT_WARNINGS` (this file)
   is left dirty by the user and must not be folded into a fix commit.
+  Commit PROMPT_WARNINGS updates on their own ("Docs: …").
 - After each commit, rebuild and confirm the warning count for that
   category dropped by the expected amount.
-- Skip the 7 -Wformat-truncation warnings — verified safe in the
+- Skip the 7 -Wformat-truncation warnings — verified safe in a
   prior session (opendkim.c:9536/11286, opendkim-db.c:1689 are
   return-checked; opendkim.c:12371 has a provably-sufficient buffer).
-
-## Model recommendation
-
-  - Sonnet for categories 4–5 (mechanical: deletes + `(void)` casts).
-  - Opus for 6 (-Wsign-compare) and 7 (-Wpointer-sign), where
-    judgement on "real bug vs type noise" actually matters.
+  Line numbers may have shifted slightly from edits since.
