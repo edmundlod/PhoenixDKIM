@@ -175,48 +175,52 @@ void dkim_error __P((DKIM *, const char *, ...));
 /* macros */
 #define DKIM_ISLWSP(x)  ((x) == 011 || (x) == 013 || (x) == 014 || (x) == 040)
 
+#define U_STR(s) ((const u_char *) (s))
+
 /* recommended list of headers to sign, from RFC6376 Section 5.4 */
 const u_char *dkim_should_signhdrs[] =
 {
-	"from",
-	"reply-to",
-	"subject",
-	"date",
-	"to",
-	"cc",
-	"resent-date",
-	"resent-from",
-	"resent-sender",
-	"resent-to",
-	"resent-cc",
-	"in-reply-to",
-	"references",
-	"list-id",
-	"list-help",
-	"list-unsubscribe",
-	"list-subscribe",
-	"list-post",
-	"list-owner",
-	"list-archive",
+	U_STR("from"),
+	U_STR("reply-to"),
+	U_STR("subject"),
+	U_STR("date"),
+	U_STR("to"),
+	U_STR("cc"),
+	U_STR("resent-date"),
+	U_STR("resent-from"),
+	U_STR("resent-sender"),
+	U_STR("resent-to"),
+	U_STR("resent-cc"),
+	U_STR("in-reply-to"),
+	U_STR("references"),
+	U_STR("list-id"),
+	U_STR("list-help"),
+	U_STR("list-unsubscribe"),
+	U_STR("list-subscribe"),
+	U_STR("list-post"),
+	U_STR("list-owner"),
+	U_STR("list-archive"),
 	NULL
 };
 
 /* recommended list of headers not to sign, from RFC6376 Section 5.4 */
 const u_char *dkim_should_not_signhdrs[] =
 {
-	"return-path",
-	"received",
-	"comments",
-	"keywords",
+	U_STR("return-path"),
+	U_STR("received"),
+	U_STR("comments"),
+	U_STR("keywords"),
 	NULL
 };
 
 /* required list of headers to sign */
 const u_char *dkim_required_signhdrs[] =
 {
-	"from",
+	U_STR("from"),
 	NULL
 };
+
+#undef U_STR
 
 /* ========================= PRIVATE SECTION ========================= */
 
@@ -697,7 +701,8 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 		{
 			unsigned int tmp = 0;
 
-			tmp = (unsigned int) strtoul(value, (char **) &p, 10);
+			tmp = (unsigned int) strtoul((char *) value,
+			                             (char **) &p, 10);
 			if (tmp > 100 || *p != '\0')
 			{
 				dkim_error(dkim,
@@ -923,7 +928,7 @@ dkim_load_ssl_errors(DKIM *dkim, int status)
 				dkim_dstring_catn(dkim->dkim_sslerrbuf,
 				                  "; ", 2);
 			}
-			dkim_dstring_cat(dkim->dkim_sslerrbuf, tmp);
+			dkim_dstring_cat(dkim->dkim_sslerrbuf, (u_char *) tmp);
 		}
 
 		errno = saveerr;
@@ -977,7 +982,7 @@ dkim_sig_load_ssl_errors(DKIM *dkim, DKIM_SIGINFO *sig, int status)
 				dkim_dstring_catn(sig->sig_sslerrbuf,
 				                  "; ", 2);
 			}
-			dkim_dstring_cat(sig->sig_sslerrbuf, tmp);
+			dkim_dstring_cat(sig->sig_sslerrbuf, (u_char *) tmp);
 		}
 
 		errno = saveerr;
@@ -2310,24 +2315,26 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		_Bool match = FALSE;
 		u_char *sd;
 
-		sd = strchr(dkim->dkim_signer, '@');
+		sd = (u_char *) strchr((char *) dkim->dkim_signer, '@');
 		if (sd == NULL)
 		{
 			dkim_error(dkim, "syntax error in signer value");
 			return 0;
 		}
 
-		if (strcasecmp(sd + 1, sig->sig_domain) == 0)
+		if (strcasecmp((char *) sd + 1,
+		               (char *) sig->sig_domain) == 0)
 		{
 			match = TRUE;
 		}
 		else
 		{
-			for (sd = strchr(sd + 1, '.');
+			for (sd = (u_char *) strchr((char *) sd + 1, '.');
 			     sd != NULL && !match;
-			     sd = strchr(sd + 1, '.'))
+			     sd = (u_char *) strchr((char *) sd + 1, '.'))
 			{
-				if (strcasecmp(sd + 1, sig->sig_domain) == 0)
+				if (strcasecmp((char *) sd + 1,
+				               (char *) sig->sig_domain) == 0)
 					match = TRUE;
 			}
 		}
@@ -2487,7 +2494,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		if (firsthdr)
 		{
 			dkim_dstring_cat1(dstr, ';');
-			dkim_dstring_catn(dstr, delim, delimlen);
+			dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
 			dkim_dstring_catn(dstr, "h=", 2);
 		}
 		else
@@ -2976,14 +2983,14 @@ dkim_headercheck(DKIM *dkim)
 		unsigned char *tmp;
 
 		/* Date (must be exactly one) */
-		hdr = dkim_get_header(dkim, "Date", 4, 0);
+		hdr = dkim_get_header(dkim, (u_char *) "Date", 4, 0);
 		if (hdr == NULL)
 		{
 			dkim_error(dkim, "Date: header field absent");
 			return FALSE;
 		}
 
-		hdr = dkim_get_header(dkim, "Date", 4, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Date", 4, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -2992,7 +2999,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* From (must be exactly one) */
-		hdr = dkim_get_header(dkim, "From", 4, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "From", 4, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3000,7 +3007,7 @@ dkim_headercheck(DKIM *dkim)
 			return FALSE;
 		}
 
-		hdr = dkim_get_header(dkim, "From", 4, 0);
+		hdr = dkim_get_header(dkim, (u_char *) "From", 4, 0);
 		if (hdr == NULL)
 		{
 			dkim_error(dkim, "From: header field absent");
@@ -3008,7 +3015,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* confirm it's parsable */
-		tmp = strdup(hdr->hdr_colon + 1);
+		tmp = (u_char *) strdup((char *) hdr->hdr_colon + 1);
 		if (tmp != NULL)
 		{
 			status = dkim_mail_parse(tmp, &user, &domain);
@@ -3024,7 +3031,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Sender (no more than one) */
-		hdr = dkim_get_header(dkim, "Sender", 6, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Sender", 6, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3033,7 +3040,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Reply-To (no more than one) */
-		hdr = dkim_get_header(dkim, "Reply-To", 8, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Reply-To", 8, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3042,7 +3049,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* To (no more than one) */
-		hdr = dkim_get_header(dkim, "To", 2, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "To", 2, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3051,7 +3058,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Cc (no more than one) */
-		hdr = dkim_get_header(dkim, "Cc", 2, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Cc", 2, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3060,7 +3067,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Bcc (should we even bother?) */
-		hdr = dkim_get_header(dkim, "Bcc", 3, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Bcc", 3, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3069,7 +3076,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Message-ID (no more than one) */
-		hdr = dkim_get_header(dkim, "Message-ID", 10, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Message-ID", 10, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3078,7 +3085,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* In-Reply-To (no more than one) */
-		hdr = dkim_get_header(dkim, "In-Reply-To", 11, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "In-Reply-To", 11, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3087,7 +3094,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* References (no more than one) */
-		hdr = dkim_get_header(dkim, "References", 10, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "References", 10, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3096,7 +3103,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Subject (no more than one) */
-		hdr = dkim_get_header(dkim, "Subject", 7, 1);
+		hdr = dkim_get_header(dkim, (u_char *) "Subject", 7, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3534,7 +3541,7 @@ dkim_eom_sign(DKIM *dkim)
 		**  marked for signing.
 		*/
 
-		hn = (u_char *) dkim_check_requiredhdrs(dkim);
+		hn = (char *) dkim_check_requiredhdrs(dkim);
 		if (hn != NULL)
 		{
 			dkim_error(dkim, "required header \"%s\" not found",
@@ -6346,7 +6353,7 @@ dkim_getid(DKIM *dkim)
 {
 	assert(dkim != NULL);
 
-	return dkim->dkim_id;
+	return (const char *) dkim->dkim_id;
 }
 
 /*
@@ -6896,7 +6903,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 	    dkim->dkim_mode != DKIM_MODE_VERIFY)
 		return DKIM_STAT_INVALID;
 
-	sdomain = dkim_sig_getdomain(sig);
+	sdomain = (char *) dkim_sig_getdomain(sig);
 
 	/* report descriptors regardless of reporting parameters */
 	if (sig->sig_hdrcanon != NULL)
@@ -6970,7 +6977,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 			return DKIM_STAT_OK;
 
 		status = dkim_process_set(dkim, DKIM_SETTYPE_SIGREPORT,
-		                          buf, strlen(buf), NULL, FALSE,
+		                          buf, strlen((char *) buf), NULL, FALSE,
 		                          sdomain);
 		if (status != DKIM_STAT_OK)
 			return status;
@@ -8114,7 +8121,8 @@ dkim_sig_getsignedhdrs(DKIM *dkim, DKIM_SIGINFO *sig,
 
 	/* status >= 0 here (the -1 branch returned above) */
 	for (n = 0; n < (u_int) status; n++)
-		strlcpy(&hdrs[n * hdrlen], sighdrs[n]->hdr_text, hdrlen);
+		strlcpy((char *) &hdrs[n * hdrlen],
+		        (char *) sighdrs[n]->hdr_text, hdrlen);
 
 	DKIM_FREE(dkim, sighdrs);
 
@@ -8557,7 +8565,8 @@ dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 
 		memset(tmp, '\0', sizeof tmp);
 
-		len = dkim_qp_encode((u_char *) options, tmp, sizeof tmp);
+		len = dkim_qp_encode((u_char *) options, (u_char *) tmp,
+		                     sizeof tmp);
 		if (len == -1)
 		{
 			dkim_error(dkim, "can't encode query options",
@@ -8587,7 +8596,7 @@ dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 		return DKIM_STAT_NORESOURCE;
 	}
 
-	q->qm_type = dkim_strdup(dkim, type, 0);
+	q->qm_type = (char *) dkim_strdup(dkim, (const u_char *) type, 0);
 	if (q->qm_type == NULL)
 	{
 		DKIM_FREE(dkim, q);
@@ -8598,7 +8607,8 @@ dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 		
 	if (options != NULL)
 	{
-		q->qm_options = dkim_strdup(dkim, tmp, 0);
+		q->qm_options = (char *) dkim_strdup(dkim,
+		                                     (const u_char *) tmp, 0);
 		if (q->qm_options == NULL)
 		{
 			DKIM_FREE(dkim, q->qm_type);
@@ -8715,8 +8725,8 @@ dkim_add_xtag(DKIM *dkim, const char *tag, const char *value)
 		return DKIM_STAT_NORESOURCE;
 	}
 
-	x->xt_tag = dkim_strdup(dkim, tag, 0);
-	x->xt_value = dkim_strdup(dkim, value, 0);
+	x->xt_tag = (char *) dkim_strdup(dkim, (const u_char *) tag, 0);
+	x->xt_value = (char *) dkim_strdup(dkim, (const u_char *) value, 0);
 	x->xt_next = dkim->dkim_xtags;
 	dkim->dkim_xtags = x;
 
@@ -8917,7 +8927,7 @@ dkim_sig_getsslbuf(DKIM_SIGINFO *sig)
 	assert(sig != NULL);
 
 	if (sig->sig_sslerrbuf != NULL)
-		return dkim_dstring_get(sig->sig_sslerrbuf);
+		return (const char *) dkim_dstring_get(sig->sig_sslerrbuf);
 	else
 		return NULL;
 }
@@ -8938,7 +8948,7 @@ dkim_getsslbuf(DKIM *dkim)
 	assert(dkim != NULL);
 
 	if (dkim->dkim_sslerrbuf != NULL)
-		return dkim_dstring_get(dkim->dkim_sslerrbuf);
+		return (const char *) dkim_dstring_get(dkim->dkim_sslerrbuf);
 	else
 		return NULL;
 }
