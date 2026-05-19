@@ -1017,14 +1017,14 @@ dkimf_dstring_free(struct dkimf_dstring *dstr)
 */
 
 _Bool
-dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
+dkimf_dstring_copy(struct dkimf_dstring *dstr, const u_char *str)
 {
 	int len;
 
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str);
+	len = strlen((const char *) str);
 
 	/* too big? */
 	if (dstr->ds_max > 0 && len >= dstr->ds_max)
@@ -1039,7 +1039,7 @@ dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
 	}
 
 	/* copy */
-	dstr->ds_len = strlcpy((char *) dstr->ds_buf, (char *) str,
+	dstr->ds_len = strlcpy((char *) dstr->ds_buf, (const char *) str,
 	                       dstr->ds_alloc);
 
 	return TRUE;
@@ -1060,14 +1060,14 @@ dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
 */
 
 _Bool
-dkimf_dstring_cat(struct dkimf_dstring *dstr, u_char *str)
+dkimf_dstring_cat(struct dkimf_dstring *dstr, const u_char *str)
 {
 	int len;
 
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str) + dstr->ds_len;
+	len = strlen((const char *) str) + dstr->ds_len;
 
 	/* too big? */
 	if (dstr->ds_max > 0 && len >= dstr->ds_max)
@@ -1082,7 +1082,7 @@ dkimf_dstring_cat(struct dkimf_dstring *dstr, u_char *str)
 	}
 
 	/* append */
-	dstr->ds_len = strlcat((char *) dstr->ds_buf, (char *) str,
+	dstr->ds_len = strlcat((char *) dstr->ds_buf, (const char *) str,
 	                       dstr->ds_alloc);
 
 	return TRUE;
@@ -1146,7 +1146,7 @@ dkimf_dstring_cat1(struct dkimf_dstring *dstr, int c)
 */
 
 _Bool
-dkimf_dstring_catn(struct dkimf_dstring *dstr, unsigned char *str,
+dkimf_dstring_catn(struct dkimf_dstring *dstr, const unsigned char *str,
                    size_t nbytes)
 {
 	size_t needed;
