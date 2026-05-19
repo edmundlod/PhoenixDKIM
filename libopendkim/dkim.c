@@ -1229,7 +1229,7 @@ dkim_set_getudata(DKIM_SET *set)
 */
 
 static struct dkim_header *
-dkim_get_header(DKIM *dkim, u_char *name, size_t namelen, int inst)
+dkim_get_header(DKIM *dkim, const u_char *name, size_t namelen, int inst)
 {
 	size_t len;
 	struct dkim_header *hdr;
@@ -1238,7 +1238,7 @@ dkim_get_header(DKIM *dkim, u_char *name, size_t namelen, int inst)
 	assert(name != NULL);
 
 	if (namelen == 0)
-		len = strlen((char *) name);
+		len = strlen((const char *) name);
 	else
 		len = namelen;
 
@@ -1246,7 +1246,7 @@ dkim_get_header(DKIM *dkim, u_char *name, size_t namelen, int inst)
 	{
 		if (hdr->hdr_namelen == len &&
 		    strncasecmp((char *) hdr->hdr_text,
-		                (char *) name, len) == 0)
+		                (const char *) name, len) == 0)
 		{
 			if (inst == 0)
 				return hdr;
@@ -2999,14 +2999,14 @@ dkim_headercheck(DKIM *dkim)
 		unsigned char *tmp;
 
 		/* Date (must be exactly one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Date", 4, 0);
+		hdr = dkim_get_header(dkim, (const u_char *) "Date", 4, 0);
 		if (hdr == NULL)
 		{
 			dkim_error(dkim, "Date: header field absent");
 			return FALSE;
 		}
 
-		hdr = dkim_get_header(dkim, (u_char *) "Date", 4, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Date", 4, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3015,7 +3015,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* From (must be exactly one) */
-		hdr = dkim_get_header(dkim, (u_char *) "From", 4, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "From", 4, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3023,7 +3023,7 @@ dkim_headercheck(DKIM *dkim)
 			return FALSE;
 		}
 
-		hdr = dkim_get_header(dkim, (u_char *) "From", 4, 0);
+		hdr = dkim_get_header(dkim, (const u_char *) "From", 4, 0);
 		if (hdr == NULL)
 		{
 			dkim_error(dkim, "From: header field absent");
@@ -3047,7 +3047,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Sender (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Sender", 6, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Sender", 6, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3056,7 +3056,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Reply-To (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Reply-To", 8, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Reply-To", 8, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3065,7 +3065,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* To (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "To", 2, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "To", 2, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3074,7 +3074,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Cc (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Cc", 2, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Cc", 2, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3083,7 +3083,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Bcc (should we even bother?) */
-		hdr = dkim_get_header(dkim, (u_char *) "Bcc", 3, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Bcc", 3, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3092,7 +3092,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Message-ID (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Message-ID", 10, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Message-ID", 10, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3101,7 +3101,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* In-Reply-To (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "In-Reply-To", 11, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "In-Reply-To", 11, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3110,7 +3110,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* References (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "References", 10, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "References", 10, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3119,7 +3119,7 @@ dkim_headercheck(DKIM *dkim)
 		}
 
 		/* Subject (no more than one) */
-		hdr = dkim_get_header(dkim, (u_char *) "Subject", 7, 1);
+		hdr = dkim_get_header(dkim, (const u_char *) "Subject", 7, 1);
 		if (hdr != NULL)
 		{
 			dkim_error(dkim,
@@ -3930,7 +3930,7 @@ dkim_eom_verify(DKIM *dkim, _Bool *testkey)
 			u_char *domain;
 			u_char *user;
 
-			hdr = dkim_get_header(dkim, (u_char *) DKIM_FROMHEADER,
+			hdr = dkim_get_header(dkim, (const u_char *) DKIM_FROMHEADER,
 			                      DKIM_FROMHEADER_LEN, 0);
 			if (hdr == NULL)
 			{
