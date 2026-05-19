@@ -307,9 +307,9 @@ struct dkim_lib
 	u_int *			dkiml_flist;
 	void *			(*dkiml_malloc) (void *closure, size_t nbytes);
 	void			(*dkiml_free) (void *closure, void *p);
-	u_char **		dkiml_requiredhdrs;
-	u_char **		dkiml_oversignhdrs;
-	u_char **		dkiml_mbs;
+	const u_char *const *	dkiml_requiredhdrs;
+	const u_char *const *	dkiml_oversignhdrs;
+	const u_char *const *	dkiml_mbs;
 	regex_t			dkiml_hdrre;
 	regex_t			dkiml_skiphdrre;
 	DKIM_CBSTAT		(*dkiml_key_lookup) (DKIM *dkim,

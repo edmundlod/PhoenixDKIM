@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <resolv.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 /* libopendkim includes */
@@ -91,12 +92,13 @@ dkim_collapse(u_char *str)
 */
 
 _Bool
-dkim_hdrlist(u_char *buf, size_t buflen, u_char **hdrlist, _Bool first)
+dkim_hdrlist(u_char *buf, size_t buflen, const u_char *const *hdrlist,
+             _Bool first)
 {
 	_Bool escape = FALSE;
 	int c;
 	size_t len;
-	u_char *p;
+	const u_char *p;
 	u_char *q;
 	u_char *end;
 
@@ -886,7 +888,7 @@ dkim_min_timeval(struct timeval *t1, struct timeval *t2, struct timeval *t,
 **  	A copy of "in" and its elements, or NULL on failure.
 */
 
-const char **
+char **
 dkim_copy_array(char **in)
 {
 	unsigned int c;
@@ -914,7 +916,7 @@ dkim_copy_array(char **in)
 
 	out[c] = NULL;
 
-	return (const char **) out;
+	return out;
 }
 
 /*
@@ -928,16 +930,20 @@ dkim_copy_array(char **in)
 */
 
 void
-dkim_clobber_array(char **in)
+dkim_clobber_array(const char *const *in)
 {
 	unsigned int n;
 
 	assert(in != NULL);
 
+	/* The function takes ownership of the array memory; free() does
+	   not preserve const, so route the discard through uintptr_t at
+	   the single sink rather than triggering -Wcast-qual at every
+	   caller (or for every free) site. */
 	for (n = 0; in[n] != NULL; n++)
-		free(in[n]);
+		free((void *) (uintptr_t) in[n]);
 
-	free(in);
+	free((void *) (uintptr_t) in);
 }
 
 /*
