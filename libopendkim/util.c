@@ -330,7 +330,7 @@ dkim_qp_decode(const unsigned char *in, unsigned char *out, int outlen)
 	int decode = 0;
 	unsigned char const *p;
 	unsigned char *q;
-	unsigned char *pos;
+	const char *pos;
 	unsigned char const *start;
 	unsigned char const *stop;
 	unsigned char *end;
@@ -388,15 +388,15 @@ dkim_qp_decode(const unsigned char *in, unsigned char *out, int outlen)
 			}
 
 			/* = elsewhere */
-			pos = (unsigned char *) strchr(hexdigits, next1);
+			pos = strchr(hexdigits, next1);
 			if (pos == NULL)
 				return -1;
-			xl = (pos - (unsigned char *) hexdigits) * 16;
+			xl = (pos - hexdigits) * 16;
 
-			pos = (unsigned char *) strchr(hexdigits, next2);
+			pos = strchr(hexdigits, next2);
 			if (pos == NULL)
 				return -1;
-			xl += (pos - (unsigned char *) hexdigits);
+			xl += (pos - hexdigits);
 
 			stop = p;
 			if (start != NULL)
