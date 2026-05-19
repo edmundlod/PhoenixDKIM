@@ -239,7 +239,7 @@ main(int argc, char **argv)
 
 	if (n == 0)
 	{
-		dkim = dkim_verify(lib, progname, NULL, &status);
+		dkim = dkim_verify(lib, (u_char *) progname, NULL, &status);
 		if (dkim == NULL)
 		{
 			fprintf(stderr, "%s: dkim_verify() failed: %s\n",
@@ -250,8 +250,9 @@ main(int argc, char **argv)
 	}
 	else
 	{
-		dkim = dkim_sign(lib, progname, NULL, keydata, selector,
-		                 domain, hc, bc, sa, l, &status);
+		dkim = dkim_sign(lib, (u_char *) progname, NULL,
+		                 (u_char *) keydata, (u_char *) selector,
+		                 (u_char *) domain, hc, bc, sa, l, &status);
 		if (dkim == NULL)
 		{
 			fprintf(stderr, "%s: dkim_sign() failed: %s\n",
@@ -314,7 +315,7 @@ main(int argc, char **argv)
 				return EX_SOFTWARE;
 			}
 
-			status = dkim_chunk(dkim, buf, rlen);
+			status = dkim_chunk(dkim, (u_char *) buf, rlen);
 			if (status != DKIM_STAT_OK)
 			{
 				fprintf(stderr, "%s: dkim_chunk(): %s\n",
@@ -385,7 +386,7 @@ main(int argc, char **argv)
 
 		/* print it and the message */
 		if (!keepcrlf)
-			decr(sighdr);
+			decr((char *) sighdr);
 		fprintf(stdout, "%s: %s%s\n", DKIM_SIGNHEADER, sighdr,
 		        keepcrlf ? "\r" : "");
 		(void) lseek(tfd, 0, SEEK_SET);
