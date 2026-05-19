@@ -1861,7 +1861,7 @@ test_api_sig_syntax(void)
 		const char *valid_sig =
 			"v=1; a=rsa-sha1; d=example.com; s=test; "
 			"h=From:To; bh=AAAA; b=AAAA";
-		status = dkim_sig_syntax(dkim, (u_char *) valid_sig,
+		status = dkim_sig_syntax(dkim, (const u_char *) valid_sig,
 		                         strlen(valid_sig));
 		CHECK(status == DKIM_STAT_OK,
 		      "valid sig syntax must return OK");
@@ -1869,7 +1869,7 @@ test_api_sig_syntax(void)
 
 	{
 		const char *bad_sig = "GARBAGE DATA NOT A SIGNATURE";
-		status = dkim_sig_syntax(dkim, (u_char *) bad_sig,
+		status = dkim_sig_syntax(dkim, (const u_char *) bad_sig,
 		                         strlen(bad_sig));
 		CHECK(status == DKIM_STAT_SYNTAX,
 		      "invalid sig must return SYNTAX");
@@ -1898,7 +1898,7 @@ test_api_key_syntax(void)
 
 	{
 		const char *valid_key = "v=DKIM1; k=rsa; p=MIGfMA0G";
-		status = dkim_key_syntax(dkim, (u_char *) valid_key,
+		status = dkim_key_syntax(dkim, (const u_char *) valid_key,
 		                         strlen(valid_key));
 		CHECK(status == DKIM_STAT_OK,
 		      "valid key syntax must return OK");
@@ -1906,7 +1906,7 @@ test_api_key_syntax(void)
 
 	{
 		const char *bad_key = "GARBAGE NOT A KEY RECORD";
-		status = dkim_key_syntax(dkim, (u_char *) bad_key,
+		status = dkim_key_syntax(dkim, (const u_char *) bad_key,
 		                         strlen(bad_key));
 		CHECK(status == DKIM_STAT_SYNTAX,
 		      "invalid key must return SYNTAX");

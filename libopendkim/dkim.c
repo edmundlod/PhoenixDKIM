@@ -438,7 +438,7 @@ dkim_add_plist(DKIM *dkim, DKIM_SET *set, const u_char *param,
 */
 
 DKIM_STAT
-dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
+dkim_process_set(DKIM *dkim, dkim_set_t type, const u_char *str, size_t len,
                  void *udata, _Bool syntax, const char *name)
 {
 	_Bool spaced;
@@ -479,7 +479,7 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 		dkim_error(dkim, "unable to allocate %d byte(s)", len + 1);
 		return DKIM_STAT_INTERNAL;
 	}
-	strlcpy((char *) hcopy, (char *) str, len + 1);
+	strlcpy((char *) hcopy, (const char *) str, len + 1);
 
 	set = (DKIM_SET *) DKIM_MALLOC(dkim, sizeof(DKIM_SET));
 	if (set == NULL)
@@ -6335,7 +6335,7 @@ dkim_minbody(DKIM *dkim)
 */
 
 DKIM_STAT
-dkim_key_syntax(DKIM *dkim, u_char *str, size_t len)
+dkim_key_syntax(DKIM *dkim, const u_char *str, size_t len)
 {
 	return dkim_process_set(dkim, DKIM_SETTYPE_KEY, str, len, NULL, TRUE,
 	                        NULL);
@@ -6354,7 +6354,7 @@ dkim_key_syntax(DKIM *dkim, u_char *str, size_t len)
 */
 
 DKIM_STAT
-dkim_sig_syntax(DKIM *dkim, u_char *str, size_t len)
+dkim_sig_syntax(DKIM *dkim, const u_char *str, size_t len)
 {
 	return dkim_process_set(dkim, DKIM_SETTYPE_SIGNATURE, str, len,
 	                        NULL, TRUE, NULL);
