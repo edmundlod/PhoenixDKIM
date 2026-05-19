@@ -6012,7 +6012,7 @@ dkim_eoh(DKIM *dkim)
 */
 
 DKIM_STAT
-dkim_body(DKIM *dkim, u_char *buf, size_t buflen)
+dkim_body(DKIM *dkim, const u_char *buf, size_t buflen)
 {
 	assert(dkim != NULL);
 	assert(buf != NULL);

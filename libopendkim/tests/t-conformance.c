@@ -1367,7 +1367,8 @@ test_rfc6376_s6_tampered_body(void)
 
 	{
 		const char *tampered = "This body has been tampered with.\r\n";
-		status = dkim_body(vrfy_dkim, (u_char *) tampered, strlen(tampered));
+		status = dkim_body(vrfy_dkim, (const u_char *) tampered,
+		                   strlen(tampered));
 		CHECK(status == DKIM_STAT_OK, "tampered body feed failed");
 	}
 
