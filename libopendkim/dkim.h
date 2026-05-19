@@ -515,7 +515,7 @@ extern DKIM_STAT dkim_eoh __P((DKIM *dkim));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_body __P((DKIM *dkim, u_char *buf, size_t len));
+extern DKIM_STAT dkim_body __P((DKIM *dkim, const u_char *buf, size_t len));
 
 /*
 **  DKIM_CHUNK -- process a message chunk

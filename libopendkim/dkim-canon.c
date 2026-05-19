@@ -485,11 +485,12 @@ dkim_canon_flushblanks(DKIM_CANON *canon)
 */
 
 static DKIM_STAT
-dkim_canon_fixcrlf(DKIM *dkim, DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_fixcrlf(DKIM *dkim, DKIM_CANON *canon, const u_char *buf,
+                   size_t buflen)
 {
 	u_char prev;
-	u_char *p;
-	u_char *eob;
+	const u_char *p;
+	const u_char *eob;
 
 	assert(dkim != NULL);
 	assert(canon != NULL);
@@ -1426,17 +1427,17 @@ dkim_canon_minbody(DKIM *dkim)
 */
 
 DKIM_STAT
-dkim_canon_bodychunk(DKIM *dkim, u_char *buf, size_t buflen)
+dkim_canon_bodychunk(DKIM *dkim, const u_char *buf, size_t buflen)
 {
 	_Bool fixcrlf;
 	DKIM_STAT status;
 	u_int wlen;
 	DKIM_CANON *cur;
 	size_t plen;
-	u_char *p;
-	u_char *wrote;
-	u_char *eob;
-	u_char *start;
+	const u_char *p;
+	const u_char *wrote;
+	const u_char *eob;
+	const u_char *start;
 
 	assert(dkim != NULL);
 
