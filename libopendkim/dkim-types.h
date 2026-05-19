@@ -87,8 +87,8 @@ struct dkim_header
 /* struct dkim_plist -- a parameter/value pair */
 struct dkim_plist
 {
-	u_char *		plist_param;
-	u_char *		plist_value;
+	const u_char *		plist_param;
+	const u_char *		plist_value;
 	struct dkim_plist *	plist_next;
 };
 

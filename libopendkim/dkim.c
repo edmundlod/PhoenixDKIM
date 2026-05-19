@@ -329,7 +329,7 @@ dkim_set_next(DKIM_SET *cur, dkim_set_t type)
 **  	Pointer to the parameter requested, or NULL if it's not in the set.
 */
 
-static u_char *
+static const u_char *
 dkim_param_get(DKIM_SET *set, const u_char *param)
 {
 	DKIM_PLIST *plist;
@@ -341,7 +341,7 @@ dkim_param_get(DKIM_SET *set, const u_char *param)
 	     plist != NULL;
 	     plist = plist->plist_next)
 	{
-		if (strcmp((char *) plist->plist_param,
+		if (strcmp((const char *) plist->plist_param,
 		           (const char *) param) == 0)
 			return plist->plist_value;
 	}
@@ -388,7 +388,7 @@ dkim_add_plist(DKIM *dkim, DKIM_SET *set, const u_char *param,
 	     plist != NULL;
 	     plist = plist->plist_next)
 	{
-		if (strcasecmp((char *) plist->plist_param,
+		if (strcasecmp((const char *) plist->plist_param,
 		               (const char *) param) == 0)
 			break;
 	}
@@ -409,14 +409,12 @@ dkim_add_plist(DKIM *dkim, DKIM_SET *set, const u_char *param,
 		n = DKIM_PHASH(param[0]);
 		plist->plist_next = set->set_plist[n];
 		set->set_plist[n] = plist;
-		/* plist storage stays u_char *; tightening to const u_char *
-		   is deferred to a follow-up commit (struct change + cascade) */
-		plist->plist_param = (u_char *) param;
+		plist->plist_param = param;
 	}
 
 	/* set the value if "force" was set (or this was a new entry) */
 	if (force)
-		plist->plist_value = (u_char *) value;
+		plist->plist_value = value;
 
 	return 0;
 }
@@ -2263,7 +2261,7 @@ dkim_siglist_setup(DKIM *dkim)
 				     plist = plist->plist_next)
 				{
 					pcode = dkim_name_to_code(sigparams,
-					                          (char *) plist->plist_param);
+					                          (const char *) plist->plist_param);
 
 					(void) lib->dkiml_sig_tagvalues(user,
 					                                pcode,
