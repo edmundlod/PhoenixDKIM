@@ -57,7 +57,7 @@ struct dkim_xtag
 struct dkim_queryinfo
 {
 	int			dq_type;
-	const char		dq_name[DKIM_MAXHOSTNAMELEN + 1];
+	char			dq_name[DKIM_MAXHOSTNAMELEN + 1];
 };
 
 /* struct dkim_dstring -- a dynamically-sized string */

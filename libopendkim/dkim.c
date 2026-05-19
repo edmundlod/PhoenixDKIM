@@ -8842,7 +8842,7 @@ dkim_sig_getqueries(DKIM *dkim, DKIM_SIGINFO *sig,
 	if (sig->sig_selector != NULL && sig->sig_domain != NULL)
 	{
 		newp->dq_type = T_TXT;
-		snprintf((char *) newp->dq_name, sizeof newp->dq_name,
+		snprintf(newp->dq_name, sizeof newp->dq_name,
 		         "%s.%s.%s",
 		         sig->sig_selector, DKIM_DNSKEYNAME, sig->sig_domain);
 	}
