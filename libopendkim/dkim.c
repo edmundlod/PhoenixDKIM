@@ -8596,7 +8596,7 @@ dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 
 		memset(tmp, '\0', sizeof tmp);
 
-		len = dkim_qp_encode((u_char *) options, (u_char *) tmp,
+		len = dkim_qp_encode((const u_char *) options, (u_char *) tmp,
 		                     sizeof tmp);
 		if (len == -1)
 		{

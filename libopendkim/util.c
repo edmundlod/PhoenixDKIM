@@ -265,7 +265,7 @@ dkim_hexchar(int c)
 */
 
 int
-dkim_qp_encode(unsigned char *in, unsigned char *out, int outlen)
+dkim_qp_encode(const unsigned char *in, unsigned char *out, int outlen)
 {
 	unsigned char const *p;
 	unsigned char *q;
