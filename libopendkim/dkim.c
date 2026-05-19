@@ -5789,11 +5789,11 @@ dkim_diffheaders(DKIM *dkim, dkim_canon_t canon, int maxcost,
 */
 
 DKIM_STAT
-dkim_header(DKIM *dkim, u_char *hdr, size_t len)
+dkim_header(DKIM *dkim, const u_char *hdr, size_t len)
 {
-	u_char *colon;
-	u_char *semicolon;
-	u_char *end = NULL;
+	const u_char *colon;
+	const u_char *semicolon;
+	const u_char *end = NULL;
 	size_t c;
 	struct dkim_header *h;
 
@@ -5857,7 +5857,7 @@ dkim_header(DKIM *dkim, u_char *hdr, size_t len)
 		int status;
 		unsigned char name[DKIM_MAXHEADER + 1];
 
-		strlcpy((char *) name, (char *) hdr, sizeof name);
+		strlcpy((char *) name, (const char *) hdr, sizeof name);
 		if (end != NULL)
 			name[end - hdr] = '\0';
 
@@ -5882,8 +5882,8 @@ dkim_header(DKIM *dkim, u_char *hdr, size_t len)
 	if ((dkim->dkim_libhandle->dkiml_flags & DKIM_LIBFLAGS_FIXCRLF) != 0)
 	{
 		u_char prev = '\0';
-		u_char *p;
-		u_char *q;
+		const u_char *p;
+		const u_char *q;
 		struct dkim_dstring *tmphdr;
 
 		tmphdr = dkim_dstring_new(dkim, BUFRSZ, MAXBUFRSZ);
@@ -5959,7 +5959,7 @@ dkim_header(DKIM *dkim, u_char *hdr, size_t len)
 	if (h->hdr_colon != NULL)
 	{
 		if (h->hdr_namelen == DKIM_SIGNHEADER_LEN &&
-		    strncasecmp((char *) hdr, DKIM_SIGNHEADER,
+		    strncasecmp((const char *) hdr, DKIM_SIGNHEADER,
 		                DKIM_SIGNHEADER_LEN) == 0)
 		{
 			DKIM_STAT status;

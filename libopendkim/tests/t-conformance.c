@@ -1439,7 +1439,7 @@ test_rfc6376_s6_tampered_header(void)
 	{
 		const char *tampered_from =
 			"From: TAMPERED <evil@attacker.com>";
-		status = dkim_header(vrfy_dkim, (u_char *) tampered_from,
+		status = dkim_header(vrfy_dkim, (const u_char *) tampered_from,
 		                     strlen(tampered_from));
 		CHECK(status == DKIM_STAT_OK, "tampered From accepted by parser");
 	}

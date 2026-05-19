@@ -486,7 +486,7 @@ extern DKIM_STAT dkim_resign __P((DKIM *news, DKIM *olds, _Bool hdrbind));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_header __P((DKIM *dkim, u_char *hdr, size_t len));
+extern DKIM_STAT dkim_header __P((DKIM *dkim, const u_char *hdr, size_t len));
 
 /*
 **  DKIM_EOH -- identify end of headers
