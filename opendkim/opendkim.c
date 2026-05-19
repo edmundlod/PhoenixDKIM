@@ -11786,14 +11786,14 @@ mlfi_eom(SMFICTX *ctx)
 
 			dkimf_dstring_cat(dfc->mctx_tmpstr, dfc->mctx_jobid);
 			dkimf_dstring_cat(dfc->mctx_tmpstr,
-			                  (u_char *) ": message has signatures from ");
+			                  (const u_char *) ": message has signatures from ");
 
 			for (c = 0; c < nsigs; c++)
 			{
 				if (c != 0)
 				{
 					dkimf_dstring_cat(dfc->mctx_tmpstr,
-					                  (u_char *) ", ");
+					                  (const u_char *) ", ");
 				}
 
 				d = dkim_sig_getdomain(sigs[c]);
@@ -12013,7 +12013,7 @@ mlfi_eom(SMFICTX *ctx)
 						if (dkimf_dstring_len(dfc->mctx_tmpstr) > 0)
 						{
 							dkimf_dstring_catn(dfc->mctx_tmpstr,
-							                   (u_char *) "; ",
+							                   (const u_char *) "; ",
 							                   2);
 						}
 

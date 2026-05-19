@@ -52,10 +52,11 @@ extern void dkimf_trimspaces __P((char *));
 
 extern struct dkimf_dstring *dkimf_dstring_new __P((int, int));
 extern void dkimf_dstring_free __P((struct dkimf_dstring *));
-extern _Bool dkimf_dstring_copy __P((struct dkimf_dstring *, u_char *));
-extern _Bool dkimf_dstring_cat __P((struct dkimf_dstring *, u_char *));
+extern _Bool dkimf_dstring_copy __P((struct dkimf_dstring *, const u_char *));
+extern _Bool dkimf_dstring_cat __P((struct dkimf_dstring *, const u_char *));
 extern _Bool dkimf_dstring_cat1 __P((struct dkimf_dstring *, int));
-extern _Bool dkimf_dstring_catn __P((struct dkimf_dstring *, u_char *, size_t));
+extern _Bool dkimf_dstring_catn __P((struct dkimf_dstring *, const u_char *,
+                                     size_t));
 extern void dkimf_dstring_chop __P((struct dkimf_dstring *, int));
 extern u_char *dkimf_dstring_get __P((struct dkimf_dstring *));
 extern int dkimf_dstring_len __P((struct dkimf_dstring *));
