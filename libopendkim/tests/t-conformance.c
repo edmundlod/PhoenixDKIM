@@ -2352,8 +2352,8 @@ test_rfc8463_ed25519_verify_rfc_vector(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_ED_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_ED_PUBKEY);
 		CHECK(status == 0, "failed to inject ed25519 DNS key");
 	}
 
@@ -2425,8 +2425,8 @@ test_rfc8463_ed25519_roundtrip(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_ED_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_ED_PUBKEY);
 		CHECK(status == 0, "failed to inject ed25519 DNS key");
 	}
 
@@ -2491,8 +2491,8 @@ test_rfc8463_ed25519_wrong_keytype(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_RSA_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_RSA_PUBKEY);
 		CHECK(status == 0, "failed to inject rsa DNS key");
 	}
 
