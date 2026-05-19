@@ -12,26 +12,32 @@ Current state on `master` after a full clean rebuild:
 | -Wunused-function         |   1 |   1 | DONE
 | -Wunused-parameter        |  44 |  44 | DONE
 | -Wsign-compare            | 113 | 113 | DONE
-| -Wpointer-sign            | 217 |  78 | in progress — dkim.c only
+| -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
-| -Wdiscarded-qualifiers    |3776 |3766 | next
+| -Wdiscarded-qualifiers    |3776 |3770 | next
 | -Wcast-qual               | 391 | 340 | next
 | -Wmissing-prototypes      | 111 | 111 | next
 | -Wundef                   |  33 |  33 | next
 | -Wshadow                  |  25 |  25 | next
 
-### -Wpointer-sign (78 remaining, all in libopendkim/dkim.c)
+### -Wpointer-sign (DONE)
 
-`u_char *` (libopendkim API — DKIM byte data) vs `char *` (daemon —
-printable strings).  Most warnings are at the boundary.  Prefer narrow
-casts at call sites over flipping API signatures (touching `dkim.h` is
-high-blast-radius).  **Stop and report if a fix needs an API signature
+All 217 -Wpointer-sign warnings were resolved across libopendkim/dkim.c,
+libopendkim/dkim-mailparse.c, libopendkim/dkim-keys.c, opendkim/opendkim.c,
+and opendkim/opendkim-testmsg.c using narrow casts at the
+`u_char *` (libopendkim API — DKIM byte data) /
+`char *` (daemon — printable strings) boundary, plus three local
+declaration flips in opendkim.c (the Authentication-Results
+`header` buffer in mlfi_eom, the `d`/`tmpdata` locals in the
+KeyTable resolution path) where the variable's dominant use made
+the natural type unambiguous.
+
+No public API signatures changed.  Static helpers in dkim.c kept
+their existing `u_char *` parameter style — do NOT retype them as
+`char *` or `const char *` for local readability, even though it
+would be technically correct; it breaks the file's visual
+consistency.  **Stop and report if a fix needs an API signature
 change — that decision belongs to the user.**
-
-Static helpers in dkim.c follow the file's `u_char *`-for-strings
-convention even when they only read ASCII; do NOT retype them as
-`char *` or `const char *` for local readability, even though it would
-be technically correct — it breaks the file's visual consistency.
 
 ### Pattern: U_STR macro for static const tables
 
