@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 /* prototypes */
-extern int dkim_base64_decode(u_char *str, u_char *buf, size_t buflen);
+extern int dkim_base64_decode(const u_char *str, u_char *buf, size_t buflen);
 extern int dkim_base64_encode(u_char *data, size_t datalen, u_char *buf,
                               size_t buflen);
 
