@@ -148,7 +148,7 @@ dkim_canon_free(DKIM *dkim, DKIM_CANON *canon)
 */
 
 static void
-dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_write(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 {
 	assert(canon != NULL);
 
@@ -196,7 +196,7 @@ dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
 */
 
 static void
-dkim_canon_buffer(DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_buffer(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 {
 	assert(canon != NULL);
 
@@ -1515,7 +1515,7 @@ dkim_canon_bodychunk(DKIM *dkim, u_char *buf, size_t buflen)
 						else
 						{
 							dkim_canon_buffer(cur,
-							                  (u_char *) "\r",
+							                  (const u_char *) "\r",
 							                  1);
 						}
 					}
