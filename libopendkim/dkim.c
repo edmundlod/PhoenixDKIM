@@ -4222,7 +4222,7 @@ DKIM_LIB *
 dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
           void (*caller_freef)(void *closure, void *p))
 {
-	u_char *td;
+	const u_char *td;
 	DKIM_LIB *libhandle;
 
 	/* copy the parameters */
@@ -4230,15 +4230,15 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 	if (libhandle == NULL)
 		return NULL;
 
-	td = (u_char *) getenv("DKIM_TMPDIR");
+	td = (const u_char *) getenv("DKIM_TMPDIR");
 	if (td == NULL || td[0] == '\0')
-		td = (u_char *) DEFTMPDIR;
+		td = (const u_char *) DEFTMPDIR;
 
 	libhandle->dkiml_signre = FALSE;
 	libhandle->dkiml_skipre = FALSE;
 	libhandle->dkiml_malloc = caller_mallocf;
 	libhandle->dkiml_free = caller_freef;
-	strlcpy((char *) libhandle->dkiml_tmpdir, (char *) td, 
+	strlcpy((char *) libhandle->dkiml_tmpdir, (const char *) td,
 	        sizeof libhandle->dkiml_tmpdir);
 	libhandle->dkiml_flags = DKIM_LIBFLAGS_DEFAULT;
 	libhandle->dkiml_timeout = DEFTIMEOUT;
@@ -6585,7 +6585,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 			{
 				forcewrap = FALSE;
 				dkim_dstring_catn(dkim->dkim_hdrbuf,
-				                  (u_char *) "\r\n\t", 3);
+				                  (const u_char *) "\r\n\t", 3);
 				len = 8;
 
 				if (strcmp(which, "h") == 0)
@@ -6615,7 +6615,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 							                  ':');
 							len += 1;
 							dkim_dstring_catn(dkim->dkim_hdrbuf,
-							                  (u_char *) "\r\n\t ",
+							                  (const u_char *) "\r\n\t ",
 							                  4);
 							len = 9;
 							dkim_dstring_catn(dkim->dkim_hdrbuf,
@@ -6667,7 +6667,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 						if (dkim->dkim_margin - len == 0)
 						{
 							dkim_dstring_catn(dkim->dkim_hdrbuf,
-							                  (u_char *) "\r\n\t ",
+							                  (const u_char *) "\r\n\t ",
 							                  4);
 							len = 9;
 						}
@@ -7362,7 +7362,8 @@ dkim_set_signer(DKIM *dkim, const unsigned char *signer)
 		}
 	}
 
-	strlcpy((char *) dkim->dkim_signer, (char *) signer, MAXADDRESS + 1);
+	strlcpy((char *) dkim->dkim_signer, (const char *) signer,
+	        MAXADDRESS + 1);
 
 	return DKIM_STAT_OK;
 }
@@ -7520,7 +7521,7 @@ dkim_set_user_context(DKIM *dkim, void *ctx)
 {
 	assert(dkim != NULL);
 
-	dkim->dkim_user_context = (const void *) ctx;
+	dkim->dkim_user_context = ctx;
 
 	return DKIM_STAT_OK;
 }
@@ -7540,7 +7541,7 @@ dkim_get_user_context(DKIM *dkim)
 {
 	assert(dkim != NULL);
 
-	return (void *) dkim->dkim_user_context;
+	return dkim->dkim_user_context;
 }
 
 /*
@@ -7805,6 +7806,9 @@ dkim_sig_getalgorithm(DKIM_SIGINFO *siginfo)
 {
 	assert(siginfo != NULL);
 
+	/* Legacy API constraint: documented return type is unsigned
+	   char * but dkim_code_to_name returns const char *; the
+	   nametable storage is read-only in practice. */
 	return (unsigned char *) dkim_code_to_name(algorithms,
 	                                           siginfo->sig_signalg);
 }

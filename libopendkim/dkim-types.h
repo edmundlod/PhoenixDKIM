@@ -267,7 +267,7 @@ struct dkim
 	DKIM_SIGINFO *		dkim_signature;
 	void *			dkim_keydata;
 	void *			dkim_closure;
-	const void *		dkim_user_context;
+	void *			dkim_user_context;
 	DKIM *			dkim_resign;
 	struct dkim_xtag *	dkim_xtags;
 	struct dkim_siginfo **	dkim_siglist;
