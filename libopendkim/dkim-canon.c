@@ -58,8 +58,8 @@
 #endif /* USE_STRL_H */
 
 /* definitions */
-#define	CRLF	(u_char *) "\r\n"
-#define	SP	(u_char *) " "
+#define	CRLF	(const u_char *) "\r\n"
+#define	SP	(const u_char *) " "
 
 /* macros */
 #define	DKIM_ISWSP(x)	((x) == 011 || (x) == 040)

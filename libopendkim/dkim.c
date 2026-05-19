@@ -116,8 +116,8 @@ void dkim_error __P((DKIM *, const char *, ...));
 
 
 #define	BUFRSZ			1024
-#define	CRLF			"\r\n"
-#define	SP			" "
+#define	CRLF			(const u_char *) "\r\n"
+#define	SP			(const u_char *) " "
 
 #define	DEFCLOCKDRIFT		300
 #define	DEFMINKEYBITS		1024
@@ -930,7 +930,7 @@ dkim_load_ssl_errors(DKIM *dkim, int status)
 			if (n != 0)
 			{
 				dkim_dstring_catn(dkim->dkim_sslerrbuf,
-				                  "; ", 2);
+				                  (const u_char *) "; ", 2);
 			}
 			dkim_dstring_cat(dkim->dkim_sslerrbuf, (u_char *) tmp);
 		}
@@ -984,7 +984,7 @@ dkim_sig_load_ssl_errors(DKIM *dkim, DKIM_SIGINFO *sig, int status)
 			if (n != 0)
 			{
 				dkim_dstring_catn(sig->sig_sslerrbuf,
-				                  "; ", 2);
+				                  (const u_char *) "; ", 2);
 			}
 			dkim_dstring_cat(sig->sig_sslerrbuf, (u_char *) tmp);
 		}
@@ -2300,7 +2300,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 	int status;
 	int delimlen;
 	size_t hashlen;
-	char *format;
+	const char *format;
 	u_char *hash;
 	struct dkim_header *hdr;
 	u_char tmp[DKIM_MAXHEADER + 1];
@@ -2482,7 +2482,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		{
 			dkim_dstring_cat1(dstr, ';');
 			dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
-			dkim_dstring_catn(dstr, (u_char *) "h=", 2);
+			dkim_dstring_catn(dstr, (const u_char *) "h=", 2);
 		}
 
 		firsthdr = FALSE;
@@ -2499,7 +2499,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		{
 			dkim_dstring_cat1(dstr, ';');
 			dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
-			dkim_dstring_catn(dstr, "h=", 2);
+			dkim_dstring_catn(dstr, (const u_char *) "h=", 2);
 		}
 		else
 		{
@@ -2539,7 +2539,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 
 		dkim_dstring_cat1(dstr, ';');
 		dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
-		dkim_dstring_catn(dstr, (u_char *) "z=", 2);
+		dkim_dstring_catn(dstr, (const u_char *) "z=", 2);
 
 		first = TRUE;
 
@@ -2602,7 +2602,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 	/* and finally, an empty b= */
 	dkim_dstring_cat1(dstr, ';');
 	dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
-	dkim_dstring_catn(dstr, (u_char *) "b=", 2);
+	dkim_dstring_catn(dstr, (const u_char *) "b=", 2);
 
 	return dkim_dstring_len(dstr);
 }
@@ -3683,7 +3683,7 @@ dkim_eom_sign(DKIM *dkim)
 	if (tmphdr == NULL)
 		return DKIM_STAT_NORESOURCE;
 
-	dkim_dstring_catn(tmphdr, (u_char *) DKIM_SIGNHEADER ": ",
+	dkim_dstring_catn(tmphdr, (const u_char *) DKIM_SIGNHEADER ": ",
 	                  sizeof DKIM_SIGNHEADER + 1);
 
 	ret = dkim_getsighdr_d(dkim, dkim_dstring_len(tmphdr), &sighdr, &len);
