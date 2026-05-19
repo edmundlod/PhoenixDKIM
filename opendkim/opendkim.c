@@ -328,7 +328,7 @@ struct msgctx
 	int		mctx_queryalg;		/* query algorithm */
 	int		mctx_hdrbytes;		/* header space allocated */
 	struct dkimf_dstring * mctx_tmpstr;	/* temporary string */
-	u_char *	mctx_jobid;		/* job ID */
+	const u_char *	mctx_jobid;		/* job ID */
 	u_char *	mctx_laddr;		/* address triggering l= */
 	DKIM *		mctx_dkimv;		/* verification handle */
 	struct Header *	mctx_hqhead;		/* header queue head */
@@ -575,7 +575,7 @@ pthread_mutex_t pwdb_lock;			/* passwd/group lock */
 #define CRLF			"\r\n"		/* CRLF */
 
 /* MACROS */
-#define	JOBID(x)	((x) == NULL ? JOBIDUNKNOWN : (char *) (x))
+#define	JOBID(x)	((x) == NULL ? JOBIDUNKNOWN : (const char *) (x))
 #define	TRYFREE(x)	do { \
 				if ((x) != NULL) \
 				{ \
@@ -7689,7 +7689,7 @@ dkimf_config_reload(void)
 */
 
 static _Bool
-dkimf_checkbldb(DKIMF_DB db, char *to, char *jobid)
+dkimf_checkbldb(DKIMF_DB db, char *to, const char *jobid)
 {
 	int c;
 	_Bool exists = FALSE;
@@ -7871,7 +7871,7 @@ dkimf_initcontext(struct dkimf_config *conf)
 */
 
 static void
-dkimf_log_ssl_errors(DKIM *dkim, DKIM_SIGINFO *sig, char *jobid)
+dkimf_log_ssl_errors(DKIM *dkim, DKIM_SIGINFO *sig, const char *jobid)
 {
 	char *selector;
 	char *domain;
@@ -10286,9 +10286,9 @@ mlfi_eoh(SMFICTX *ctx)
 	**  Determine the message ID for logging.
 	*/
 
-	dfc->mctx_jobid = (u_char *) dkimf_getsymval(ctx, "i");
+	dfc->mctx_jobid = (const u_char *) dkimf_getsymval(ctx, "i");
 	if (dfc->mctx_jobid == NULL || dfc->mctx_jobid[0] == '\0')
-		dfc->mctx_jobid = (u_char *) JOBIDUNKNOWN;
+		dfc->mctx_jobid = (const u_char *) JOBIDUNKNOWN;
 
 	/* find the Sender: or From: header */
 	addr = dkimf_dstring_new(BUFRSZ, 0);
@@ -10421,7 +10421,7 @@ mlfi_eoh(SMFICTX *ctx)
 		for (a = dfc->mctx_rcptlist; a != NULL; a = a->a_next)
 		{
 	    		if (dkimf_checkbldb(conf->conf_bldb, a->a_addr,
-			                    (char *) dfc->mctx_jobid))
+			                    (const char *) dfc->mctx_jobid))
 			{
 				dfc->mctx_ltag = TRUE;
 				dfc->mctx_laddr = (u_char *) a->a_addr;
@@ -11616,9 +11616,9 @@ mlfi_eom(SMFICTX *ctx)
 	**  later than expected (e.g. postfix).
 	*/
 
-	if (strcmp((char *) dfc->mctx_jobid, JOBIDUNKNOWN) == 0)
+	if (strcmp((const char *) dfc->mctx_jobid, JOBIDUNKNOWN) == 0)
 	{
-		dfc->mctx_jobid = (u_char *) dkimf_getsymval(ctx, "i");
+		dfc->mctx_jobid = (const u_char *) dkimf_getsymval(ctx, "i");
 		if (dfc->mctx_jobid == NULL || dfc->mctx_jobid[0] == '\0')
 		{
 			if (no_i_whine && conf->conf_dolog)
@@ -11627,7 +11627,7 @@ mlfi_eom(SMFICTX *ctx)
 				       "WARNING: symbol 'i' not available");
 				no_i_whine = FALSE;
 			}
-			dfc->mctx_jobid = (u_char *) JOBIDUNKNOWN;
+			dfc->mctx_jobid = (const u_char *) JOBIDUNKNOWN;
 		}
 	}
 
@@ -11768,7 +11768,7 @@ mlfi_eom(SMFICTX *ctx)
 		status = dkim_getsiglist(dfc->mctx_dkimv, &sigs, &nsigs);
 		if (status == DKIM_STAT_OK && nsigs > 1)
 		{
-			u_char *d;
+			const u_char *d;
 
 			if (dfc->mctx_tmpstr == NULL)
 			{
@@ -11802,7 +11802,7 @@ mlfi_eom(SMFICTX *ctx)
 
 				d = dkim_sig_getdomain(sigs[c]);
 				if (d == NULL)
-					d = (u_char *) NULLDOMAIN;
+					d = (const u_char *) NULLDOMAIN;
 
 				dkimf_dstring_cat(dfc->mctx_tmpstr, d);
 			}
@@ -12095,7 +12095,7 @@ mlfi_eom(SMFICTX *ctx)
 				lastdkim = dfc->mctx_dkimv;
 				sig = dkim_getsignature(dfc->mctx_dkimv);
 				dkimf_log_ssl_errors(lastdkim, sig,
-				                     (char *) dfc->mctx_jobid);
+				                     (const char *) dfc->mctx_jobid);
 			}
 
 			ret = dkimf_libstatus(ctx, dfc->mctx_dkimv,
@@ -12261,7 +12261,7 @@ mlfi_eom(SMFICTX *ctx)
 			{
 				strlcat(header, "/", sizeof header);
 				strlcat(header,
-				        (char *) dfc->mctx_jobid,
+				        (const char *) dfc->mctx_jobid,
 				        sizeof header);
 			}
 
@@ -12504,7 +12504,7 @@ mlfi_eom(SMFICTX *ctx)
 		if (status != DKIM_STAT_OK)
 		{
 			dkimf_log_ssl_errors(lastdkim, NULL,
-			                     (char *) dfc->mctx_jobid);
+			                     (const char *) dfc->mctx_jobid);
 			return dkimf_libstatus(ctx, lastdkim, "dkim_eom()",
 			                       status);
 		}
@@ -12604,7 +12604,7 @@ mlfi_eom(SMFICTX *ctx)
 		         cc->cctx_noleadspc ? " " : "",
 		         DKIMF_PRODUCT, VERSION, hostname,
 		         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
-		                                 : (u_char *) JOBIDUNKNOWN);
+		                                 : (const u_char *) JOBIDUNKNOWN);
 
 		if (dkimf_insheader(ctx, 0, SWHEADERNAME, xfhdr) != MI_SUCCESS)
 		{
@@ -12620,7 +12620,7 @@ mlfi_eom(SMFICTX *ctx)
 	}
 
 	if (lastdkim != NULL)
-		dkimf_log_ssl_errors(lastdkim, sig, (char *) dfc->mctx_jobid);
+		dkimf_log_ssl_errors(lastdkim, sig, (const char *) dfc->mctx_jobid);
 
 	/*
 	**  If we got this far, we're ready to complete.
