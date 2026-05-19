@@ -447,6 +447,7 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 	u_char *p;
 	u_char *param;
 	u_char *value;
+	const u_char *pval;
 	u_char *hcopy;
 	DKIM_SET *set;
 	const char *settype;
@@ -698,14 +699,15 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 	{
 	  case DKIM_SETTYPE_SIGREPORT:
 		/* check validity of "rp" */
-		value = dkim_param_get(set, (const u_char *) "rp");
-		if (value != NULL)
+		pval = dkim_param_get(set, (const u_char *) "rp");
+		if (pval != NULL)
 		{
 			unsigned int tmp = 0;
+			char *endptr;
 
-			tmp = (unsigned int) strtoul((char *) value,
-			                             (char **) &p, 10);
-			if (tmp > 100 || *p != '\0')
+			tmp = (unsigned int) strtoul((const char *) pval,
+			                             &endptr, 10);
+			if (tmp > 100 || *endptr != '\0')
 			{
 				dkim_error(dkim,
 				           "invalid parameter(s) in %s data",
@@ -738,14 +740,14 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 		}
 
 		/* confirm the "d=" domain name is well formed */
-		value = dkim_param_get(set, (const u_char *) "d");
-		for (p = value; *p != '\0'; p++)
+		pval = dkim_param_get(set, (const u_char *) "d");
+		for (; *pval != '\0'; pval++)
 		{
-			if (!(isalpha(*p) ||
-			      isdigit(*p) ||
-			      *p == '-' ||
-			      *p == '_' ||
-			      *p == '.'))
+			if (!(isalpha(*pval) ||
+			      isdigit(*pval) ||
+			      *pval == '-' ||
+			      *pval == '_' ||
+			      *pval == '.'))
 			{
 				dkim_error(dkim, "malformed \"d=\" tag value");
 				if (syntax)
@@ -757,27 +759,27 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 		}
 
 		/* test validity of "t" and "x" */
-		value = dkim_param_get(set, (const u_char *) "t");
-		if (value != NULL)
+		pval = dkim_param_get(set, (const u_char *) "t");
+		if (pval != NULL)
 		{
 			uint64_t tmp = 0;
 			char *end;
 
 			errno = 0;
 
-			if (value[0] == '-')
+			if (pval[0] == '-')
 			{
 				errno = ERANGE;
 				tmp = (uint64_t) -1;
 			}
-			else if (value[0] == '\0')
+			else if (pval[0] == '\0')
 			{
 				errno = EINVAL;
 				tmp = (uint64_t) -1;
 			}
 			else
 			{
-				tmp = strtoull((char *) value, &end, 10);
+				tmp = strtoull((const char *) pval, &end, 10);
 			}
 
 			if (tmp == (uint64_t) -1 || errno != 0 ||
@@ -794,27 +796,27 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, u_char *str, size_t len,
 			}
 		}
 
-		value = dkim_param_get(set, (const u_char *) "x");
-		if (value != NULL)
+		pval = dkim_param_get(set, (const u_char *) "x");
+		if (pval != NULL)
 		{
 			uint64_t tmp = 0;
 			char *end;
 
 			errno = 0;
 
-			if (value[0] == '-')
+			if (pval[0] == '-')
 			{
 				errno = ERANGE;
 				tmp = (uint64_t) -1;
 			}
-			else if (value[0] == '\0')
+			else if (pval[0] == '\0')
 			{
 				errno = EINVAL;
 				tmp = (uint64_t) -1;
 			}
 			else
 			{
-				tmp = strtoull((char *) value, &end, 10);
+				tmp = strtoull((const char *) pval, &end, 10);
 			}
 
 			if (tmp == (uint64_t) -1 || errno != 0 ||
@@ -1270,7 +1272,7 @@ dkim_get_header(DKIM *dkim, u_char *name, size_t namelen, int inst)
 static _Bool
 dkim_key_smtp(DKIM_SET *set)
 {
-	u_char *val;
+	const u_char *val;
 	char *last;
 	u_char *p;
 	char buf[BUFRSZ + 1];
@@ -1283,7 +1285,7 @@ dkim_key_smtp(DKIM_SET *set)
 	if (val == NULL)
 		return TRUE;
 
-	strlcpy(buf, (char *) val, sizeof buf);
+	strlcpy(buf, (const char *) val, sizeof buf);
 
 	for (p = (u_char *) strtok_r(buf, ":", &last);
 	     p != NULL;
@@ -1310,10 +1312,10 @@ dkim_key_smtp(DKIM_SET *set)
 */
 
 static _Bool
-dkim_key_hashok(DKIM_SIGINFO *sig, u_char *hashlist)
+dkim_key_hashok(DKIM_SIGINFO *sig, const u_char *hashlist)
 {
 	int hashalg;
-	u_char *x, *y;
+	const u_char *x, *y;
 	u_char tmp[BUFRSZ + 1];
 
 	assert(sig != NULL);
@@ -1331,7 +1333,7 @@ dkim_key_hashok(DKIM_SIGINFO *sig, u_char *hashlist)
 		{
 			if (x != NULL)
 			{
-				strlcpy((char *) tmp, (char *) x, sizeof tmp);
+				strlcpy((char *) tmp, (const char *) x, sizeof tmp);
 				tmp[y - x] = '\0';
 				hashalg = dkim_name_to_code(hashes,
 				                            (char *) tmp);
@@ -1375,9 +1377,9 @@ dkim_key_hashok(DKIM_SIGINFO *sig, u_char *hashlist)
 */
 
 static _Bool
-dkim_key_hashesok(DKIM_LIB *lib, u_char *hashlist)
+dkim_key_hashesok(DKIM_LIB *lib, const u_char *hashlist)
 {
-	u_char *x, *y;
+	const u_char *x, *y;
 	u_char tmp[BUFRSZ + 1];
 
 	assert(lib != NULL);
@@ -1397,7 +1399,7 @@ dkim_key_hashesok(DKIM_LIB *lib, u_char *hashlist)
 			{
 				int hashcode;
 
-				strlcpy((char *) tmp, (char *) x, sizeof tmp);
+				strlcpy((char *) tmp, (const char *) x, sizeof tmp);
 				tmp[y - x] = '\0';
 
 				hashcode = dkim_name_to_code(hashes,
@@ -1549,8 +1551,8 @@ dkim_sig_domainok(DKIM *dkim, DKIM_SET *set)
 {
 	char *at;
 	char *dot;
-	u_char *i;
-	u_char *d;
+	const u_char *i;
+	const u_char *d;
 	u_char addr[MAXADDRESS + 1];
 
 	assert(dkim != NULL);
@@ -1567,18 +1569,18 @@ dkim_sig_domainok(DKIM *dkim, DKIM_SET *set)
 	if (i == NULL)
 		snprintf((char *) addr, sizeof addr, "@%s", d);
 	else
-		dkim_qp_decode(i, addr, sizeof addr);
+		dkim_qp_decode((u_char *) i, addr, sizeof addr);
 
 	at = strchr((char *) addr, '@');
 	if (at == NULL)
 		return FALSE;
 
-	if (strcasecmp(at + 1, (char *) d) == 0)
+	if (strcasecmp(at + 1, (const char *) d) == 0)
 		return TRUE;
 
 	for (dot = strchr(at, '.'); dot != NULL; dot = strchr(dot + 1, '.'))
 	{
-		if (strcasecmp(dot + 1, (char *) d) == 0)
+		if (strcasecmp(dot + 1, (const char *) d) == 0)
 		{
 			dkim->dkim_subdomain = TRUE;
 			return TRUE;
@@ -1609,7 +1611,7 @@ dkim_sig_expired(DKIM_SET *set, uint64_t drift)
 	time_t now;
 	uint64_t expire;
 	uint64_t nowl;
-	u_char *val;
+	const u_char *val;
 
 	assert(set != NULL);
 	assert(set->set_type == DKIM_SETTYPE_SIGNATURE);
@@ -1619,11 +1621,11 @@ dkim_sig_expired(DKIM_SET *set, uint64_t drift)
 		return FALSE;
 
 	if (sizeof(uint64_t) == sizeof(unsigned long long))
-		expire = strtoull((char *) val, NULL, 10);
+		expire = strtoull((const char *) val, NULL, 10);
 	else if (sizeof(uint64_t) == sizeof(unsigned long))
-		expire = strtoul((char *) val, NULL, 10);
+		expire = strtoul((const char *) val, NULL, 10);
 	else
-		expire = (unsigned int) strtoul((char *) val, NULL, 10);
+		expire = (unsigned int) strtoul((const char *) val, NULL, 10);
 
 	(void) time(&now);
 	nowl = (uint64_t) now;
@@ -1654,7 +1656,7 @@ dkim_sig_timestampsok(DKIM_SET *set)
 {
 	uint64_t signtime;
 	uint64_t expire;
-	u_char *val;
+	const u_char *val;
 
 	assert(set != NULL);
 	assert(set->set_type == DKIM_SETTYPE_SIGNATURE);
@@ -1663,21 +1665,21 @@ dkim_sig_timestampsok(DKIM_SET *set)
 	if (val == NULL)
 		return TRUE;
 	if (sizeof(uint64_t) == sizeof(unsigned long long))
-		signtime = strtoull((char *) val, NULL, 10);
+		signtime = strtoull((const char *) val, NULL, 10);
 	else if (sizeof(uint64_t) == sizeof(unsigned long))
-		signtime = strtoul((char *) val, NULL, 10);
+		signtime = strtoul((const char *) val, NULL, 10);
 	else
-		signtime = (unsigned int) strtoul((char *) val, NULL, 10);
+		signtime = (unsigned int) strtoul((const char *) val, NULL, 10);
 
 	val = dkim_param_get(set, (const u_char *) "x");
 	if (val == NULL)
 		return TRUE;
 	if (sizeof(uint64_t) == sizeof(unsigned long long))
-		expire = strtoull((char *) val, NULL, 10);
+		expire = strtoull((const char *) val, NULL, 10);
 	else if (sizeof(uint64_t) == sizeof(unsigned long))
-		expire = strtoul((char *) val, NULL, 10);
+		expire = strtoul((const char *) val, NULL, 10);
 	else
-		expire = (unsigned int) strtoul((char *) val, NULL, 10);
+		expire = (unsigned int) strtoul((const char *) val, NULL, 10);
 
 	return (signtime < expire);
 }
@@ -1704,7 +1706,7 @@ dkim_sig_future(DKIM_SET *set, uint64_t drift)
 	uint64_t signtime;
 	uint64_t nowl;
 	time_t now;
-	u_char *val;
+	const u_char *val;
 
 	assert(set != NULL);
 	assert(set->set_type == DKIM_SETTYPE_SIGNATURE);
@@ -1714,11 +1716,11 @@ dkim_sig_future(DKIM_SET *set, uint64_t drift)
 		return FALSE;
 
 	if (sizeof(uint64_t) == sizeof(unsigned long long))
-		signtime = strtoull((char *) val, NULL, 10);
+		signtime = strtoull((const char *) val, NULL, 10);
 	else if (sizeof(uint64_t) == sizeof(unsigned long))
-		signtime = strtoul((char *) val, NULL, 10);
+		signtime = strtoul((const char *) val, NULL, 10);
 	else
-		signtime = (unsigned int) strtoul((char *) val, NULL, 10);
+		signtime = (unsigned int) strtoul((const char *) val, NULL, 10);
 
 	(void) time(&now);
 	nowl = (uint64_t) now;
@@ -1742,12 +1744,12 @@ dkim_sig_future(DKIM_SET *set, uint64_t drift)
 static _Bool
 dkim_sig_versionok(DKIM *dkim, DKIM_SET *set)
 {
-	char *v;
+	const char *v;
 
 	assert(set != NULL);
 	assert(set->set_type == DKIM_SETTYPE_SIGNATURE);
 
-	v = (char *) dkim_param_get(set, (const u_char *) "v");
+	v = (const char *) dkim_param_get(set, (const u_char *) "v");
 
 	assert(v != NULL);
 
@@ -1792,8 +1794,8 @@ dkim_siglist_setup(DKIM *dkim)
 	DKIM_LIB *lib;
 	DKIM_CANON *hc;
 	DKIM_CANON *bc;
-	u_char *param;
-	u_char *hdrlist;
+	const u_char *param;
+	const u_char *hdrlist;
 
 	assert(dkim != NULL);
 
@@ -1864,7 +1866,7 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_D;
 			continue;
 		}
-		dkim->dkim_siglist[c]->sig_domain = param;
+		dkim->dkim_siglist[c]->sig_domain = (u_char *) param;
 
 		/* critical stuff: selector */
 		param = dkim_param_get(set, (const u_char *) "s");
@@ -1878,7 +1880,7 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_S;
 			continue;
 		}
-		dkim->dkim_siglist[c]->sig_selector = param;
+		dkim->dkim_siglist[c]->sig_selector = (u_char *) param;
 
 		/* some basic checks first */
 		param = dkim_param_get(set, (const u_char *) "v");
@@ -1930,7 +1932,7 @@ dkim_siglist_setup(DKIM *dkim)
 			char *q;
 			char value[BUFRSZ + 1];
 
-			strlcpy(value, (char *) param, sizeof value);
+			strlcpy(value, (const char *) param, sizeof value);
 
 			q = strchr(value, '/');
 			if (q != NULL)
@@ -1970,7 +1972,7 @@ dkim_siglist_setup(DKIM *dkim)
 		else
 		{
 			signalg = dkim_name_to_code(algorithms,
-			                            (char *) param);
+			                            (const char *) param);
 
 			if (signalg == -1)
 			{
@@ -2019,7 +2021,7 @@ dkim_siglist_setup(DKIM *dkim)
 			continue;
 		}
 
-		hstatus = dkim_sig_hdrlistok(dkim, param);
+		hstatus = dkim_sig_hdrlistok(dkim, (u_char *) param);
 		if (hstatus == 0)
 		{
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_INVALID_H;
@@ -2055,7 +2057,7 @@ dkim_siglist_setup(DKIM *dkim)
 			}
 
 			errno = 0;
-			ul = strtoul((char *) param, &q, 10);
+			ul = strtoul((const char *) param, &q, 10);
 			if (ul == ULONG_MAX || errno != 0 || *q != '\0' ||
 			    ul > (unsigned long) SSIZE_MAX)
 			{
@@ -2078,7 +2080,7 @@ dkim_siglist_setup(DKIM *dkim)
 			u_char tmp[BUFRSZ + 1];
 			u_char qtype[BUFRSZ + 1];
 
-			strlcpy((char *) qtype, (char *) param, sizeof qtype);
+			strlcpy((char *) qtype, (const char *) param, sizeof qtype);
 
 			for (p = (u_char *) strtok_r((char *) qtype, ":",
 			                             &last);
@@ -2150,19 +2152,19 @@ dkim_siglist_setup(DKIM *dkim)
 		{
 			if (sizeof(uint64_t) == sizeof(unsigned long long))
 			{
-				dkim->dkim_siglist[c]->sig_timestamp = strtoull((char *) param,
+				dkim->dkim_siglist[c]->sig_timestamp = strtoull((const char *) param,
 				                                                NULL,
 				                                                10);
 			}
 			else if (sizeof(uint64_t) == sizeof(unsigned long))
 			{
-				dkim->dkim_siglist[c]->sig_timestamp = strtoul((char *) param,
+				dkim->dkim_siglist[c]->sig_timestamp = strtoul((const char *) param,
 				                                               NULL,
 				                                               10);
 			}
 			else
 			{
-				dkim->dkim_siglist[c]->sig_timestamp = (unsigned int) strtoul((char *) param,
+				dkim->dkim_siglist[c]->sig_timestamp = (unsigned int) strtoul((const char *) param,
 				                                                              NULL,
 				                                                              10);
 			}
@@ -2194,7 +2196,7 @@ dkim_siglist_setup(DKIM *dkim)
 			continue;
 		}
 
-		b64siglen = strlen((char *) param);
+		b64siglen = strlen((const char *) param);
 		dkim->dkim_siglist[c]->sig_sig = DKIM_MALLOC(dkim,
 		                                             b64siglen);
 		if (dkim->dkim_siglist[c]->sig_sig == NULL)
@@ -2205,7 +2207,7 @@ dkim_siglist_setup(DKIM *dkim)
 			return DKIM_STAT_NORESOURCE;
 		}
 
-		status = dkim_base64_decode(param,
+		status = dkim_base64_decode((u_char *) param,
 		                            dkim->dkim_siglist[c]->sig_sig,
 		                            b64siglen);
 		if (status < 0)
@@ -2220,7 +2222,7 @@ dkim_siglist_setup(DKIM *dkim)
 
 		/* canonicalization handle for the headers */
 		status = dkim_add_canon(dkim, TRUE, hdrcanon, hashtype,
-		                        hdrlist, dkim_set_getudata(set),
+		                        (u_char *) hdrlist, dkim_set_getudata(set),
 		                        0, &hc);
 		if (status != DKIM_STAT_OK)
 			return status;
@@ -2290,7 +2292,7 @@ dkim_siglist_setup(DKIM *dkim)
 
 static size_t
 dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
-               char *delim)
+               const char *delim)
 {
 	_Bool firsthdr;
 	_Bool nosigner = FALSE;
@@ -2479,7 +2481,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		else
 		{
 			dkim_dstring_cat1(dstr, ';');
-			dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
+			dkim_dstring_catn(dstr, (const u_char *) delim, delimlen);
 			dkim_dstring_catn(dstr, (const u_char *) "h=", 2);
 		}
 
@@ -2496,7 +2498,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		if (firsthdr)
 		{
 			dkim_dstring_cat1(dstr, ';');
-			dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
+			dkim_dstring_catn(dstr, (const u_char *) delim, delimlen);
 			dkim_dstring_catn(dstr, (const u_char *) "h=", 2);
 		}
 		else
@@ -2536,7 +2538,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 		unsigned char name[DKIM_MAXHEADER + 1];
 
 		dkim_dstring_cat1(dstr, ';');
-		dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
+		dkim_dstring_catn(dstr, (const u_char *) delim, delimlen);
 		dkim_dstring_catn(dstr, (const u_char *) "z=", 2);
 
 		first = TRUE;
@@ -2599,7 +2601,7 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 
 	/* and finally, an empty b= */
 	dkim_dstring_cat1(dstr, ';');
-	dkim_dstring_catn(dstr, (u_char *) delim, delimlen);
+	dkim_dstring_catn(dstr, (const u_char *) delim, delimlen);
 	dkim_dstring_catn(dstr, (const u_char *) "b=", 2);
 
 	return dkim_dstring_len(dstr);
@@ -2701,7 +2703,7 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 	DKIM_SIGINFO *osig;
 	struct dkim_set *set = NULL;
 	struct dkim_set *nextset;
-	unsigned char *p;
+	const unsigned char *p;
 	unsigned char buf[BUFRSZ + 1];
 
 	assert(dkim != NULL);
@@ -2856,7 +2858,7 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 
 	/* verify key version first */
 	p = dkim_param_get(set, (const u_char *) "v");
-	if (p != NULL && strcmp((char *) p, DKIM_VERSION_KEY) != 0)
+	if (p != NULL && strcmp((const char *) p, DKIM_VERSION_KEY) != 0)
 	{
 		dkim_error(dkim, "invalid key version '%s'", p);
 		sig->sig_error = DKIM_SIGERROR_KEYVERSION;
@@ -2895,7 +2897,7 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 		sig->sig_error = DKIM_SIGERROR_KEYTYPEMISSING;
 		return DKIM_STAT_SYNTAX;
 	}
-	else if (dkim_name_to_code(keytypes, (char *) p) == -1)
+	else if (dkim_name_to_code(keytypes, (const char *) p) == -1)
 	{
 		dkim_error(dkim, "unknown key type '%s'", p);
 		sig->sig_error = DKIM_SIGERROR_KEYTYPEUNKNOWN;
@@ -2905,7 +2907,8 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 	if (!gotkey)
 	{
 		/* decode the key */
-		sig->sig_b64key = dkim_param_get(set, (const u_char *) "p");
+		sig->sig_b64key = (u_char *) dkim_param_get(set,
+		                                            (const u_char *) "p");
 		if (sig->sig_b64key == NULL)
 		{
 			dkim_error(dkim, "key missing");
@@ -2945,7 +2948,7 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 		char *last;
 		char tmp[BUFRSZ + 1];
 
-		strlcpy(tmp, (char *) p, sizeof tmp);
+		strlcpy(tmp, (const char *) p, sizeof tmp);
 
 		for (t = strtok_r(tmp, ":", &last);
 		     t != NULL;
@@ -5517,7 +5520,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 	if (dkim->dkim_bodydone && sig->sig_bh == DKIM_SIGBH_UNTESTED &&
 	    (sig->sig_flags & DKIM_SIGFLAG_PASSED) != 0)
 	{
-		u_char *bhash;
+		const u_char *bhash;
 		u_char b64buf[BUFRSZ];
 
 		memset(b64buf, '\0', sizeof b64buf);
@@ -5528,7 +5531,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 
 		dkim_base64_encode(digest, diglen, b64buf, sizeof b64buf);
 
-		if (strcmp((char *) bhash, (char *) b64buf) == 0)
+		if (strcmp((const char *) bhash, (char *) b64buf) == 0)
 		{
 			sig->sig_bh = DKIM_SIGBH_MATCH;
 		}
@@ -5546,15 +5549,17 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 
 	if ((sig->sig_flags & DKIM_SIGFLAG_NOSUBDOMAIN) != 0)
 	{
-		char *d;
-		char *i;
+		const char *d;
+		const char *i;
 
-		d = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "d");
-		i = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "i");
+		d = (const char *) dkim_param_get(sig->sig_taglist,
+		                                  (const u_char *) "d");
+		i = (const char *) dkim_param_get(sig->sig_taglist,
+		                                  (const u_char *) "i");
 
 		if (i != NULL && d != NULL)
 		{
-			char *at;
+			const char *at;
 
 			at = strchr(i, '@');
 			if (at == NULL)
@@ -6751,11 +6756,11 @@ _Bool
 dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 {
 	size_t len;
-	u_char *c1 = NULL;
-	u_char *c2 = NULL;
-	u_char *start;
-	u_char *p;
-	u_char *hdrlist;
+	const u_char *c1 = NULL;
+	const u_char *c2 = NULL;
+	const u_char *start;
+	const u_char *p;
+	const u_char *hdrlist;
 
 	assert(sig != NULL);
 	assert(hdr != NULL);
@@ -6776,7 +6781,7 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 			if (c1 == NULL)
 			{
 				start = hdrlist;
-				len = c2 - start; 
+				len = c2 - start;
 			}
 			else
 			{
@@ -6791,14 +6796,15 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 				start = c2 + 1;
 				len = p - c2 - 1;
 
-				if (strncasecmp((char *) hdr, (char *) start,
+				if (strncasecmp((char *) hdr,
+				                (const char *) start,
 				                len) == 0)
 					return TRUE;
 			}
 			else
 			{
 				if (strcasecmp((char *) hdr,
-				               (char *) hdrlist) == 0)
+				               (const char *) hdrlist) == 0)
 					return TRUE;
 			}
 
@@ -6807,7 +6813,7 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
 
 		if (len != (size_t) -1)
 		{
-			if (strncasecmp((char *) hdr, (char *) start,
+			if (strncasecmp((char *) hdr, (const char *) start,
 			                len) == 0)
 				return TRUE;
 		}
@@ -6892,7 +6898,8 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
                        u_int *pct)
 {
 	DKIM_STAT status;
-	u_char *p;
+	const u_char *p;
+	u_char *cur;
 	char *sdomain;
 	DKIM_SET *set;
 	struct timeval timeout;
@@ -7002,10 +7009,10 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(addr, '\0', addrlen);
-			(void) dkim_qp_decode(p, addr, addrlen);
-			p = (u_char *) strchr((char *) addr, '@');
-			if (p != NULL)
-				*p = '\0';
+			(void) dkim_qp_decode((u_char *) p, addr, addrlen);
+			cur = (u_char *) strchr((char *) addr, '@');
+			if (cur != NULL)
+				*cur = '\0';
 		}
 	}
 
@@ -7013,7 +7020,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 	{
 		p = dkim_param_get(set, (const u_char *) "ro");
 		if (p != NULL)
-			strlcpy((char *) opts, (char *) p, optslen);
+			strlcpy((char *) opts, (const char *) p, optslen);
 	}
 
 	if (smtp != NULL)
@@ -7022,7 +7029,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(smtp, '\0', smtplen);
-			(void) dkim_qp_decode(p, smtp, smtplen);
+			(void) dkim_qp_decode((u_char *) p, smtp, smtplen);
 		}
 	}
 
@@ -7034,7 +7041,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 			u_int out;
 			char *q;
 
-			out = strtoul((char *) p, &q, 10);
+			out = strtoul((const char *) p, &q, 10);
 			if (*q == '\0')
 				*pct = out;
 		}
@@ -7060,7 +7067,7 @@ DKIM_STAT
 dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 {
 	int len;
-	char *param;
+	const char *param;
 	struct dkim_set *set;
 
 	assert(val != NULL);
@@ -7078,10 +7085,10 @@ dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 
 	set = sig->sig_taglist;
 
-	param = (char *) dkim_param_get(set, (const u_char *) "i");
+	param = (const char *) dkim_param_get(set, (const u_char *) "i");
 	if (param == NULL)
 	{
-		param = (char *) dkim_param_get(set, (const u_char *) "d");
+		param = (const char *) dkim_param_get(set, (const u_char *) "d");
 		if (param == NULL)
 			return DKIM_STAT_INTERNAL;
 
@@ -7905,8 +7912,8 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 	int b1len;
 	int b2len;
 	int minlen;
-	char *b1;
-	char *b2;
+	const char *b1;
+	const char *b2;
 
 	assert(dkim != NULL);
 	assert(sig != NULL);
@@ -7925,8 +7932,8 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 		*/
 		for (c = 0; c + 1 < dkim->dkim_sigcount; c++)
 		{
-			b1 = (char *) dkim_param_get(dkim->dkim_siglist[c]->sig_taglist,
-			                             (u_char *) "b");
+			b1 = (const char *) dkim_param_get(dkim->dkim_siglist[c]->sig_taglist,
+			                                   (const u_char *) "b");
 			if (b1 == NULL)
 				continue;
 
@@ -7934,8 +7941,8 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 
 			for (d = c + 1; d < dkim->dkim_sigcount; d++)
 			{
-				b2 = (char *) dkim_param_get(dkim->dkim_siglist[d]->sig_taglist,
-				                             (u_char *) "b");
+				b2 = (const char *) dkim_param_get(dkim->dkim_siglist[d]->sig_taglist,
+				                                   (const u_char *) "b");
 				if (b2 == NULL)
 					continue;
 
@@ -7960,7 +7967,7 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 		}
 	}
 
-	b1 = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "b");
+	b1 = (const char *) dkim_param_get(sig->sig_taglist, (const u_char *) "b");
 	if (b1 == NULL)
 		return DKIM_STAT_SYNTAX;
 
@@ -8050,7 +8057,7 @@ dkim_sig_gettagvalue(DKIM_SIGINFO *sig, _Bool keytag, u_char *tag)
 	if (set == NULL)
 		return NULL;
 	else
-		return dkim_param_get(set, tag);
+		return (u_char *) dkim_param_get(set, tag);
 }
 
 /*
@@ -8074,8 +8081,8 @@ dkim_sig_getsignedhdrs(DKIM *dkim, DKIM_SIGINFO *sig,
 {
 	int status;
 	u_int n;
-	u_char *h;
-	u_char *p;
+	const u_char *h;
+	const u_char *p;
 	struct dkim_header **sighdrs;
 
 	assert(dkim != NULL);
@@ -8112,7 +8119,7 @@ dkim_sig_getsignedhdrs(DKIM *dkim, DKIM_SIGINFO *sig,
 		return DKIM_STAT_NORESOURCE;
 	}
 
-	status = dkim_canon_selecthdrs(dkim, h, sighdrs, n);
+	status = dkim_canon_selecthdrs(dkim, (u_char *) h, sighdrs, n);
 	if (status == -1)
 	{
 		DKIM_FREE(dkim, sighdrs);
