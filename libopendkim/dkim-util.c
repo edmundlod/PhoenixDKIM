@@ -101,7 +101,7 @@ dkim_strdup(DKIM *dkim, const unsigned char *str, size_t len)
 	assert(str != NULL);
 
 	if (len == 0)
-		len = strlen((char *) str);
+		len = strlen((const char *) str);
 
 	new = dkim_malloc(dkim->dkim_libhandle, dkim->dkim_closure, len + 1);
 	if (new != NULL)
