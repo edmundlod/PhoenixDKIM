@@ -8568,7 +8568,7 @@ dkim_dns_trustanchor(DKIM_LIB *lib, const char *trust)
 DKIM_STAT
 dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 {
-	u_char *p;
+	const u_char *p;
 	struct dkim_qmethod *q;
 	struct dkim_qmethod *lastq;
 	char tmp[BUFRSZ + 1];
@@ -8580,10 +8580,10 @@ dkim_add_querymethod(DKIM *dkim, const char *type, const char *options)
 		return DKIM_STAT_INVALID;
 
 	/* confirm valid syntax, per RFC6376 */
-	for (p = (u_char *) type; *p != '\0'; p++)
+	for (p = (const u_char *) type; *p != '\0'; p++)
 	{
 		if (!(isascii(*p) && (isalpha(*p) ||
-				      (p != (u_char *) type &&
+				      (p != (const u_char *) type &&
 				       (isalnum(*p) ||
 					(*(p+1) != '\0' && *p == '-'))))))
 			return DKIM_STAT_INVALID;
@@ -8685,7 +8685,7 @@ dkim_add_xtag(DKIM *dkim, const char *tag, const char *value)
 {
 	u_char last = '\0';
 	dkim_param_t pcode;
-	u_char *p;
+	const u_char *p;
 	struct dkim_xtag *x;
 
 	assert(dkim != NULL);
@@ -8703,7 +8703,7 @@ dkim_add_xtag(DKIM *dkim, const char *tag, const char *value)
 		return DKIM_STAT_INVALID;
 
 	/* confirm valid syntax, per RFC6376 */
-	for (p = (u_char *) tag; *p != '\0'; p++)
+	for (p = (const u_char *) tag; *p != '\0'; p++)
 	{
 		if (!(isascii(*p) && (isalnum(*p) || *p == '_')))
 			return DKIM_STAT_INVALID;
@@ -8715,7 +8715,7 @@ dkim_add_xtag(DKIM *dkim, const char *tag, const char *value)
 	    value[0] == ' ')
 		return DKIM_STAT_INVALID;
 
-	for (p = (u_char *) value; *p != '\0'; p++)
+	for (p = (const u_char *) value; *p != '\0'; p++)
 	{
 		/* valid characters in general */
 		if (!(*p == '\n' ||
