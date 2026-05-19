@@ -405,7 +405,7 @@ dkimf_ub_trustanchor(void *srv, const char *file)
 
 	ub = srv;
 
-	status = ub_ctx_add_ta_file(ub->ub_ub, (char *) file);
+	status = ub_ctx_add_ta_file(ub->ub_ub, file);
 
 	return (status == 0 ? 0 : -1);
 }
@@ -435,7 +435,7 @@ dkimf_ub_config(void *srv, const char *file)
 	ub = srv;
 
 	pthread_mutex_lock(&ub->ub_config_lock);
-	status = ub_ctx_config(ub->ub_ub, (char *) file);
+	status = ub_ctx_config(ub->ub_ub, file);
 	pthread_mutex_unlock(&ub->ub_config_lock);
 
 	return (status == 0 ? 0 : -1);
