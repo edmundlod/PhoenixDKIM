@@ -951,9 +951,9 @@ dkim_clobber_array(char **in)
 */
 
 _Bool
-dkim_strisprint(unsigned char *str)
+dkim_strisprint(const unsigned char *str)
 {
-	unsigned char *p;
+	const unsigned char *p;
 
 	assert(str != NULL);
 

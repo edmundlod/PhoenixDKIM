@@ -3146,7 +3146,7 @@ dkim_eoh_sign(DKIM *dkim)
 {
 	_Bool keep;
 	_Bool tmp;
-	u_char *hn = NULL;
+	const u_char *hn = NULL;
 	DKIM_STAT status;
 	int hashtype = DKIM_HASHTYPE_UNKNOWN;
 	DKIM_CANON *bc;
@@ -3183,7 +3183,7 @@ dkim_eoh_sign(DKIM *dkim)
 	**  marked for signing.
 	*/
 
-	hn = (u_char *) dkim_check_requiredhdrs(dkim);
+	hn = dkim_check_requiredhdrs(dkim);
 	if (hn != NULL)
 	{
 		dkim_error(dkim, "required header \"%s\" not found", hn);
@@ -3550,14 +3550,14 @@ dkim_eom_sign(DKIM *dkim)
 	{
 		_Bool found = FALSE;
 		u_int c;
-		char *hn;
+		const char *hn;
 
 		/*
 		**  Verify that all the required headers are present and
 		**  marked for signing.
 		*/
 
-		hn = (char *) dkim_check_requiredhdrs(dkim);
+		hn = (const char *) dkim_check_requiredhdrs(dkim);
 		if (hn != NULL)
 		{
 			dkim_error(dkim, "required header \"%s\" not found",
@@ -4984,8 +4984,8 @@ dkim_sign(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 			signalg = DKIM_SIGN_RSASHA1;
 	}
 
-	if (!dkim_strisprint((u_char *) domain) ||
-	    !dkim_strisprint((u_char *) selector))
+	if (!dkim_strisprint(domain) ||
+	    !dkim_strisprint(selector))
 	{
 		*statp = DKIM_STAT_INVALID;
 		return NULL;
