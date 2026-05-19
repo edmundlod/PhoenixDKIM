@@ -181,7 +181,7 @@ function(apply_hardening tgt)
         CAST_QUAL
         UNDEF
     )
-        if(HARDEN_CC_${_probe_var})
+        if(HARDEN_CC_W${_probe_var})
             string(TOLOWER "${_probe_var}" _flag)
             string(REPLACE "_" "-" _flag "${_flag}")
             target_compile_options(${tgt} PRIVATE "-W${_flag}")
