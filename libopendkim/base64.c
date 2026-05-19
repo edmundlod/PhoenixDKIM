@@ -53,12 +53,12 @@ static int decoder[256] =
 */
 
 int
-dkim_base64_decode(u_char *str, u_char *buf, size_t buflen)
+dkim_base64_decode(const u_char *str, u_char *buf, size_t buflen)
 {
 	int n = 0;
 	int bits = 0;
 	int char_count = 0;
-	u_char *c;
+	const u_char *c;
 
 	assert(str != NULL);
 	assert(buf != NULL);

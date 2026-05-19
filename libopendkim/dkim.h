@@ -1461,7 +1461,7 @@ extern DKIM_STAT dkim_sig_getsignedhdrs __P((DKIM *, DKIM_SIGINFO *,
 **  	-1 -- parse error
 */
 
-extern int dkim_qp_decode __P((unsigned char *, unsigned char *, int));
+extern int dkim_qp_decode __P((const unsigned char *, unsigned char *, int));
 
 /*
 **  DKIM_DNS_SET_QUERY_SERVICE -- stores a handle representing the DNS

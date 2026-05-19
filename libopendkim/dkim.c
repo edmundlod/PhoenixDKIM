@@ -1441,7 +1441,7 @@ dkim_key_hashesok(DKIM_LIB *lib, const u_char *hashlist)
 */
 
 static _Bool
-dkim_sig_hdrlistok(DKIM *dkim, u_char *hdrlist)
+dkim_sig_hdrlistok(DKIM *dkim, const u_char *hdrlist)
 {
 	_Bool in = FALSE;
 	_Bool found;
@@ -1456,7 +1456,7 @@ dkim_sig_hdrlistok(DKIM *dkim, u_char *hdrlist)
 	assert(dkim != NULL);
 	assert(hdrlist != NULL);
 
-	strlcpy((char *) tmp, (char *) hdrlist, sizeof tmp);
+	strlcpy((char *) tmp, (const char *) hdrlist, sizeof tmp);
 
 	/* figure out how many headers were named */
 	c = 0;
@@ -1569,7 +1569,7 @@ dkim_sig_domainok(DKIM *dkim, DKIM_SET *set)
 	if (i == NULL)
 		snprintf((char *) addr, sizeof addr, "@%s", d);
 	else
-		dkim_qp_decode((u_char *) i, addr, sizeof addr);
+		dkim_qp_decode(i, addr, sizeof addr);
 
 	at = strchr((char *) addr, '@');
 	if (at == NULL)
@@ -1866,6 +1866,9 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_D;
 			continue;
 		}
+		/* Legacy API constraint: sig_domain is declared u_char *
+		   and exposed to callers via dkim_sig_getdomain(); the
+		   stored bytes are read-only in practice. */
 		dkim->dkim_siglist[c]->sig_domain = (u_char *) param;
 
 		/* critical stuff: selector */
@@ -1880,6 +1883,9 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_S;
 			continue;
 		}
+		/* Legacy API constraint: sig_selector is declared u_char *
+		   and exposed via dkim_sig_getselector(); same read-only
+		   contract as sig_domain above. */
 		dkim->dkim_siglist[c]->sig_selector = (u_char *) param;
 
 		/* some basic checks first */
@@ -2021,7 +2027,7 @@ dkim_siglist_setup(DKIM *dkim)
 			continue;
 		}
 
-		hstatus = dkim_sig_hdrlistok(dkim, (u_char *) param);
+		hstatus = dkim_sig_hdrlistok(dkim, param);
 		if (hstatus == 0)
 		{
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_INVALID_H;
@@ -2207,7 +2213,7 @@ dkim_siglist_setup(DKIM *dkim)
 			return DKIM_STAT_NORESOURCE;
 		}
 
-		status = dkim_base64_decode((u_char *) param,
+		status = dkim_base64_decode(param,
 		                            dkim->dkim_siglist[c]->sig_sig,
 		                            b64siglen);
 		if (status < 0)
@@ -2221,9 +2227,12 @@ dkim_siglist_setup(DKIM *dkim)
 		}
 
 		/* canonicalization handle for the headers */
+		/* Legacy API constraint: dkim_add_canon stores hdrlist as
+		   u_char * for callers that pass mutable buffers; the
+		   plist-backed pointer here is read-only in practice. */
 		status = dkim_add_canon(dkim, TRUE, hdrcanon, hashtype,
-		                        (u_char *) hdrlist, dkim_set_getudata(set),
-		                        0, &hc);
+		                        (u_char *) hdrlist,
+		                        dkim_set_getudata(set), 0, &hc);
 		if (status != DKIM_STAT_OK)
 			return status;
 		dkim->dkim_siglist[c]->sig_hdrcanon = hc;
@@ -2907,6 +2916,8 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 	if (!gotkey)
 	{
 		/* decode the key */
+		/* Legacy API constraint: sig_b64key is declared u_char *;
+		   the plist storage it aliases is read-only in practice. */
 		sig->sig_b64key = (u_char *) dkim_param_get(set,
 		                                            (const u_char *) "p");
 		if (sig->sig_b64key == NULL)
@@ -5657,6 +5668,10 @@ dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 		return DKIM_STAT_INVALID;
 
 	/* find the tag */
+	/* Legacy API constraint: dkim_ohdrs has been writing through
+	   this pointer with strtok_r() below since long before the
+	   plist storage was const-tightened; the cast preserves
+	   that pre-existing (and likely buggy) behaviour. */
 	z = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "z");
 	if (z == NULL || *z == '\0')
 	{
@@ -7009,7 +7024,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(addr, '\0', addrlen);
-			(void) dkim_qp_decode((u_char *) p, addr, addrlen);
+			(void) dkim_qp_decode(p, addr, addrlen);
 			cur = (u_char *) strchr((char *) addr, '@');
 			if (cur != NULL)
 				*cur = '\0';
@@ -7029,7 +7044,7 @@ dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
 		if (p != NULL)
 		{
 			memset(smtp, '\0', smtplen);
-			(void) dkim_qp_decode((u_char *) p, smtp, smtplen);
+			(void) dkim_qp_decode(p, smtp, smtplen);
 		}
 	}
 
@@ -7100,7 +7115,7 @@ dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig, u_char *val, size_t vallen)
 	}
 	else
 	{
-		len = dkim_qp_decode((u_char *) param, (u_char *) val,
+		len = dkim_qp_decode((const u_char *) param, (u_char *) val,
 		                     vallen);
 
 		if (len == -1)
@@ -8056,6 +8071,9 @@ dkim_sig_gettagvalue(DKIM_SIGINFO *sig, _Bool keytag, u_char *tag)
 
 	if (set == NULL)
 		return NULL;
+	/* Legacy API constraint: documented return type is u_char *
+	   to outside callers, but the underlying plist storage is
+	   read-only.  See the "Caveat emptor" note above. */
 	else
 		return (u_char *) dkim_param_get(set, tag);
 }
@@ -8119,7 +8137,7 @@ dkim_sig_getsignedhdrs(DKIM *dkim, DKIM_SIGINFO *sig,
 		return DKIM_STAT_NORESOURCE;
 	}
 
-	status = dkim_canon_selecthdrs(dkim, (u_char *) h, sighdrs, n);
+	status = dkim_canon_selecthdrs(dkim, h, sighdrs, n);
 	if (status == -1)
 	{
 		DKIM_FREE(dkim, sighdrs);

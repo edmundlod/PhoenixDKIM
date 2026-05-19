@@ -815,8 +815,8 @@ dkim_add_canon(DKIM *dkim, _Bool hdr, dkim_canon_t canon, int hashtype,
 */
 
 int
-dkim_canon_selecthdrs(DKIM *dkim, u_char *hdrlist, struct dkim_header **ptrs,
-                      int nptrs)
+dkim_canon_selecthdrs(DKIM *dkim, const u_char *hdrlist,
+                      struct dkim_header **ptrs, int nptrs)
 {
 	int c;
 	int n;
@@ -868,7 +868,8 @@ dkim_canon_selecthdrs(DKIM *dkim, u_char *hdrlist, struct dkim_header **ptrs,
 		}
 	}
 
-	strlcpy((char *) dkim->dkim_hdrlist, (char *) hdrlist, DKIM_MAXHEADER);
+	strlcpy((char *) dkim->dkim_hdrlist, (const char *) hdrlist,
+	        DKIM_MAXHEADER);
 
 	/* mark all headers as not used */
 	for (hdr = dkim->dkim_hhead; hdr != NULL; hdr = hdr->hdr_next)

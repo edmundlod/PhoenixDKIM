@@ -322,7 +322,7 @@ dkim_qp_encode(unsigned char *in, unsigned char *out, int outlen)
 */
 
 int
-dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
+dkim_qp_decode(const unsigned char *in, unsigned char *out, int outlen)
 {
 	unsigned char next1;
 	unsigned char next2 = 0;
