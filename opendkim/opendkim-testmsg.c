@@ -128,7 +128,7 @@ main(int argc, char **argv)
 	const char *selector = NULL;
 	const char *keyfile = NULL;
 	char *keydata = NULL;
-	char *tmpdir = DEFTMPDIR;
+	const char *tmpdir = DEFTMPDIR;
 	char buf[BUFRSZ];
 	char fn[BUFRSZ];
 
