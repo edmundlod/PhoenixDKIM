@@ -9352,8 +9352,8 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 		DKIM_STAT ts;
 		u_int keybits;
 		size_t ssl;
-		char *result;
-		char *dnssec;
+		const char *result;
+		const char *dnssec;
 		char *domain;
 		char *selector;
 		char *algorithm;
@@ -11157,7 +11157,7 @@ mlfi_eoh(SMFICTX *ctx)
 	/* if requested, verify RFC5322-required headers (RFC5322 3.6) */
 	if (conf->conf_reqhdrs)
 	{
-		char *msg = NULL;
+		const char *msg = NULL;
 
 		/* exactly one From: */
 		if (dkimf_findheader(dfc, "From", 0) == NULL ||
