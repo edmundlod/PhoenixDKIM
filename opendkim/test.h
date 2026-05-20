@@ -32,6 +32,7 @@ extern int dkimf_test_insheader __P((void *, int, char *, char *));
 extern int dkimf_test_progress __P((void *));
 extern int dkimf_test_quarantine __P((void *, char *));
 extern int dkimf_test_setpriv __P((void *, void *));
-extern int dkimf_test_setreply __P((void *, char *, char *, char *));
+extern int dkimf_test_setreply __P((void *, const char *, const char *,
+                                    const char *));
 
 #endif /* _TEST_H_ */

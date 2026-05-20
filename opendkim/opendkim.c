@@ -545,7 +545,7 @@ sfsistat dkimf_insheader __P((SMFICTX *, int, char *, char *));
 sfsistat dkimf_quarantine __P((SMFICTX *, char *));
 void dkimf_sendprogress __P((const void *));
 sfsistat dkimf_setpriv __P((SMFICTX *, void *));
-sfsistat dkimf_setreply __P((SMFICTX *, char *, char *, char *));
+sfsistat dkimf_setreply __P((SMFICTX *, const char *, const char *, const char *));
 static void dkimf_sigreport __P((connctx, struct dkimf_config *, char *));
 
 /* GLOBALS */
@@ -824,14 +824,25 @@ dkimf_delrcpt(SMFICTX *ctx, char *addr)
 */
 
 sfsistat
-dkimf_setreply(SMFICTX *ctx, char *rcode, char *xcode, char *replytxt)
+dkimf_setreply(SMFICTX *ctx, const char *rcode, const char *xcode,
+               const char *replytxt)
 {
 	assert(ctx != NULL);
 
 	if (testmode)
+	{
 		return dkimf_test_setreply(ctx, rcode, xcode, replytxt);
+	}
 	else
-		return smfi_setreply(ctx, rcode, xcode, replytxt);
+	{
+		/*
+		**  Legacy API constraint: libmilter's smfi_setreply takes
+		**  char * but treats the strings as read-only.
+		*/
+
+		return smfi_setreply(ctx, (char *) rcode, (char *) xcode,
+		                     (char *) replytxt);
+	}
 }
 
 /*
@@ -8084,15 +8095,15 @@ dkimf_miltercode(SMFICTX *ctx, int dmc, char *str)
 */
 
 static sfsistat
-dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, char *where, int status)
+dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 {
 	int retcode = SMFIS_CONTINUE;
 	msgctx dfc;
 	connctx cc;
 	DKIM_SIGINFO *sig;
-	char *rcode = NULL;
-	char *xcode = NULL;
-	char *replytxt = NULL;
+	const char *rcode = NULL;
+	const char *xcode = NULL;
+	const char *replytxt = NULL;
 	struct dkimf_config *conf;
 	u_char smtpprefix[BUFRSZ];
 

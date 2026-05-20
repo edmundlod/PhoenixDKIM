@@ -158,7 +158,8 @@ dkimf_test_progress(void *ctx)
 */
 
 int
-dkimf_test_setreply(void *ctx, char *rcode, char *xcode, char *replytxt)
+dkimf_test_setreply(void *ctx, const char *rcode, const char *xcode,
+                    const char *replytxt)
 {
 	(void) ctx;
 	assert(ctx != NULL);
