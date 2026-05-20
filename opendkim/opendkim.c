@@ -368,7 +368,7 @@ struct connctx
 
 struct lookup
 {
-	char *		str;
+	const char *	str;
 	int		code;
 };
 
@@ -5097,7 +5097,7 @@ dkimf_reportaddr(struct dkimf_config *conf)
 */
 
 static int
-dkimf_lookup_strtoint(char *opt, struct lookup *table)
+dkimf_lookup_strtoint(const char *opt, struct lookup *table)
 {
 	int c;
 
