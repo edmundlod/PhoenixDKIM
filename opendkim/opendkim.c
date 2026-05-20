@@ -245,7 +245,7 @@ struct dkimf_config
 	char *		conf_canonstr;		/* canonicalization(s) string */
 	char *		conf_siglimit;		/* signing limits */
 	char *		conf_chroot;		/* chroot(2) directory */
-	char *		conf_selectcanonhdr;	/* canon select header name */
+	const char *	conf_selectcanonhdr;	/* canon select header name */
 	u_char *	conf_selector;		/* key selector */
 	char *		conf_resign;		/* resign mail to */
 	char *		conf_sendermacro;	/* macro containing sender */
@@ -255,7 +255,7 @@ struct dkimf_config
 	char *		conf_diagdir;		/* diagnostics directory */
 	char *		conf_reportaddr;	/* report sender address */
 	char *		conf_reportaddrbcc;	/* report repcipient address as bcc */
-	char *		conf_mtacommand;	/* MTA command (reports) */
+	const char *	conf_mtacommand;	/* MTA command (reports) */
 	char *		conf_redirect;		/* redirect failures to */
 #ifdef USE_LUA
 	char *		conf_screenscript;	/* Lua script: screening */
@@ -265,7 +265,7 @@ struct dkimf_config
 	char *		conf_finalscript;	/* Lua script: final */
 	void *		conf_finalfunc;		/* Lua function: final */
 #endif /* USE_LUA */
-	dkim_sigkey_t	conf_seckey;		/* secret key data */
+	unsigned char *	conf_seckey;		/* secret key data (owned) */
 	char *		conf_nslist;		/* replacement NS list */
 	char *		conf_trustanchorpath;	/* trust anchor file */
 	char *		conf_resolverconfig;	/* resolver config file */
