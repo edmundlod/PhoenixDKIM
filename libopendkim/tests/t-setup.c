@@ -40,7 +40,7 @@ int
 main(int argc, char **argv)
 {
 	int fd;
-	char *p;
+	const char *p;
 	FILE *f;
 
 	printf("*** test setup\n");
