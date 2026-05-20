@@ -189,7 +189,7 @@ dkimf_test_setreply(void *ctx, const char *rcode, const char *xcode,
 */
 
 int
-dkimf_test_insheader(void *ctx, int idx, char *hname, char *hvalue)
+dkimf_test_insheader(void *ctx, int idx, const char *hname, const char *hvalue)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -272,7 +272,7 @@ dkimf_test_quarantine(void *ctx, char *reason)
 */
 
 int
-dkimf_test_addheader(void *ctx, char *hname, char *hvalue)
+dkimf_test_addheader(void *ctx, const char *hname, const char *hvalue)
 {
 	(void) ctx;
 	assert(ctx != NULL);

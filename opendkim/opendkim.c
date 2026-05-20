@@ -529,7 +529,7 @@ sfsistat mlfi_negotiate __P((SMFICTX *, unsigned long, unsigned long,
 static int dkimf_add_signrequest __P((struct dkimf_config *,
                                       struct msgctx *, DKIMF_DB,
                                       char *, char *, ssize_t));
-sfsistat dkimf_addheader __P((SMFICTX *, char *, char *));
+sfsistat dkimf_addheader __P((SMFICTX *, const char *, const char *));
 sfsistat dkimf_addrcpt __P((SMFICTX *, char *));
 static int dkimf_apply_signtable __P((struct dkimf_config *, struct msgctx *,
                                       DKIMF_DB, DKIMF_DB,
@@ -542,7 +542,7 @@ sfsistat dkimf_delrcpt __P((SMFICTX *, char *));
 static Header dkimf_findheader __P((msgctx, const char *, int));
 void *dkimf_getpriv __P((SMFICTX *));
 char *dkimf_getsymval __P((SMFICTX *, const char *));
-sfsistat dkimf_insheader __P((SMFICTX *, int, char *, char *));
+sfsistat dkimf_insheader __P((SMFICTX *, int, const char *, const char *));
 sfsistat dkimf_quarantine __P((SMFICTX *, char *));
 void dkimf_sendprogress __P((const void *));
 sfsistat dkimf_setpriv __P((SMFICTX *, void *));
@@ -675,20 +675,30 @@ dkimf_setpriv(SMFICTX *ctx, void *ptr)
 */
 
 sfsistat
-dkimf_insheader(SMFICTX *ctx, int idx, char *hname, char *hvalue)
+dkimf_insheader(SMFICTX *ctx, int idx, const char *hname, const char *hvalue)
 {
 	assert(ctx != NULL);
 	assert(hname != NULL);
 	assert(hvalue != NULL);
 
 	if (testmode)
+	{
 		return dkimf_test_insheader(ctx, idx, hname, hvalue);
+	}
 	else
+	{
+		/*
+		**  Legacy API constraint: libmilter's smfi_insheader and
+		**  smfi_addheader take char * but treat the header
+		**  name/value as read-only.
+		*/
+
 #ifdef HAVE_SMFI_INSHEADER
-		return smfi_insheader(ctx, idx, hname, hvalue);
+		return smfi_insheader(ctx, idx, (char *) hname, (char *) hvalue);
 #else /* HAVE_SMFI_INSHEADER */
-		return smfi_addheader(ctx, hname, hvalue);
+		return smfi_addheader(ctx, (char *) hname, (char *) hvalue);
 #endif /* HAVE_SMFI_INSHEADER */
+	}
 }
 
 /*
@@ -753,16 +763,21 @@ dkimf_quarantine(SMFICTX *ctx, char *reason)
 */
 
 sfsistat
-dkimf_addheader(SMFICTX *ctx, char *hname, char *hvalue)
+dkimf_addheader(SMFICTX *ctx, const char *hname, const char *hvalue)
 {
 	assert(ctx != NULL);
 	assert(hname != NULL);
 	assert(hvalue != NULL);
 
 	if (testmode)
+	{
 		return dkimf_test_addheader(ctx, hname, hvalue);
+	}
 	else
-		return smfi_addheader(ctx, hname, hvalue);
+	{
+		/* Legacy API constraint: smfi_addheader takes char *. */
+		return smfi_addheader(ctx, (char *) hname, (char *) hvalue);
+	}
 }
 
 /*
@@ -6236,16 +6251,17 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	{
 		int status;
 		const char *dberr = NULL;
+		char internal[] = DEFINTERNAL;
 
-		status = dkimf_db_open(&conf->conf_internal, DEFINTERNAL,
-		                       (dbflags | 
+		status = dkimf_db_open(&conf->conf_internal, internal,
+		                       (dbflags |
 		                        DKIMF_DB_FLAG_ICASE |
 		                        DKIMF_DB_FLAG_READONLY),
 		                       NULL, &dberr);
 		if (status != 0)
 		{
 			(void) snprintf(err, errlen, "%s: dkimf_db_open(): %s",
-			         DEFINTERNAL, dberr);
+			         internal, dberr);
 			return -1;
 		}
 	}
@@ -12762,7 +12778,8 @@ mlfi_close(SMFICTX *ctx)
 
 struct smfiDesc smfilter =
 {
-	DKIMF_PRODUCT,	/* filter name */
+	/* Legacy API constraint: smfiDesc::xxfi_name is char *. */
+	(char *) DKIMF_PRODUCT,	/* filter name */
 	SMFI_VERSION,	/* version code -- do not change */
 	0,		/* flags; updated in main() */
 	mlfi_connect,	/* connection info filter */

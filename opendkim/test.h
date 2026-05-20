@@ -22,13 +22,13 @@
 /* PROTOTYPES */
 extern int dkimf_testfiles __P((DKIM_LIB *, char *, uint64_t, bool, int));
 
-extern int dkimf_test_addheader __P((void *, char *, char *));
+extern int dkimf_test_addheader __P((void *, const char *, const char *));
 extern int dkimf_test_addrcpt __P((void *, char *));
 extern int dkimf_test_chgheader __P((void *, char *, int, char *));
 extern int dkimf_test_delrcpt __P((void *, char *));
 extern void *dkimf_test_getpriv __P((void *));
 extern char *dkimf_test_getsymval __P((void *, const char *));
-extern int dkimf_test_insheader __P((void *, int, char *, char *));
+extern int dkimf_test_insheader __P((void *, int, const char *, const char *));
 extern int dkimf_test_progress __P((void *));
 extern int dkimf_test_quarantine __P((void *, char *));
 extern int dkimf_test_setpriv __P((void *, void *));
