@@ -7568,7 +7568,7 @@ dkimf_config_reload(void)
 		_Bool err = FALSE;
 		u_int line;
 		struct config *cfg;
-		char *missing;
+		const char *missing;
 		char *errstr = NULL;
 		char *deprecated = NULL;
 		char path[MAXPATHLEN + 1];
@@ -13147,7 +13147,7 @@ main(int argc, char **argv)
 	if (conffile != NULL)
 	{
 		u_int line = 0;
-		char *missing;
+		const char *missing;
 		char *deprecated = NULL;
 		char path[MAXPATHLEN + 1];
 

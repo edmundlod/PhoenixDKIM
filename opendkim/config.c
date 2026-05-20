@@ -617,7 +617,7 @@ config_load(char *file, struct configdef *def, unsigned int *line,
 **  	required was missing.
 */
 
-char *
+const char *
 config_check(struct config *head, struct configdef *def)
 {
 	int n;
