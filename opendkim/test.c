@@ -47,7 +47,7 @@ struct test_context
 	void *	tc_priv;		/* private data pointer */
 };
 
-char *milter_status[] =
+const char *milter_status[] =
 {
 	"SMFIS_CONTINUE",
 	"SMFIS_REJECT",
@@ -56,13 +56,13 @@ char *milter_status[] =
 	"SMFIS_TEMPFAIL"
 };
 
-char *envfrom[] =
+const char *envfrom[] =
 {
 	"<sender@example.org>",
 	NULL
 };
 
-char *envrcpt[] =
+const char *envrcpt[] =
 {
 	"<recipient@example.com>",
 	NULL
@@ -382,7 +382,7 @@ dkimf_test_getsymval(void *ctx, const char *sym)
 
 static int
 dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
-               FILE *f, char *file, _Bool strict, int tverbose)
+               FILE *f, const char *file, _Bool strict, int tverbose)
 {
 	bool inheaders = TRUE;
 	bool newline = FALSE;
@@ -407,7 +407,8 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	memset(buf, '\0', sizeof buf);
 	memset(line, '\0', sizeof buf);
 
-	ms = mlfi_envfrom((SMFICTX *) tctx, envfrom);
+	/* Legacy API constraint: libmilter xxfi_envfrom takes char ** argv. */
+	ms = mlfi_envfrom((SMFICTX *) tctx, (char **) envfrom);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: %s: mlfi_envfrom() returned %s\n",
@@ -416,7 +417,8 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	if (ms != SMFIS_CONTINUE)
 		return EX_SOFTWARE;
 
-	ms = mlfi_envrcpt((SMFICTX *) tctx, envrcpt);
+	/* Legacy API constraint: libmilter xxfi_envrcpt takes char ** argv. */
+	ms = mlfi_envrcpt((SMFICTX *) tctx, (char **) envrcpt);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: %s: mlfi_envrcpt() returned %s\n",
@@ -727,7 +729,7 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 
 				if (selector != NULL || domain != NULL)
 				{
-					char *dnssec;
+					const char *dnssec;
 					int dnsseccode = DKIM_DNSSEC_UNKNOWN;
 
 					dnsseccode = dkim_sig_getdnssec(sig);
@@ -847,7 +849,7 @@ int
 dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
                 bool strict, int verbose)
 {
-	char *file;
+	const char *file;
 	char *ctx;
 	FILE *f;
 	int status;
@@ -883,7 +885,14 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	sin.sin_port = htons(time(NULL) % 65536);
 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	ms = mlfi_connect((SMFICTX *) tctx, "localhost", (_SOCK_ADDR *) &sin);
+	/*
+	**  Legacy API constraint: mlfi_connect is the xxfi_connect callback,
+	**  whose libmilter prototype takes char * host but treats it
+	**  read-only.
+	*/
+
+	ms = mlfi_connect((SMFICTX *) tctx, (char *) "localhost",
+	                  (_SOCK_ADDR *) &sin);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: mlfi_connect() returned %s\n",
