@@ -24,6 +24,7 @@
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
 #include <netdb.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
@@ -4744,6 +4745,53 @@ dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt, void *ptr, size_t len)
 	  default:
 		return DKIM_STAT_INVALID;
 	}
+}
+
+/*
+**  DKIM_SETOPT -- set a library option
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	opt -- option to set
+**  	ptr -- new value (read-only)
+**  	len -- bytes available at "ptr"
+**
+**  Return value:
+**  	A DKIM_STAT constant.
+*/
+
+DKIM_STAT
+dkim_setopt(DKIM_LIB *lib, dkim_opts_t opt, const void *ptr, size_t len)
+{
+	/*
+	**  dkim_options has dual SET/GET semantics behind one void * ptr,
+	**  so it can't be const-correct.  In the SETOPT direction the
+	**  pointed-to value is purely an input that the option-specific
+	**  switch arm reads (memcpy/strlcpy from ptr into library state),
+	**  so the const-strip here is safe.
+	*/
+
+	return dkim_options(lib, DKIM_OP_SETOPT, opt,
+	                    (void *)(uintptr_t) ptr, len);
+}
+
+/*
+**  DKIM_GETOPT -- get a library option
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	opt -- option to read
+**  	ptr -- buffer to receive the current value
+**  	len -- bytes available at "ptr"
+**
+**  Return value:
+**  	A DKIM_STAT constant.
+*/
+
+DKIM_STAT
+dkim_getopt(DKIM_LIB *lib, dkim_opts_t opt, void *ptr, size_t len)
+{
+	return dkim_options(lib, DKIM_OP_GETOPT, opt, ptr, len);
 }
 
 /*

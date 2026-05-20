@@ -70,7 +70,7 @@ canon_code(char *name)
 **  	Pointer to name string.
 */
 
-char *
+const char *
 canon_name(dkim_canon_t code)
 {
 	switch (code)
@@ -120,7 +120,7 @@ alg_code(char *name)
 **  	Pointer to name string.
 */
 
-char *
+const char *
 alg_name(dkim_alg_t code)
 {
 	switch (code)
@@ -292,9 +292,9 @@ main(int argc, char **argv)
 
 	key = KEY;
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 
 	srandom(time(NULL));

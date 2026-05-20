@@ -28,7 +28,7 @@
 
 #define	SKIPHEADER	"Return-Path: <msk@sendmail.com>"
 
-char *signheaders[] =
+const char *signheaders[] =
 {
 	"Received",
 	"From",
@@ -79,7 +79,7 @@ main(int argc, char **argv)
 #ifdef TEST_KEEP_FILES
 	/* set flags */
 	flags = (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 #endif /* TEST_KEEP_FILES */
 
@@ -92,11 +92,11 @@ main(int argc, char **argv)
 
 	/* fix signing time */
 	fixed_time = 1172620939;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	(void) dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                    &fixed_time, sizeof fixed_time);
 
 	/* arrange to sign specific headers */
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_SIGNHDRS,
+	(void) dkim_setopt(lib, DKIM_OPTS_SIGNHDRS,
 	                    signheaders, sizeof(char **));
 
 	status = dkim_header(dkim, SKIPHEADER, strlen(SKIPHEADER));

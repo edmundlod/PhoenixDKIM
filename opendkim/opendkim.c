@@ -543,7 +543,7 @@ static Header dkimf_findheader __P((msgctx, const char *, int));
 void *dkimf_getpriv __P((SMFICTX *));
 char *dkimf_getsymval __P((SMFICTX *, const char *));
 sfsistat dkimf_insheader __P((SMFICTX *, int, const char *, const char *));
-sfsistat dkimf_quarantine __P((SMFICTX *, char *));
+sfsistat dkimf_quarantine __P((SMFICTX *, const char *));
 void dkimf_sendprogress __P((const void *));
 sfsistat dkimf_setpriv __P((SMFICTX *, void *));
 sfsistat dkimf_setreply __P((SMFICTX *, const char *, const char *, const char *));
@@ -739,15 +739,25 @@ dkimf_chgheader(SMFICTX *ctx, char *hname, int idx, char *hvalue)
 */
 
 sfsistat
-dkimf_quarantine(SMFICTX *ctx, char *reason)
+dkimf_quarantine(SMFICTX *ctx, const char *reason)
 {
 	assert(ctx != NULL);
 
 	if (testmode)
+	{
 		return dkimf_test_quarantine(ctx, reason);
+	}
 #ifdef SMFIF_QUARANTINE
 	else
-		return smfi_quarantine(ctx, reason);
+	{
+		/*
+		**  libmilter's smfi_quarantine takes the reason as char *;
+		**  libmilter never writes through this pointer -- cast away
+		**  const on our caller's read-only string.
+		*/
+
+		return smfi_quarantine(ctx, (char *) reason);
+	}
 #endif /* SMFIF_QUARANTINE */
 }
 
@@ -7306,12 +7316,12 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 		conf->conf_libopendkim = lib;
 	}
 
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                    &opts, sizeof opts);
 	opts |= (DKIM_LIBFLAGS_ACCEPTV05 | DKIM_LIBFLAGS_DROPSIGNER);
 	if (conf->conf_weaksyntax)
 		opts |= DKIM_LIBFLAGS_BADSIGHANDLES;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &opts, sizeof opts);
 
 	/* set the DNS callback */
@@ -7319,7 +7329,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 
 	if (conf->conf_minkeybits != 0)
 	{
-		(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_MINKEYBITS,
+		(void) dkim_setopt(lib, DKIM_OPTS_MINKEYBITS,
 		                    &conf->conf_minkeybits,
 		                    sizeof conf->conf_minkeybits);
 	}
@@ -7340,7 +7350,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 			dkim_dns_close(lib);
 	}
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_TIMEOUT,
+	(void) dkim_setopt(lib, DKIM_OPTS_TIMEOUT,
 	                    &conf->conf_dnstimeout,
 	                    sizeof conf->conf_dnstimeout);
 
@@ -7348,7 +7358,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	{
 		uint64_t drift = conf->conf_clockdrift;
 
-		status = dkim_options(lib, DKIM_OP_SETOPT,
+		status = dkim_setopt(lib,
 		                      DKIM_OPTS_CLOCKDRIFT, &drift,
 		                      sizeof drift);
 
@@ -7364,7 +7374,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	{
 		uint64_t sigtime = conf->conf_sigttl;
 
-		status = dkim_options(lib, DKIM_OP_SETOPT,
+		status = dkim_setopt(lib,
 		                      DKIM_OPTS_SIGNATURETTL, &sigtime,
 		                      sizeof sigtime);
 
@@ -7382,7 +7392,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	{
 		u_int opts;
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_GETOPT,
+		status = dkim_getopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_FLAGS, &opts, sizeof opts);
 
 		if (status != DKIM_STAT_OK)
@@ -7407,7 +7417,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 		if (conf->conf_stricthdrs)
 			opts |= DKIM_LIBFLAGS_STRICTHDRS;
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_FLAGS, &opts, sizeof opts);
 
 		if (status != DKIM_STAT_OK)
@@ -7429,7 +7439,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 			return FALSE;
 		}
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_OVERSIGNHDRS,
 		                      conf->conf_oversignhdrs,
 		                      sizeof conf->conf_oversignhdrs);
@@ -7453,7 +7463,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 			return FALSE;
 		}
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_MUSTBESIGNED,
 		                      conf->conf_mbs, sizeof conf->conf_mbs);
 
@@ -7477,7 +7487,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 			return FALSE;
 		}
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_SKIPHDRS,
 		                      conf->conf_omithdrs,
 		                      sizeof conf->conf_omithdrs);
@@ -7491,7 +7501,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	}
 	else
 	{
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_SKIPHDRS,
 		                      (void *) dkim_should_not_signhdrs,
 		                      sizeof (u_char **));
@@ -7516,7 +7526,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 			return FALSE;
 		}
 
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_SIGNHDRS, conf->conf_signhdrs,
 		                      sizeof conf->conf_signhdrs);
 
@@ -7529,7 +7539,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	}
 	else
 	{
-		status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+		status = dkim_setopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_SIGNHDRS,
 		                      (void *) dkim_should_signhdrs,
 		                      sizeof (u_char **));
@@ -7542,7 +7552,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 		}
 	}
 
-	status = dkim_options(conf->conf_libopendkim, DKIM_OP_SETOPT,
+	status = dkim_setopt(conf->conf_libopendkim,
 	                      DKIM_OPTS_TMPDIR,
 	                      (void *) conf->conf_tmpdir,
 	                      sizeof conf->conf_tmpdir);
@@ -14321,10 +14331,10 @@ main(int argc, char **argv)
 	{
 		dkim_query_t qtype = DKIM_QUERY_FILE;
 
-		(void) dkim_options(curconf->conf_libopendkim, DKIM_OP_SETOPT,
+		(void) dkim_setopt(curconf->conf_libopendkim,
 		                    DKIM_OPTS_QUERYMETHOD,
 		                    &qtype, sizeof qtype);
-		(void) dkim_options(curconf->conf_libopendkim, DKIM_OP_SETOPT,
+		(void) dkim_setopt(curconf->conf_libopendkim,
 		                    DKIM_OPTS_QUERYINFO,
 		                    testpubkeys, strlen(testpubkeys));
 	}

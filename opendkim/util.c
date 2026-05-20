@@ -73,7 +73,7 @@
 static pthread_mutex_t pop_lock;
 #endif /* POPAUTH */
 
-static char *optlist[] =
+static const char *optlist[] =
 {
 #if DEBUG
 	"DEBUG",
@@ -1267,7 +1267,7 @@ dkimf_dstring_chop(struct dkimf_dstring *dstr, int len)
 */
 
 size_t
-dkimf_dstring_printf(struct dkimf_dstring *dstr, char *fmt, ...)
+dkimf_dstring_printf(struct dkimf_dstring *dstr, const char *fmt, ...)
 {
 	size_t len;
 	size_t rem;

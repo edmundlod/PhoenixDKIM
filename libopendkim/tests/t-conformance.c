@@ -85,7 +85,7 @@ make_lib(void)
 static void
 set_fixed_time(DKIM_LIB *lib, uint64_t t)
 {
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	(void) dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                    &t, sizeof t);
 }
 
@@ -94,9 +94,9 @@ set_file_query(DKIM_LIB *lib)
 {
 	dkim_query_t qtype = DKIM_QUERY_FILE;
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 }
 
@@ -169,9 +169,9 @@ test_rfc6376_s3_3_rsa_sha256_verify_rfc8463_vector(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1528637909);
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    RFC8463_KEYFILE, strlen(RFC8463_KEYFILE));
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);
@@ -641,10 +641,10 @@ test_rfc6376_s3_4_crlf_fixing(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1172620939);
 
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 	flags |= DKIM_LIBFLAGS_FIXCRLF;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	key = KEY;
@@ -776,7 +776,7 @@ test_rfc6376_s3_5_missing_required_tags(void)
 	set_file_query(lib);
 
 	flags = DKIM_LIBFLAGS_BADSIGHANDLES;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);
@@ -828,7 +828,7 @@ test_rfc6376_s3_5_expiration(void)
 	set_fixed_time(lib, 1172620939);
 
 	sigttl = 60;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_SIGNATURETTL,
+	(void) dkim_setopt(lib, DKIM_OPTS_SIGNATURETTL,
 	                    &sigttl, sizeof sigttl);
 
 	key = KEY;
@@ -900,10 +900,10 @@ test_rfc6376_s3_5_body_length(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1172620939);
 
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 	flags |= DKIM_LIBFLAGS_SIGNLEN;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	key = KEY;
@@ -1934,23 +1934,23 @@ test_api_options(void)
 	lib = make_lib();
 
 	flags_in = DKIM_LIBFLAGS_SIGNLEN | DKIM_LIBFLAGS_ZTAGS;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	status = dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                      &flags_in, sizeof flags_in);
 	CHECK(status == DKIM_STAT_OK, "setopt FLAGS failed");
 
 	flags_out = 0;
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	status = dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                      &flags_out, sizeof flags_out);
 	CHECK(status == DKIM_STAT_OK, "getopt FLAGS failed");
 	CHECK(flags_out == flags_in, "FLAGS round-trip must match");
 
 	time_in = 1234567890;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &time_in, sizeof time_in);
 	CHECK(status == DKIM_STAT_OK, "setopt FIXEDTIME failed");
 
 	time_out = 0;
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_getopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &time_out, sizeof time_out);
 	CHECK(status == DKIM_STAT_OK, "getopt FIXEDTIME failed");
 	CHECK(time_out == time_in, "FIXEDTIME round-trip must match");
