@@ -6810,7 +6810,7 @@ dkim_getsighdr(DKIM *dkim, u_char *buf, size_t buflen, size_t initial)
 */
 
 _Bool
-dkim_sig_hdrsigned(DKIM_SIGINFO *sig, u_char *hdr)
+dkim_sig_hdrsigned(DKIM_SIGINFO *sig, const u_char *hdr)
 {
 	size_t len;
 	const u_char *c1 = NULL;

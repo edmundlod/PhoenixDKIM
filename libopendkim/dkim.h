@@ -675,7 +675,7 @@ extern DKIM_STAT dkim_getsighdr_d __P((DKIM *dkim, size_t initial,
 **  	appeared in that list.
 */
 
-extern _Bool dkim_sig_hdrsigned __P((DKIM_SIGINFO *sig, u_char *hdr));
+extern _Bool dkim_sig_hdrsigned __P((DKIM_SIGINFO *sig, const u_char *hdr));
 
 /*
 **  DKIM_SIG_GETQUERIES -- retrieve the queries needed to validate a signature
