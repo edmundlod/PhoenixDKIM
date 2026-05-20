@@ -99,14 +99,20 @@ main(void)
 	seed_set(seed, "emptyval",  "");
 
 	/* ── open: bad URI (missing prefix) ─────────────────────────────────────── */
-	errp = NULL;
-	status = dkimf_db_open(&db, "redis://" HOST ":6379", 0, NULL, &errp);
-	assert(status != 0);
+	{
+		char uri[] = "redis://" HOST ":6379";
+		errp = NULL;
+		status = dkimf_db_open(&db, uri, 0, NULL, &errp);
+		assert(status != 0);
+	}
 
 	/* ── open: valid URI with explicit port ──────────────────────────────────── */
-	errp = NULL;
-	status = dkimf_db_open(&db, "redis://" HOST ":6379/" PFX,
-	                        DKIMF_DB_FLAG_READONLY, NULL, &errp);
+	{
+		char uri[] = "redis://" HOST ":6379/" PFX;
+		errp = NULL;
+		status = dkimf_db_open(&db, uri,
+		                        DKIMF_DB_FLAG_READONLY, NULL, &errp);
+	}
 	if (status != 0)
 	{
 		fprintf(stderr, "dkimf_db_open failed: %s\n",
@@ -186,9 +192,12 @@ main(void)
 	assert(status == 0);
 
 	/* ── open: default port (no :port in URI) ────────────────────────────────── */
-	errp = NULL;
-	status = dkimf_db_open(&db, "redis://" HOST "/" PFX,
-	                        DKIMF_DB_FLAG_READONLY, NULL, &errp);
+	{
+		char uri[] = "redis://" HOST "/" PFX;
+		errp = NULL;
+		status = dkimf_db_open(&db, uri,
+		                        DKIMF_DB_FLAG_READONLY, NULL, &errp);
+	}
 	if (status != 0)
 	{
 		fprintf(stderr, "dkimf_db_open (default port) failed: %s\n",
