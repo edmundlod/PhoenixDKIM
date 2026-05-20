@@ -1,0 +1,15 @@
+From: Alice Sender <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: Test message 007 - duplicate headers
+Subject: This second Subject should be ignored per RFC 6376 s3.5
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+Message-ID: <test-007@example.com>
+X-Repeat-Header: first
+X-Repeat-Header: second
+X-Repeat-Header: third
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+RFC 6376 s3.5 says: when signing, the LAST occurrence of a header
+is what gets signed (headers are processed bottom-up). Both signers
+must agree on which X-Repeat-Header value ends up in the signature.
