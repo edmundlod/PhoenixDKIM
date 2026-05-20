@@ -4993,11 +4993,11 @@ dkim_sign(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 		new->dkim_mode = DKIM_MODE_SIGN;
 
 		/* do DER decoding here if needed */
-		if (strncmp((char *) secretkey, "MII", 3) == 0)
+		if (strncmp((const char *) secretkey, "MII", 3) == 0)
 		{
 			size_t b64len;
 
-			b64len = strlen((char *) secretkey);
+			b64len = strlen((const char *) secretkey);
 
 			new->dkim_key = (unsigned char *) DKIM_MALLOC(new,
 			                                              b64len);

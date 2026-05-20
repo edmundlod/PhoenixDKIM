@@ -326,7 +326,7 @@ typedef struct dkim DKIM;
 **  DKIM_SIGKEY_T -- private/public key (unencoded)
 */
 
-typedef unsigned char * dkim_sigkey_t;
+typedef const unsigned char * dkim_sigkey_t;
 
 /*
 **  DKIM_SIGINFO -- signature information for use by the caller
