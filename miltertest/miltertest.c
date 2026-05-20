@@ -1009,7 +1009,7 @@ mt_assert_state(struct mt_context *ctx, int state)
 int
 mt_echo(lua_State *l)
 {
-	char *str;
+	const char *str;
 
 	assert(l != NULL);
 
@@ -1019,7 +1019,7 @@ mt_echo(lua_State *l)
 		lua_error(l);
 	}
 
-	str = (char *) lua_tostring(l, 1);
+	str = lua_tostring(l, 1);
 	lua_pop(l, 1);
 
 	fprintf(stdout, "%s\n", str);
@@ -1040,7 +1040,7 @@ mt_echo(lua_State *l)
 int
 mt_chdir(lua_State *l)
 {
-	char *str;
+	const char *str;
 
 	assert(l != NULL);
 
@@ -1050,7 +1050,7 @@ mt_chdir(lua_State *l)
 		lua_error(l);
 	}
 
-	str = (char *) lua_tostring(l, 1);
+	str = lua_tostring(l, 1);
 	lua_pop(l, 1);
 
 	if (chdir(str) != 0)
@@ -1929,8 +1929,8 @@ mt_macro(lua_State *l)
 	size_t s;
 	struct mt_context *ctx;
 	char *bp;
-	char *name;
-	char *value;
+	const char *name;
+	const char *value;
 	char buf[BUFRSZ];
 
 	assert(l != NULL);
@@ -1968,8 +1968,8 @@ mt_macro(lua_State *l)
 			lua_error(l);
 		}
 
-		name = (char *) lua_tostring(l, c);
-		value = (char *) lua_tostring(l, c + 1);
+		name = lua_tostring(l, c);
+		value = lua_tostring(l, c + 1);
 
 		if (strlen(name) + strlen(value) + 2 + bp > buf + sizeof buf)
 		{
@@ -2024,9 +2024,9 @@ mt_conninfo(lua_State *l)
 	size_t s;
 	uint16_t port;
 	struct mt_context *ctx;
-	char *host;
+	const char *host;
 	char *bp;
-	char *ipstr;
+	const char *ipstr;
 	char buf[BUFRSZ];
 	char tmp[BUFRSZ];
 
@@ -2043,11 +2043,11 @@ mt_conninfo(lua_State *l)
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
 	if (lua_isstring(l, 2))
-		host = (char *) lua_tostring(l, 2);
+		host = lua_tostring(l, 2);
 	else
 		host = DEFCLIENTHOST;
 	if (lua_isstring(l, 3))
-		ipstr = (char *) lua_tostring(l, 3);
+		ipstr = lua_tostring(l, 3);
 	else
 		ipstr = NULL;
 
@@ -2231,7 +2231,7 @@ mt_unknown(lua_State *l)
 	size_t buflen;
 	size_t s;
 	struct mt_context *ctx;
-	char *cmd;
+	const char *cmd;
 	char *bp;
 	char buf[BUFRSZ];
 #endif /* SMFIC_UNKNOWN */
@@ -2251,7 +2251,7 @@ mt_unknown(lua_State *l)
 	lua_error(l);
 #else /* ! SMFIC_UNKNOWN */
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	cmd = (char *) lua_tostring(l, 2);
+	cmd = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_CONNINFO))
@@ -2321,7 +2321,7 @@ mt_helo(lua_State *l)
 	size_t buflen;
 	size_t s;
 	struct mt_context *ctx;
-	char *host;
+	const char *host;
 	char *bp;
 	char buf[BUFRSZ];
 
@@ -2336,7 +2336,7 @@ mt_helo(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	host = (char *) lua_tostring(l, 2);
+	host = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_CONNINFO))
@@ -2406,7 +2406,7 @@ mt_mailfrom(lua_State *l)
 	int c;
 	size_t buflen;
 	size_t s;
-	char *p;
+	const char *p;
 	char *bp;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
@@ -2427,7 +2427,7 @@ mt_mailfrom(lua_State *l)
 
 	for (c = 2; c <= lua_gettop(l); c++)
 	{
-		p = (char *) lua_tostring(l, c);
+		p = lua_tostring(l, c);
 
 		s += strlen(p) + 1;
 
@@ -2501,7 +2501,7 @@ mt_rcptto(lua_State *l)
 	int c;
 	size_t buflen;
 	size_t s;
-	char *p;
+	const char *p;
 	char *bp;
 	char *end;
 	struct mt_context *ctx;
@@ -2525,7 +2525,7 @@ mt_rcptto(lua_State *l)
 
 	for (c = 2; c <= lua_gettop(l); c++)
 	{
-		p = (char *) lua_tostring(l, c);
+		p = lua_tostring(l, c);
 
 		s += strlen(p) + 1;
 
@@ -2682,8 +2682,8 @@ mt_header(lua_State *l)
 	size_t buflen;
 	size_t s;
 	char *bp;
-	char *name;
-	char *value;
+	const char *name;
+	const char *value;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
 
@@ -2699,8 +2699,8 @@ mt_header(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	name = (char *) lua_tostring(l, 2);
-	value = (char *) lua_tostring(l, 3);
+	name = lua_tostring(l, 2);
+	value = lua_tostring(l, 3);
 	lua_pop(l, 3);
 
 	s = strlen(name) + 1 + strlen(value) + 1;
@@ -2850,7 +2850,7 @@ mt_bodystring(lua_State *l)
 	char rcmd;
 	size_t buflen;
 	struct mt_context *ctx;
-	char *str;
+	const char *str;
 	char buf[BUFRSZ];
 
 	assert(l != NULL);
@@ -2864,7 +2864,7 @@ mt_bodystring(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	str = (char *) lua_tostring(l, 2);
+	str = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_EOH))
@@ -3021,7 +3021,7 @@ int
 mt_bodyfile(lua_State *l)
 {
 	char rcmd;
-	char *file;
+	const char *file;
 	FILE *f;
 	size_t rlen;
 	struct mt_context *ctx;
@@ -3038,7 +3038,7 @@ mt_bodyfile(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	file = (char *) lua_tostring(l, 2);
+	file = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_EOH))
@@ -3229,8 +3229,8 @@ mt_eom_check(lua_State *l)
 	{
 	  case MT_HDRADD:
 	  {
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3241,7 +3241,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) == 4)
@@ -3253,7 +3253,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3293,8 +3293,8 @@ mt_eom_check(lua_State *l)
 	  {
 #ifdef SMFIR_INSHEADER
 		int idx = -1;
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3305,7 +3305,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) >= 4)
@@ -3317,7 +3317,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3368,8 +3368,8 @@ mt_eom_check(lua_State *l)
 	  case MT_HDRCHANGE:
 	  {
 		int idx = -1;
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3380,7 +3380,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) >= 4)
@@ -3392,7 +3392,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3442,7 +3442,7 @@ mt_eom_check(lua_State *l)
 	  case MT_HDRDELETE:
 	  {
 		int idx = -1;
-		char *name = NULL;
+		const char *name = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3453,7 +3453,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) == 4)
@@ -3507,7 +3507,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_RCPTADD:
 	  {
-		char *rcpt;
+		const char *rcpt;
 
 		if (lua_gettop(l) != 3 ||
 		    !lua_isstring(l, 3))
@@ -3516,7 +3516,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		rcpt = (char *) lua_tostring(l, 3);
+		rcpt = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3542,7 +3542,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_RCPTDELETE:
 	  {
-		char *rcpt;
+		const char *rcpt;
 
 		if (lua_gettop(l) != 3 ||
 		    !lua_isstring(l, 3))
@@ -3551,7 +3551,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		rcpt = (char *) lua_tostring(l, 3);
+		rcpt = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3577,7 +3577,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_BODYCHANGE:
 	  {
-		char *newbody = NULL;
+		const char *newbody = NULL;
 
 		if (lua_gettop(l) < 2 || lua_gettop(l) > 3 ||
 		    (lua_gettop(l) == 3 && !lua_isstring(l, 3)))
@@ -3587,7 +3587,7 @@ mt_eom_check(lua_State *l)
 		}
 
 		if (lua_gettop(l) == 3)
-			newbody = (char *) lua_tostring(l, 3);
+			newbody = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3616,7 +3616,7 @@ mt_eom_check(lua_State *l)
 #ifdef SMFIR_QUARANTINE
 	  case MT_QUARANTINE:
 	  {
-		char *reason = NULL;
+		const char *reason = NULL;
 
 		if (lua_gettop(l) < 2 || lua_gettop(l) > 3 ||
 		    (lua_gettop(l) == 3 && !lua_isstring(l, 3)))
@@ -3626,7 +3626,7 @@ mt_eom_check(lua_State *l)
 		}
 
 		if (lua_gettop(l) == 3)
-			reason = (char *) lua_tostring(l, 3);
+			reason = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3654,9 +3654,9 @@ mt_eom_check(lua_State *l)
 
 	  case MT_SMTPREPLY:
 	  {
-		char *smtp = NULL;
-		char *esc = NULL;
-		char *text = NULL;
+		const char *smtp = NULL;
+		const char *esc = NULL;
+		const char *text = NULL;
 
 		if (lua_gettop(l) < 3 || !lua_isstring(l, 3))
 		{
@@ -3664,7 +3664,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		smtp = (char *) lua_tostring(l, 3);
+		smtp = lua_tostring(l, 3);
 
 		if (lua_gettop(l) >= 4)
 		{
@@ -3675,7 +3675,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			esc = (char *) lua_tostring(l, 4);
+			esc = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3687,7 +3687,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			text = (char *) lua_tostring(l, 5);
+			text = lua_tostring(l, 5);
 		}
 
 		lua_pop(l, lua_gettop(l));
@@ -3815,7 +3815,7 @@ int
 mt_getheader(lua_State *l)
 {
 	int idx;
-	char *name;
+	const char *name;
 	struct mt_context *ctx;
 	struct mt_eom_request *r;
 
@@ -3831,7 +3831,7 @@ mt_getheader(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	name = (char *) lua_tostring(l, 2);
+	name = lua_tostring(l, 2);
 	idx = lua_tonumber(l, 3);
 	lua_pop(l, 3);
 
