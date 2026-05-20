@@ -3890,7 +3890,7 @@ dkimf_restart_check(int n, time_t t)
 **  	Bytes of output; may be larger than "outlen" if "out" was too small.
 */
 
-size_t
+static size_t
 dkimf_reptoken(u_char *out, size_t outlen, u_char *in, u_char *sub)
 {
 	size_t ret = 0;
@@ -4189,7 +4189,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 **  	key files.)  Without realpath(), only the target filename is checked.
 */
 
-int
+static int
 dkimf_securefile(const char *path, ino_t *ino, uid_t myuid, char *err,
                  size_t errlen)
 {
@@ -8102,7 +8102,7 @@ dkimf_cleanup(SMFICTX *ctx)
 **  	An SMFIS_* constant.
 */
 
-sfsistat
+static sfsistat
 dkimf_miltercode(SMFICTX *ctx, int dmc, char *str)
 {
 	assert(ctx != NULL);
@@ -9371,7 +9371,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 **  	FALSE iff the filter should reject the message based on results.
 */
 
-void
+static void
 dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
                   struct dkimf_config *conf, int *status)
 {
