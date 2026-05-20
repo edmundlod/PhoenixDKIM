@@ -224,6 +224,7 @@ pid_t filterpid;
 char scriptbuf[BUFRSZ];
 char *progname;
 
+#if !(HAVE_GETADDRINFO && HAVE_INET_NTOP)
 /*
 **  MT_INET_NTOA -- thread-safe inet_ntoa()
 **
@@ -237,7 +238,7 @@ char *progname;
 **  	then buf does not contain the complete result.
 */
 
-size_t
+static size_t
 mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 {
 	in_addr_t addr;
@@ -250,6 +251,7 @@ mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 	                (addr >> 24), (addr >> 16) & 0xff,
 	                (addr >> 8) & 0xff, addr & 0xff);
 }
+#endif /* ! (HAVE_GETADDRINFO && HAVE_INET_NTOP) */
 
 /*
 **  MT_LUA_READER -- "read" a script and make it available to Lua
@@ -263,7 +265,7 @@ mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 **  	Pointer to the data.
 */
 
-const char *
+static const char *
 mt_lua_reader(lua_State *l, void *data, size_t *size)
 {
 	struct mt_lua_io *io;
@@ -318,7 +320,7 @@ mt_lua_reader(lua_State *l, void *data, size_t *size)
 **  	Allocated memory, or NULL on failure.
 */
 
-void *
+static void *
 mt_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	(void) ud;
@@ -347,7 +349,7 @@ mt_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 **  	None.
 */
 
-void
+static void
 mt_flush_eomreqs(struct mt_context *ctx)
 {
 	struct mt_eom_request *r;
@@ -377,7 +379,7 @@ mt_flush_eomreqs(struct mt_context *ctx)
 **  	TRUE iff addition was successful.
 */
 
-_Bool
+static _Bool
 mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 {
 	struct mt_eom_request *r;
@@ -417,7 +419,7 @@ mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 **  	TRUE iff successful.
 */
 
-_Bool
+static _Bool
 mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 {
 	int i;
@@ -509,7 +511,7 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 **  	TRUE iff successful.
 */
 
-_Bool
+static _Bool
 mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 {
 	char command = (char) cmd;
@@ -576,7 +578,7 @@ mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 **  	TRUE if successful, FALSE otherwise.
 */
 
-_Bool
+static _Bool
 mt_assert_state(struct mt_context *ctx, int state)
 {
 	size_t len;
@@ -3889,7 +3891,7 @@ mt_getheader(lua_State *l)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [options]\n"
