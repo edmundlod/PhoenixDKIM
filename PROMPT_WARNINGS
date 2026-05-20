@@ -155,3 +155,17 @@ Smaller, mostly mechanical.  Address after the big two are tame.
   prior session (opendkim.c:9536/11286, opendkim-db.c:1689 are
   return-checked; opendkim.c:12371 has a provably-sufficient buffer).
   Line numbers may have shifted slightly from edits since.
+- Claude Code added comments when libmilter legacy API forced a -Wcast-qual.
+  The comment reads something like:
+
+        12781 +  /* Legacy API constraint: smfiDesc::xxfi_name is char *. */
+        12782 +  (char *) DKIMF_PRODUCT,  /* filter name */
+
+  More correct would be:
+
+  /*
+  **  libmilter's xxfi_name is char *; libmilter never writes through
+  **  this pointer — cast away const on our string literal.
+  */
+
+  Look up all these comments, and change them in the same vein. It explains better why we cast, and why it is safe.
