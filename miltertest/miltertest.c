@@ -420,7 +420,7 @@ mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 */
 
 static _Bool
-mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
+mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
 {
 	int i;
 	int expl;
@@ -471,7 +471,7 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 
 	if (expl > 0)
 	{
-		rlen = read(fd, (void *) buf, expl);
+		rlen = read(fd, buf, expl);
 		/* expl > 0 guards the cast; rlen is size_t, expl is int */
 		if (rlen != (size_t) expl)
 		{
