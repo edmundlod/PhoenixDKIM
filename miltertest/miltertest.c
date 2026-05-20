@@ -1348,7 +1348,7 @@ mt_connect(lua_State *l)
 	useconds_t interval = 0;
 	char *at;
 	char *p;
-	const char *sockinfo;
+	char sockinfo[BUFRSZ];
 	struct mt_context *new;
 
 	assert(l != NULL);
@@ -1369,7 +1369,13 @@ mt_connect(lua_State *l)
 		lua_error(l);
 	}
 
-	sockinfo = lua_tostring(l, 1);
+	/*
+	**  lua_tostring returns a pointer into Lua-owned memory that may
+	**  be reclaimed by the next lua_pop; copy into a local writable
+	**  buffer so the in-place ':'/'@' splitting below operates on
+	**  memory we own.
+	*/
+	strlcpy(sockinfo, lua_tostring(l, 1), sizeof sockinfo);
 	if (top == 3)
 	{
 		char *f;
@@ -1390,7 +1396,7 @@ mt_connect(lua_State *l)
 	lua_pop(l, top);
 
 	af = AF_UNSPEC;
-	p = (char *) strchr(sockinfo, ':');
+	p = strchr(sockinfo, ':');
 	if (p == NULL)
 	{
 		af = AF_UNIX;
