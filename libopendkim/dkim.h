@@ -784,20 +784,56 @@ extern DKIM_STAT dkim_sig_getcanonlen __P((DKIM *dkim, DKIM_SIGINFO *sig,
                                            ssize_t *signlen));
 
 /*
-**  DKIM_OPTIONS -- set/get options
+**  DKIM_SETOPT -- set a library option
 **
 **  Parameters:
-**  	dkimlib -- DKIM library handle
-**  	op -- operation (DKIM_OP_GET or DKIM_OP_SET)
+**  	lib -- DKIM library handle
 **  	opt -- which option (a DKIM_OPTS_* constant)
-**  	ptr -- value (in or out)
+**  	ptr -- value to install (read-only)
 **  	len -- bytes available at "ptr"
 **
 **  Return value:
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_options __P((DKIM_LIB *dkimlib, int op, dkim_opts_t opt,
+extern DKIM_STAT dkim_setopt(DKIM_LIB *lib, dkim_opts_t opt,
+                             const void *ptr, size_t len);
+
+/*
+**  DKIM_GETOPT -- get a library option
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	opt -- which option (a DKIM_OPTS_* constant)
+**  	ptr -- buffer to receive the current value
+**  	len -- bytes available at "ptr"
+**
+**  Return value:
+**  	A DKIM_STAT value.
+*/
+
+extern DKIM_STAT dkim_getopt(DKIM_LIB *lib, dkim_opts_t opt,
+                             void *ptr, size_t len);
+
+/*
+**  DKIM_OPTIONS -- set/get options (legacy dual-purpose wrapper)
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	op -- operation (DKIM_OP_GETOPT or DKIM_OP_SETOPT)
+**  	opt -- which option (a DKIM_OPTS_* constant)
+**  	ptr -- value (in or out, depending on op)
+**  	len -- bytes available at "ptr"
+**
+**  Return value:
+**  	A DKIM_STAT value.
+**
+**  Notes:
+**  	New code should prefer dkim_setopt() / dkim_getopt(), which split
+**  	this dual-purpose call into two const-correct paths.
+*/
+
+extern DKIM_STAT dkim_options __P((DKIM_LIB *lib, int op, dkim_opts_t opt,
                                    void *ptr, size_t len));
 
 /*

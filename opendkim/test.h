@@ -30,7 +30,7 @@ extern void *dkimf_test_getpriv __P((void *));
 extern char *dkimf_test_getsymval __P((void *, const char *));
 extern int dkimf_test_insheader __P((void *, int, const char *, const char *));
 extern int dkimf_test_progress __P((void *));
-extern int dkimf_test_quarantine __P((void *, char *));
+extern int dkimf_test_quarantine __P((void *, const char *));
 extern int dkimf_test_setpriv __P((void *, void *));
 extern int dkimf_test_setreply __P((void *, const char *, const char *,
                                     const char *));

@@ -245,7 +245,7 @@ dkimf_test_chgheader(void *ctx, char *hname, int idx, char *hvalue)
 */
 
 int
-dkimf_test_quarantine(void *ctx, char *reason)
+dkimf_test_quarantine(void *ctx, const char *reason)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -875,7 +875,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	/* pass fixed signing time to the library */
 	if (fixedtime != (uint64_t) -1)
 	{
-		(void) dkim_options(libopendkim, DKIM_OP_SETOPT,
+		(void) dkim_setopt(libopendkim,
 		                    DKIM_OPTS_FIXEDTIME,
 		                    &fixedtime, sizeof fixedtime);
 	}
