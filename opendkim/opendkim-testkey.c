@@ -125,7 +125,7 @@ dkimf_log_ssl_errors(void)
 **  	TRUE on successful load, false otherwise
 */
 
-int
+static int
 loadkey(char *buf, size_t *buflen)
 {
 	assert(buf != NULL);

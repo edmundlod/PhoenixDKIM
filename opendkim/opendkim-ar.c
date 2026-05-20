@@ -350,7 +350,7 @@ ares_xconvert(struct lookup *table, int code)
 ** 	"n" open.
 */
 
-_Bool
+static _Bool
 ares_dedup(struct authres *ar, int n)
 {
 	int c;

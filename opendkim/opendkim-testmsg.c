@@ -76,7 +76,7 @@ usage(void)
 **  	None.
 */
 
-void
+static void
 decr(char *str)
 {
 	char *p;
