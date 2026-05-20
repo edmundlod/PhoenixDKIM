@@ -2,7 +2,7 @@
 
 ## Status as of last session
 
-Current state on `master` after a full clean rebuild:
+Current state on `fix/wcast-qual-cleanup` after a full clean rebuild:
 
 | Category                  | Was | Now |
 |---------------------------|-----|-----|
@@ -14,8 +14,8 @@ Current state on `master` after a full clean rebuild:
 | -Wsign-compare            | 113 | 113 | DONE
 | -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
-| -Wdiscarded-qualifiers    |3776 | 816 | next
-| -Wcast-qual               | 391 |  17 | DONE (10 unique sites; all annotated)
+| -Wdiscarded-qualifiers    |3776 |  12 | DONE-ish (12 isolated stragglers)
+| -Wcast-qual               | 391 |  97 | DONE (all annotated, see below)
 | -Wmissing-prototypes      | 111 | 111 | next
 | -Wundef                   |  33 |  33 | next
 | -Wshadow                  |  25 |  25 | next
@@ -32,12 +32,15 @@ declaration flips in opendkim.c (the Authentication-Results
 KeyTable resolution path) where the variable's dominant use made
 the natural type unambiguous.
 
-No public API signatures changed.  Static helpers in dkim.c kept
-their existing `u_char *` parameter style — do NOT retype them as
-`char *` or `const char *` for local readability, even though it
-would be technically correct; it breaks the file's visual
-consistency.  **Stop and report if a fix needs an API signature
-change — that decision belongs to the user.**
+Static helpers in dkim.c kept their existing `u_char *` parameter
+style — do NOT retype them as `char *` or `const char *` for local
+readability, even though it would be technically correct; it breaks
+the file's visual consistency.  **Stop and report if a fix needs an
+API signature change — that decision belongs to the user.**  This
+session DID make two such changes after explicit approval:
+the `dkim_sigkey_t` typedef became `const unsigned char *` (commit
+296bc946), and `dkim_options` was split into const-correct
+`dkim_setopt` / `dkim_getopt` (commit 4c403b31).
 
 ### Pattern: U_STR macro for static const tables
 
@@ -61,72 +64,100 @@ Scope it to *just the table block* with `#undef U_STR` immediately
 after.  Do NOT extend `U_STR` to non-table call sites — when passing
 a string literal to a function taking non-const `u_char *` (e.g. the
 static `dkim_get_header`), use an inline `(u_char *) "lit"` cast.
-That matches the file's existing 61+ such casts.  Those will all be
-swept together when the -Wcast-qual cleanup begins; using U_STR
-there would just create -Wdiscarded-qualifiers warnings now.
+That matches the file's existing 61+ such casts.
 
-### -Wcast-qual (DONE)
+### -Wcast-qual (DONE — 97 instances, all annotated)
 
-Worked from 340 down to 17 (10 unique sites), all of which now carry
-explicit /* Legacy API constraint: ... */ annotations documenting
-why the const-strip is intentional.  The cleanup proceeded in three
-broad phases:
+97 unique sites carry explicit `/* libmilter's xxx_yyy is char *;
+libmilter never writes through this pointer ... */` annotations
+(or the equivalent for LMDB / dkim_set_dns_callback / etc.).  The
+comment style is documented in
+`~/.claude/projects/-home-edmund-devel-projects-opendkim-ng/memory/feedback_legacy_api_comments.md`
+— name the external symbol, name the read-only-ness, name the cast
+target.  When in doubt: fix the typedef (if you can change the API)
+or annotate (if you can't).
 
-1. **Internal-only const widening** — static helpers and intra-libopendkim
-   read-only inputs were retyped to `const u_char *`:
-   dkim_canon_buffer/_write, dkim_canon_bodychunk, dkim_canon_fixcrlf,
-   dkim_qp_encode, dkim_strdup, dkim_qp_decode pos local, the
-   dkim_add_querymethod/_xtag scan loops, and dkimf_findheader.
-2. **Public-API const widening (binary-compatible)** — same shape as
-   the earlier dkim_qp_decode widening in bff884e8.  Widened
-   dkim_header, dkim_body, dkim_chunk, dkim_key_syntax, dkim_sig_syntax,
-   dkim_process_set, and dkim_test_dns_put to take `const u_char *`
-   for their read-only inputs.  Daemon-side: opendkim/util.c's
-   dkimf_dstring_copy/_cat/_catn followed the same pattern, and
-   dkimf_checkbldb / dkimf_log_ssl_errors took `const char *jobid`.
-3. **Structural cleanup** — the DKIM_LIB header-name array fields
-   (dkiml_requiredhdrs / _oversignhdrs / _mbs) became
-   `const u_char *const *` so the static `dkim_required_signhdrs`
-   table no longer needs an `(u_char **)` cast at assignment or
-   comparison.  dkim_copy_array returns its natural `char **`
-   ownership type; dkim_clobber_array takes `const char *const *`
-   and routes the unavoidable free() const-strip through
-   `(void *)(uintptr_t)` at the single sink site (requires
-   <stdint.h>).  dkim_hdrlist takes `const u_char *const *`.  The
-   daemon's `mctx_jobid` field became `const u_char *` and the
-   `JOBID(x)` macro returns `const char *`.  The dq_name struct
-   member dropped its spurious `const` (it must be writable to be
-   snprintf'd at construction; the accessor still returns
-   `const char *`).  The two `(dkim_sigkey_t)` literal casts in
-   t-conformance.c's ed25519 round-trip tests were replaced with
-   `unsigned char privkey[] = RFC8463_ED_PRIVKEY_PEM;` local
-   initializers.
+The two big structural moves this session were:
 
-The remaining 10 annotated sites:
+- **dkim_sigkey_t** typedef widened to `const unsigned char *`.
+  libopendkim never writes through secretkey; the previous typedef
+  forced every test caller to either accept a discarded-qualifiers
+  warning or copy KEY into a writable buffer.  The `conf_seckey`
+  daemon field was *separately* retyped to plain `unsigned char *`
+  because dkimf_zapkey owns and zeroes it (different lifetime, same
+  bytes-on-disk shape).  Commit 296bc946 + fcfaffa9.
+- **dkim_options** split into `dkim_setopt(const void *)` /
+  `dkim_getopt(void *)`.  `dkim_options` remains as a legacy ABI
+  wrapper with a "new code should prefer …" docstring; ~454 internal
+  call sites were sed-migrated.  Commit 4c403b31.
 
-- **libopendkim/dkim.c** (7) — sig_domain / sig_selector (1872, 1889),
-  sig_b64key (2921), dkim_add_canon hdrlist (2234), dkim_ohdrs
-  strtok_r through plist storage (5669), dkim_sig_getalgorithm via
-  dkim_code_to_name (7806), dkim_sig_gettagvalue via dkim_param_get
-  (8076).  Each carries a "Legacy API constraint" comment block
-  explaining the documented u_char * vs. const u_char * mismatch
-  between the public signatures and the read-only plist/nametable
-  storage.
-- **opendkim/opendkim.c** (3) — dkimf_sendprogress's three
-  `(SMFICTX *) ctx` casts (7810/7816/7819), forced by
-  dkim_set_dns_callback's `void (*func)(const void *context)`
-  prototype; the registered context is a live, mutable SMFICTX *.
+### -Wdiscarded-qualifiers (12 left)
 
-### -Wdiscarded-qualifiers (816) — next big wave
+The 12 remaining sites are isolated single-warning shapes in test
+binaries and one helper:
 
-Dropped from 3776 to 816 as a side effect of the -Wcast-qual work
-(the two warnings often fire on the same line).  Remaining sites
-are almost entirely the string-literal/u_char/char plumbing pattern
-not yet touched by the const-widening passes.
+- `libopendkim/dkim.c:5643` and `libopendkim/tests/t-test99.c:153/154`:
+  `dkim_sig_hdrsigned`'s second arg (header name) — internal const
+  widen looks straightforward but check callers first.
+- `libopendkim/tests/t-test{44,47,102}.c`: file-scope `char *foo[] = { "lit", ... }`
+  tables initialised with string literals — same const-widen pattern
+  used for `signheaders` in t-test54.c.
+- `libopendkim/tests/t-test73.c:126`: an `assignment` warning;
+  haven't looked at it yet.
+- `miltertest/miltertest.c:2046`: an `assignment` warning;
+  miltertest still has ~84 -Wcast-qual sites from a prior pass.
+  Consider whether to dive into miltertest at all or treat it as
+  out-of-scope for the warning cleanup.
+- `opendkim/opendkim-testmsg.c:32`: file-scope literal table init.
+
+### What got done this session (20 commits, 6ae6ff80..HEAD)
+
+Discarded-qualifiers went 894 → 12 across these structural fixes
+(see `git log 6ae6ff80..HEAD` for the full list):
+
+- `struct configdef` / `struct config` name fields → `const char *`,
+  plus `config_check` return type and `config_error` return type.
+- `struct lookup.str` const-ified in opendkim.c (7 file-scope tables)
+  and a separate `struct lookup` in opendkim-ar.c.
+- `struct dkimf_db_table.name` (opendkim-db.c file-scope dbtypes table)
+  → `const char *`.
+- `struct dkimf_lua_script_result.lrs_error` → `const char *`;
+  tagged-union with `dofree` flag, so the six gated free() sites
+  cast via `(void *)(uintptr_t)` (requires `<stdint.h>`).
+- `dkimf_db_get` second arg `void *buf` → `const void *buf`.  The
+  one site that can't be const (MDB `key.mv_data = buf`) goes
+  through `(void *)(uintptr_t)` with a Legacy API constraint comment.
+- `dkimf_db_open`'s `err` out-param → `const char **`.  All 21
+  daemon-side `dberr` locals plus genzone/testkey/testmsg/lua/popdb
+  callers updated.
+- `dkimf_dns_init` and `dkimf_config_setlib`'s `err` out-params →
+  `const char **`.  Reconciles 22 `*err = "literal"` sites in
+  dkimf_config_setlib alone.
+- `dkimf_libstatus` / `dkimf_setreply` / `dkimf_getsymval` /
+  `dkimf_quarantine` / `dkimf_addheader` / `dkimf_insheader` /
+  `dkimf_dstring_printf`: read-only inputs now `const char *`,
+  smfi_* boundary calls carry annotated `(char *)` casts.
+- `dkimf_test_*` companions in test.h / test.c follow the daemon
+  wrappers above.
+- `conffile` global + `configfile` / `conffile` locals in
+  opendkim-genzone.c / opendkim-testkey.c → `const char *`;
+  config_load / config_load_level signature widened to
+  `const char *file`.
+- t-conformance.c: 25 `dkim_sigkey_t key; ... key = KEY;` sites
+  trivially clean now that `dkim_sigkey_t` is const.  The previous
+  session's ed25519 mutable-buffer workaround (commit 96468ed6) was
+  reverted: keys really are read-only.
+- t-setup.c, t-verifyperf.c, t-signperf.c, t-test54.c, t-test92.c,
+  t-test117.c, opendkim/util.c (optlist), opendkim/opendkim-arf.c
+  (arf_type_string / arf_dkim_failure_string returns): various small
+  const-widenings.
+- 94 `dkim_options(..., DKIM_OP_SETOPT, KEYFILE, ...)` warnings in
+  tests cleared by the dkim_options split above.
 
 ### -Wmissing-prototypes / -Wundef / -Wshadow
 
-Smaller, mostly mechanical.  Address after the big two are tame.
+Smaller, mostly mechanical.  Address after -Wdiscarded-qualifiers
+stragglers, or in parallel if a fresh session prefers.
 
 ## Workflow notes (carried over and updated)
 
@@ -137,6 +168,8 @@ Smaller, mostly mechanical.  Address after the big two are tame.
 - After a CMakeLists.txt or cmake/*.cmake change, reconfigure with
   `cmake -B build` (or `cmake build` from the repo root) before
   building.  `cmake --build` will do this for you when needed.
+- `ctest` (run from `build/`) is the test-suite invocation; expect
+  "100% tests passed, 0 tests failed out of 174" with 5 disabled.
 - One logical fix per commit, matching the existing "Fix: …" style.
 - Group mechanically-identical fixes into one commit; keep different
   bug shapes separate.
@@ -150,22 +183,23 @@ Smaller, mostly mechanical.  Address after the big two are tame.
   is left dirty by the user and must not be folded into a fix commit.
   Commit PROMPT_WARNINGS updates on their own ("Docs: …").
 - After each commit, rebuild and confirm the warning count for that
-  category dropped by the expected amount.
+  category dropped by the expected amount.  Incremental builds only
+  recompile changed files, so a clean rebuild
+  (`cmake --build build --target clean && cmake --build build --parallel`)
+  is required for a true delta against the table above.
 - Skip the 7 -Wformat-truncation warnings — verified safe in a
   prior session (opendkim.c:9536/11286, opendkim-db.c:1689 are
   return-checked; opendkim.c:12371 has a provably-sufficient buffer).
-  Line numbers may have shifted slightly from edits since.
-- Claude Code added comments when libmilter legacy API forced a -Wcast-qual.
-  The comment reads something like:
-
-        12781 +  /* Legacy API constraint: smfiDesc::xxfi_name is char *. */
-        12782 +  (char *) DKIMF_PRODUCT,  /* filter name */
-
-  More correct would be:
-
-  /*
-  **  libmilter's xxfi_name is char *; libmilter never writes through
-  **  this pointer — cast away const on our string literal.
-  */
-
-  Look up all these comments, and change them in the same vein. It explains better why we cast, and why it is safe.
+  Line numbers may have shifted from edits since.
+- Do NOT introduce new uses of the `__P((...))` K&R-compat macro on
+  newly-added prototypes — write plain `(...)` argument lists.
+  Existing `__P` usage on touched prototypes can stay.
+- Legacy-API const-strip cast comments must be *descriptive*: say
+  WHY we cast (which external symbol has the non-const signature)
+  and HOW it is safe (the library never writes through the pointer).
+  A one-liner like "Legacy API constraint: xxx is char *" is not
+  enough — the next reader still has to go check the external library
+  to know the cast is safe.  See
+  `feedback_legacy_api_comments.md` in this project's memory directory
+  for the standard shape and a worked example.  Don't go back and
+  reformat old comments unless explicitly asked.
