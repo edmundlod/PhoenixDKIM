@@ -14,7 +14,7 @@ Current state on `fix/wcast-qual-cleanup` after a full clean rebuild:
 | -Wsign-compare            | 113 | 113 | DONE
 | -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
-| -Wdiscarded-qualifiers    |3776 |  12 | DONE-ish (12 isolated stragglers)
+| -Wdiscarded-qualifiers    |3776 |   1 | DONE-ish (1 deferred straggler in miltertest)
 | -Wcast-qual               | 391 |  97 | DONE (all annotated, see below)
 | -Wmissing-prototypes      | 111 | 111 | next
 | -Wundef                   |  33 |  33 | next
@@ -91,29 +91,36 @@ The two big structural moves this session were:
   wrapper with a "new code should prefer …" docstring; ~454 internal
   call sites were sed-migrated.  Commit 4c403b31.
 
-### -Wdiscarded-qualifiers (12 left)
+### -Wdiscarded-qualifiers (1 deferred)
 
-The 12 remaining sites are isolated single-warning shapes in test
-binaries and one helper:
+The 11 remaining stragglers from the last session were cleared in
+three follow-up commits on this branch:
 
-- `libopendkim/dkim.c:5643` and `libopendkim/tests/t-test99.c:153/154`:
-  `dkim_sig_hdrsigned`'s second arg (header name) — internal const
-  widen looks straightforward but check callers first.
-- `libopendkim/tests/t-test{44,47,102}.c`: file-scope `char *foo[] = { "lit", ... }`
-  tables initialised with string literals — same const-widen pattern
-  used for `signheaders` in t-test54.c.
-- `libopendkim/tests/t-test73.c:126`: an `assignment` warning;
-  haven't looked at it yet.
-- `miltertest/miltertest.c:2046`: an `assignment` warning;
-  miltertest still has ~84 -Wcast-qual sites from a prior pass.
-  Consider whether to dive into miltertest at all or treat it as
-  out-of-scope for the warning cleanup.
-- `opendkim/opendkim-testmsg.c:32`: file-scope literal table init.
+- `dkim_sig_hdrsigned`'s `hdr` parameter widened to `const u_char *`
+  in the public header and definition (commit 2bf7d796).  The body
+  only feeds `hdr` to `strcasecmp` / `strncasecmp`; the one internal
+  callsite in `dkim.c:5643` and the four t-test99.c reports cleared
+  in one move.
+- `over_sign[]` / `skipheaders[]` / `mustbesigned[]` file-scope tables
+  in t-test{47,44,102}.c widened to `const char *foo[]`, matching the
+  existing `signheaders[]` in t-test54.c (commit 201caccf).
+- t-test73.c's `q = REPORTRECORD` and opendkim-testmsg.c's
+  `tmpdir = DEFTMPDIR` locals flipped to `const char *`
+  (commit a5a2b57c).
 
-### What got done this session (20 commits, 6ae6ff80..HEAD)
+One warning is **deferred**:
+
+- `miltertest/miltertest.c:2046` — `host = DEFCLIENTHOST;`.  Trivial
+  to fix (widen `char *host;` → `const char *host;`), but miltertest
+  still carries ~84 -Wcast-qual sites from a prior pass.  The user
+  has elected to treat miltertest as out-of-scope for this cleanup
+  pass; revisit as its own initiative if/when miltertest gets a
+  dedicated warning-cleanup sweep.
+
+### What got done in the big -Wdiscarded-qualifiers sweep (20 commits, 6ae6ff80..d676e47d)
 
 Discarded-qualifiers went 894 → 12 across these structural fixes
-(see `git log 6ae6ff80..HEAD` for the full list):
+(see `git log 6ae6ff80..d676e47d` for the full list):
 
 - `struct configdef` / `struct config` name fields → `const char *`,
   plus `config_check` return type and `config_error` return type.
@@ -154,6 +161,19 @@ Discarded-qualifiers went 894 → 12 across these structural fixes
 - 94 `dkim_options(..., DKIM_OP_SETOPT, KEYFILE, ...)` warnings in
   tests cleared by the dkim_options split above.
 
+### Follow-up round: straggler cleanup (3 commits, 2bf7d796..a5a2b57c)
+
+Discarded-qualifiers went 12 → 1 across:
+
+- `dkim_sig_hdrsigned(DKIM_SIGINFO *, u_char *hdr)` API widened to
+  `const u_char *hdr` in the public header (commit 2bf7d796).
+- Three file-scope `char *foo[]` literal tables in t-test{47,44,102}.c
+  flipped to `const char *foo[]` (commit 201caccf).
+- Two local-var widens in t-test73.c and opendkim-testmsg.c
+  (commit a5a2b57c).
+
+Only `miltertest/miltertest.c:2046` remains, deferred by user.
+
 ### -Wmissing-prototypes / -Wundef / -Wshadow
 
 Smaller, mostly mechanical.  Address after -Wdiscarded-qualifiers
@@ -161,7 +181,8 @@ stragglers, or in parallel if a fresh session prefers.
 
 ## Workflow notes (carried over and updated)
 
-- This is a CMake project, not autotools.  Build with
+- This is a CMake project, not autotools.  Build with all switches on
+  (LUA, REDIS, UNBOUND, and what others there are). Build with
   `cmake --build build --parallel 2>&1 | tee build.log`.
   Do NOT invoke `make` directly — use `cmake --build` so configure
   changes are picked up automatically.
