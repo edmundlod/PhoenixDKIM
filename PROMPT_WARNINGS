@@ -16,7 +16,7 @@ Current state on `fix/wcast-qual-cleanup` after a full clean rebuild:
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
 | -Wdiscarded-qualifiers    |3776 |   0 | DONE
 | -Wcast-qual               | 391 |  68 | DONE (all annotated, see below)
-| -Wmissing-prototypes      | 111 | 102 | next
+| -Wmissing-prototypes      | 111 |  36 | next (tests only)
 | -Wundef                   |  33 |  33 | next
 | -Wshadow                  |  25 |  25 | next
 
@@ -215,10 +215,78 @@ annotated legacy-API casts that contribute to the project-wide
 -Wcast-qual figure above and follow the same documented intentional
 pattern as the other 66.
 
-### -Wmissing-prototypes / -Wundef / -Wshadow
+### -Wmissing-prototypes (IN PROGRESS — daemon + libopendkim done, tests left)
 
-Smaller, mostly mechanical.  Address after -Wdiscarded-qualifiers
-stragglers, or in parallel if a fresh session prefers.
+Production-code sweep cleared 66 of 102 warnings (clean-rebuild
+verified) across six commits, leaving 36 in `libopendkim/tests/`:
+
+- **opendkim/opendkim.c** (47 → 0, two commits):
+  - 43 cleared by defining `DKIMF_LUA_PROTOTYPES` (inside the
+    existing `USE_LUA` guard) immediately before `#include
+    "opendkim.h"`.  opendkim.h already declares all 42 `dkimf_xs_*`
+    Lua extensions plus `dkimf_import_globals` under that guard;
+    opendkim-lua.c set the guard, opendkim.c didn't.  Commit
+    8fba6663.
+  - 4 file-internal helpers (`dkimf_reptoken`, `dkimf_securefile`,
+    `dkimf_miltercode`, `dkimf_ar_all_sigs`) marked `static`.
+    Commit f659804c.
+- **opendkim/opendkim-dns.c** (10 → 0, one commit): five
+  `dkimf_ub_*` Unbound callbacks (`_trustanchor`, `_config`,
+  `_init`, `_close`, `_nslist`) marked `static`, matching the
+  existing storage class on the sibling `_query` / `_cancel` /
+  `_waitreply` callbacks.  Library wires them in via
+  `dkim_dns_set_*` inside `dkimf_unbound_setup` only.  Counts are
+  doubled because the file is built into both the static and
+  shared libopendkim.  Commit dea76f58.
+- **opendkim/opendkim-genzone.c** (4 → 0): `strflen`, `loadkey`,
+  `despace`, `usage` made static.  Commit 76f1e031.
+- **opendkim/opendkim-ar.c / opendkim-testkey.c / opendkim-testmsg.c**
+  (3 → 0, bundled): `ares_dedup`, `loadkey`, `decr` made static.
+  Commit 4dd03e74.
+- **libopendkim/dkim.c** (2 → 0): `dkim_get_key`'s prototype hoisted
+  from a hand-rolled `extern` in dkim-test.c into dkim-keys.h next
+  to the existing `dkim_get_key_dns` / `_file` siblings.  Both call
+  sites already `#include "dkim-keys.h"`.  Commit e7a39391.
+
+#### Still to clear (36 warnings, all in libopendkim/tests/)
+
+Mechanically identical: each test program defines a small handful of
+file-internal helpers (`canon_code`, `alg_code`, `usage`,
+`alloc_handle`, `tagvalues`, `prescreen`, `free_handle`, `debug_*`,
+`final`, `message`, `eatws`, `lowerhdr`, `key_lookup`) and never
+declares them in any header.  Each is called only inside its own
+`t-*.c`.  Solution: prepend `static` to each definition.
+
+Files (per-file counts from clean-rebuild build.log):
+
+| File                            | Count |
+|---------------------------------|------:|
+| t-signperf.c                    |     5 |
+| t-verifyperf.c                  |     5 |
+| t-test41.c                      |     4 |
+| t-test45.c                      |     4 |
+| t-test46.c                      |     4 |
+| t-test64.c                      |     4 |
+| t-test65.c                      |     4 |
+| t-test42.c                      |     1 |
+| t-test67.c                      |     1 |
+| t-test72.c                      |     1 |
+| t-test74.c                      |     1 |
+| t-test131.c                     |     1 |
+| t-test136.c                     |     1 |
+
+Suggested commit shape: a single bundled commit ("Fix: mark
+file-internal test helpers static in libopendkim/tests") since the
+edits are mechanically identical — same pattern miltertest.c followed
+in commit 9d12e214.  Watch for a fresh `-Wunused-function` on any
+helper whose only caller is inside an `#ifdef` block; if it triggers,
+gate the definition behind the same condition as its caller (the
+`mt_inet_ntoa` precedent from miltertest).
+
+### -Wundef / -Wshadow
+
+Smaller, mostly mechanical.  Address after the tests-only
+-Wmissing-prototypes tail, or in parallel if a fresh session prefers.
 
 ## Workflow notes (carried over and updated)
 
