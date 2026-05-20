@@ -124,7 +124,7 @@ struct dkimf_db
 
 struct dkimf_db_table
 {
-	char *			name;
+	const char *		name;
 	int 			code;
 };
 
@@ -435,7 +435,7 @@ dkimf_db_type(DKIMF_DB db)
 
 int
 dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
-              char **err)
+              const char **err)
 {
 	DKIMF_DB new;
 	char *comma;

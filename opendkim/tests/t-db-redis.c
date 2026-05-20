@@ -79,7 +79,7 @@ main(void)
 	int status;
 	_Bool exists;
 	char errbuf[256];
-	char *errp;
+	const char *errp;
 	DKIMF_DB db;
 	redisContext *seed;
 

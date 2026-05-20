@@ -244,7 +244,7 @@ main(int argc, char **argv)
 	char *contact = NULL;
 	char *nameservers = NULL;
 	const char *configfile = NULL;
-	char *err = NULL;
+	const char *err = NULL;
 	char *nslist[MAXNS];
 	FILE *out;
 	BIO *private;

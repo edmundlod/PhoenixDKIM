@@ -2066,7 +2066,7 @@ dkimf_xs_dbopen(lua_State *l)
 	int status;
 	DKIMF_DB db;
 	char *name;
-	char *err = NULL;
+	const char *err = NULL;
 	struct dkimf_lua_gc *gc;
 
 	assert(l != NULL);
@@ -6170,7 +6170,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL && !testmode)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_peerdb, str,
 		                       (dbflags | 
@@ -6188,7 +6188,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (conf->conf_testdnsdata != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_testdnsdb,
 		                       conf->conf_testdnsdata,
@@ -6217,7 +6217,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_internal, str,
 		                       (dbflags | 
@@ -6234,7 +6234,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	else
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_internal, DEFINTERNAL,
 		                       (dbflags | 
@@ -6263,7 +6263,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL && !testmode)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_exignore, str,
 		                       (dbflags | 
@@ -6291,7 +6291,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL && !testmode)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_exemptdb, str,
 		                       (dbflags | 
@@ -6313,7 +6313,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_bldb, str,
 		                       (dbflags | 
@@ -6334,7 +6334,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_signhdrsdb, str,
 		                       (dbflags | 
@@ -6355,7 +6355,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_remardb, str,
 		                       (dbflags | 
@@ -6376,7 +6376,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_dontsigntodb, str,
 		                       (dbflags | 
@@ -6397,7 +6397,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_mbsdb, str,
 		                       (dbflags |
@@ -6424,7 +6424,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_omithdrdb, str,
 		                       (dbflags |
@@ -6447,7 +6447,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_mtasdb, str,
 		                       (dbflags | DKIMF_DB_FLAG_READONLY),
@@ -6471,7 +6471,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_oversigndb, str,
 		                       (dbflags |
@@ -6492,7 +6492,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_senderhdrsdb, str,
 		                       (dbflags |
@@ -6522,7 +6522,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		if (conf->conf_signtable != NULL)
 		{
 			int status;
-			char *dberr = NULL;
+			const char *dberr = NULL;
 
 			status = dkimf_db_open(&conf->conf_signtabledb,
 			                       conf->conf_signtable,
@@ -6554,7 +6554,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		else
 		{
 			int status;
-			char *dberr = NULL;
+			const char *dberr = NULL;
 
 			status = dkimf_db_open(&conf->conf_keytabledb,
 			                       conf->conf_keytable,
@@ -6588,7 +6588,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_thirdpartydb, str,
 		                       (dbflags | DKIMF_DB_FLAG_ICASE |
@@ -6614,7 +6614,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_resigndb, str,
 		                       (dbflags | DKIMF_DB_FLAG_ICASE |
@@ -6641,7 +6641,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	if (str != NULL && conf->conf_keytabledb == NULL)
 	{
 		int status;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_domainsdb, str,
 		                       (dbflags | DKIMF_DB_FLAG_READONLY |
@@ -6664,7 +6664,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	{
 		int status;
 		int dbtype;
-		char *dberr = NULL;
+		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_macrosdb, str,
 		                       (dbflags | DKIMF_DB_FLAG_READONLY |
@@ -13298,15 +13298,14 @@ main(int argc, char **argv)
 		if (p != dbname)
 			memmove(dbname, p, strlen(p) + 1);
 
-		p = NULL;
 		status = dkimf_db_open(&dbtest, dbname,
 		                       (DKIMF_DB_FLAG_READONLY |
 		                        DKIMF_DB_FLAG_ASCIIONLY),
-		                       NULL, &p);
+		                       NULL, &liberr);
 		if (status != 0)
 		{
 			fprintf(stderr, "%s: %s: dkimf_db_open(): %s\n",
-			        progname, dbname, p);
+			        progname, dbname, liberr);
 			return EX_SOFTWARE;
 		}
 
@@ -14335,7 +14334,7 @@ main(int argc, char **argv)
 #ifdef POPAUTH
 	if (popdbfile != NULL)
 	{
-		char *err = NULL;
+		const char *err = NULL;
 
 		status = dkimf_initpopauth();
 		if (status != 0)
