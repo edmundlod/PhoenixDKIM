@@ -77,7 +77,7 @@ stub_dns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	int elen;
 	int slen;
 	int olen;
-	char *q;
+	const char *q;
 	unsigned char *len;
 	unsigned char *dnptrs[3];
 	unsigned char **lastdnptr;
