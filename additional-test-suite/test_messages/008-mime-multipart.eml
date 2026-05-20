@@ -1,0 +1,19 @@
+From: Alice Sender <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: Test message 008 - MIME multipart
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+Message-ID: <test-008@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary-008"
+
+This is the preamble, which is not part of the signed body.
+--boundary-008
+Content-Type: text/plain; charset=utf-8
+
+This is the plain text part.
+It has two lines.
+--boundary-008
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>This is the <b>HTML</b> part.</p></body></html>
+--boundary-008--
