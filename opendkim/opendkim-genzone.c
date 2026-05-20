@@ -71,7 +71,7 @@ char *progname;
 **  	Rendered width (i.e. expand tabs, etc.).
 */
 
-int
+static int
 strflen(char *str)
 {
 	int olen = 0;
@@ -101,7 +101,7 @@ strflen(char *str)
 **  	TRUE on successful load, false otherwise
 */
 
-int
+static int
 loadkey(char *buf, size_t *buflen)
 {
 	assert(buf != NULL);
@@ -153,7 +153,7 @@ loadkey(char *buf, size_t *buflen)
 **  	None.
 */
 
-void
+static void
 despace(char *str)
 {
 	char *p;
@@ -182,7 +182,7 @@ despace(char *str)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [opts] [dataset]\n"
