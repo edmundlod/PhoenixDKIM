@@ -14,11 +14,23 @@
 #include <sys/types.h>
 
 /* types */
+/*
+**  lrs_error is a tagged-union pointer.  It is either:
+**    - NULL,
+**    - a heap string strdup'd from lua_tostring() (set by the hooks
+**      in opendkim-lua.c), which the consumer must free, OR
+**    - a string literal assigned by the consumer when the hook left
+**      it NULL (in which case the consumer sets a local dofree=FALSE
+**      flag to skip free()).
+**  The const here reflects what every reader does; the rare
+**  free() site is gated by dofree and casts away const.
+*/
+
 struct dkimf_lua_script_result
 {
-	int	lrs_rcount;
-	char *	lrs_error;
-	char **	lrs_results;
+	int		lrs_rcount;
+	const char *	lrs_error;
+	char **		lrs_results;
 };
 
 struct dkimf_lua_gc_item

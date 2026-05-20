@@ -38,6 +38,7 @@
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6003,7 +6004,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                         &conf->conf_setupfuncsz) != 0)
 			{
 				strlcpy(err, lres.lrs_error, errlen);
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 				return -1;
 			}
 		}
@@ -6070,7 +6071,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                          &conf->conf_screenfuncsz) != 0)
 			{
 				strlcpy(err, lres.lrs_error, errlen);
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 				return -1;
 			}
 		}
@@ -6135,7 +6136,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			                         &conf->conf_finalfuncsz) != 0)
 			{
 				strlcpy(err, lres.lrs_error, errlen);
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 				return -1;
 			}
 		}
@@ -10950,7 +10951,7 @@ mlfi_eoh(SMFICTX *ctx)
 			}
 
 			if (dofree)
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 
 			return SMFIS_TEMPFAIL;
 		}
@@ -11457,7 +11458,7 @@ mlfi_eoh(SMFICTX *ctx)
 			}
 
 			if (dofree)
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 
 			return SMFIS_TEMPFAIL;
 		}
@@ -12500,7 +12501,7 @@ mlfi_eom(SMFICTX *ctx)
 			}
 
 			if (dofree)
-				free(lres.lrs_error);
+				free((void *)(uintptr_t) lres.lrs_error);
 
 			return SMFIS_TEMPFAIL;
 		}
