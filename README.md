@@ -11,7 +11,7 @@ actively maintained dependencies.
 
 ## What's New in 3.0
 
-- **OpenSSL 3** — all cryptography ported to the EVP high-level API
+- **OpenSSL 3+** — all cryptography ported to the EVP high-level API
 - **Ed25519** — signing and verification per RFC 8463
 - **LMDB** — replaces unmaintained BerkeleyDB for key storage
 - **CMake** — replaces autoconf/automake
