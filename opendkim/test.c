@@ -352,7 +352,7 @@ dkimf_test_addrcpt(void *ctx, char *addr)
 */
 
 char *
-dkimf_test_getsymval(void *ctx, char *sym)
+dkimf_test_getsymval(void *ctx, const char *sym)
 {
 	static char symout[MAXBUFRSZ];
 

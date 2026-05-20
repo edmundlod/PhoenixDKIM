@@ -540,7 +540,7 @@ static void dkimf_config_reload __P((void));
 sfsistat dkimf_delrcpt __P((SMFICTX *, char *));
 static Header dkimf_findheader __P((msgctx, const char *, int));
 void *dkimf_getpriv __P((SMFICTX *));
-char *dkimf_getsymval __P((SMFICTX *, char *));
+char *dkimf_getsymval __P((SMFICTX *, const char *));
 sfsistat dkimf_insheader __P((SMFICTX *, int, char *, char *));
 sfsistat dkimf_quarantine __P((SMFICTX *, char *));
 void dkimf_sendprogress __P((const void *));
@@ -857,15 +857,24 @@ dkimf_setreply(SMFICTX *ctx, const char *rcode, const char *xcode,
 */
 
 char *
-dkimf_getsymval(SMFICTX *ctx, char *sym)
+dkimf_getsymval(SMFICTX *ctx, const char *sym)
 {
 	assert(ctx != NULL);
 	assert(sym != NULL);
 
 	if (testmode)
+	{
 		return dkimf_test_getsymval(ctx, sym);
+	}
 	else
-		return smfi_getsymval(ctx, sym);
+	{
+		/*
+		**  Legacy API constraint: libmilter's smfi_getsymval takes
+		**  char * but treats the symbol name as read-only.
+		*/
+
+		return smfi_getsymval(ctx, (char *) sym);
+	}
 }
 
 #ifdef USE_LUA
@@ -5452,7 +5461,7 @@ dkimf_config_free(struct dkimf_config *conf)
 */
 
 static _Bool
-dkimf_parsehandler(struct config *cfg, char *name, struct handling *hndl,
+dkimf_parsehandler(struct config *cfg, const char *name, struct handling *hndl,
                    char *err, size_t errlen)
 {
 	int action;

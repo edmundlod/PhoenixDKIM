@@ -27,7 +27,7 @@ extern int dkimf_test_addrcpt __P((void *, char *));
 extern int dkimf_test_chgheader __P((void *, char *, int, char *));
 extern int dkimf_test_delrcpt __P((void *, char *));
 extern void *dkimf_test_getpriv __P((void *));
-extern char *dkimf_test_getsymval __P((void *, char *));
+extern char *dkimf_test_getsymval __P((void *, const char *));
 extern int dkimf_test_insheader __P((void *, int, char *, char *));
 extern int dkimf_test_progress __P((void *));
 extern int dkimf_test_quarantine __P((void *, char *));
