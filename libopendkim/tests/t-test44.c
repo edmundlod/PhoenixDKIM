@@ -28,7 +28,7 @@
 
 #define	SKIPHEADER	"Return-Path: <msk@sendmail.com>"
 
-char *skipheaders[] =
+const char *skipheaders[] =
 {
 	"Return-Path",
 	NULL

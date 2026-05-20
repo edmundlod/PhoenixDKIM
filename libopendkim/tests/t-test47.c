@@ -24,7 +24,7 @@
 
 #define	MAXHEADER	4096
 
-char *over_sign[] = 
+const char *over_sign[] =
 {
 	"Cc",
 	NULL
