@@ -552,6 +552,11 @@ mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 	{
 		num_vectors = 2;
 		sl += len;
+		/*
+		**  struct iovec's iov_base is void *; writev only reads
+		**  from it -- cast away const on our caller's read-only
+		**  buf for the outbound vector.
+		*/
 		vector[1].iov_base = (void *) buf;
 		vector[1].iov_len  = len;
 	}
@@ -1225,6 +1230,12 @@ mt_startfilter(lua_State *l)
 
 	  case 0:
 		close(fds[0]);
+		/*
+		**  POSIX execv takes char *const argv[]; execv only reads
+		**  the argument strings before the exec replaces our
+		**  address space -- cast away const on the Lua-supplied
+		**  argv array we built above.
+		*/
 		execv(argv[0], (char * const *) argv);
 		exit(1);
 
