@@ -7179,7 +7179,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 */
 
 static _Bool
-dkimf_dns_init(DKIM_LIB *lib, struct dkimf_config *conf, char **err)
+dkimf_dns_init(DKIM_LIB *lib, struct dkimf_config *conf, const char **err)
 {
 	int status;
 
@@ -7258,7 +7258,7 @@ dkimf_dns_init(DKIM_LIB *lib, struct dkimf_config *conf, char **err)
 */
 
 static _Bool
-dkimf_config_setlib(struct dkimf_config *conf, char **err)
+dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 {
 	DKIM_STAT status;
 	u_int opts;
@@ -7589,7 +7589,7 @@ dkimf_config_reload(void)
 		u_int line;
 		struct config *cfg;
 		const char *missing;
-		char *errstr = NULL;
+		const char *errstr = NULL;
 		char *deprecated = NULL;
 		char path[MAXPATHLEN + 1];
 
@@ -7612,7 +7612,7 @@ dkimf_config_reload(void)
 
 		if (deprecated != NULL)
 		{
-			char *action = "aborting";
+			const char *action = "aborting";
 			if (allowdeprecated)
 				action = "continuing";
 
@@ -9740,7 +9740,7 @@ mlfi_negotiate(SMFICTX *ctx,
 sfsistat
 mlfi_connect(SMFICTX *ctx, char *host, _SOCK_ADDR *ip)
 {
-	char *err = NULL;
+	const char *err = NULL;
 	connctx cc;
 	struct dkimf_config *conf;
 
@@ -12876,6 +12876,7 @@ main(int argc, char **argv)
 	char *chrootdir = NULL;
 	char *extract = NULL;
 	char *p;
+	const char *liberr = NULL;
 	char *pidfile = NULL;
 #ifdef POPAUTH
 	char *popdbfile = NULL;
@@ -13087,11 +13088,11 @@ main(int argc, char **argv)
 			break;
 
 		  case 'V':
-			if (!dkimf_config_setlib(curconf, &p))
+			if (!dkimf_config_setlib(curconf, &liberr))
 			{
 				fprintf(stderr,
 				        "%s: can't configure DKIM library: %s\n",
-				        progname, p);
+				        progname, liberr);
 
 				return EX_SOFTWARE;
 			}
@@ -13201,7 +13202,7 @@ main(int argc, char **argv)
 
 		if (deprecated != NULL)
 		{
-			char *action = "aborting";
+			const char *action = "aborting";
 			if (allowdeprecated)
 				action = "continuing";
 
@@ -14147,11 +14148,13 @@ main(int argc, char **argv)
 	}
 
 	/* initialize DKIM library */
-	if (!dkimf_config_setlib(curconf, &p))
+	if (!dkimf_config_setlib(curconf, &liberr))
 	{
 		if (curconf->conf_dolog)
-			syslog(LOG_ERR, "can't configure DKIM library: %s", p);
-		fprintf(stderr, "%s: can't configure DKIM library: %s", progname, p);
+			syslog(LOG_ERR, "can't configure DKIM library: %s",
+			       liberr);
+		fprintf(stderr, "%s: can't configure DKIM library: %s",
+		        progname, liberr);
 		return EX_SOFTWARE;
 	}
 
