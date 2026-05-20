@@ -48,9 +48,6 @@
 #define	TESTTTL			300
 #define MAXPACKET		8192
 
-/* prototypes from elsewhere */
-extern DKIM_STAT dkim_get_key __P((DKIM *, DKIM_SIGINFO *, _Bool));
-
 /*
 **  DKIM_TEST_DNS_PUT -- enqueue a DNS reply for automated testing
 **
