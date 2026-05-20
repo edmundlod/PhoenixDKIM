@@ -185,7 +185,7 @@ config_attach(struct config *c1, struct config **c2)
 */
 
 static struct config *
-config_load_level(char *file, struct configdef *def,
+config_load_level(const char *file, struct configdef *def,
                   unsigned int *line, char *outpath, size_t outpathlen,
                   int level, char **deprecated)
 {
@@ -513,7 +513,7 @@ config_load_level(char *file, struct configdef *def,
 **  	Pointer to a NULL-terminated string explaining the last error.
 */
 
-char *
+const char *
 config_error(void)
 {
 	switch (conf_error)
@@ -596,7 +596,7 @@ config_free(struct config *head)
 */
 
 struct config *
-config_load(char *file, struct configdef *def, unsigned int *line,
+config_load(const char *file, struct configdef *def, unsigned int *line,
             char *path, size_t pathlen, char **deprecated)
 {
 	conf_error = CONF_UNKNOWN;

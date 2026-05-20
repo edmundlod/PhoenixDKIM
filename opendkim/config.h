@@ -45,10 +45,10 @@ struct configdef
 /* prototypes */
 extern const char *config_check __P((struct config *, struct configdef *));
 extern unsigned int config_dump __P((struct config *, FILE *, const char *));
-extern char *config_error __P((void));
+extern const char *config_error __P((void));
 extern void config_free __P((struct config *));
 extern int config_get __P((struct config *, const char *, void *, size_t));
-extern struct config *config_load __P((char *, struct configdef *,
+extern struct config *config_load __P((const char *, struct configdef *,
                                        unsigned int *, char *, size_t, char **));
 extern _Bool config_validname __P((struct configdef *, const char *));
 

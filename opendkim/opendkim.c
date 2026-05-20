@@ -546,7 +546,7 @@ sfsistat dkimf_quarantine __P((SMFICTX *, char *));
 void dkimf_sendprogress __P((const void *));
 sfsistat dkimf_setpriv __P((SMFICTX *, void *));
 sfsistat dkimf_setreply __P((SMFICTX *, const char *, const char *, const char *));
-static void dkimf_sigreport __P((connctx, struct dkimf_config *, char *));
+static void dkimf_sigreport __P((connctx, struct dkimf_config *, const char *));
 
 /* GLOBALS */
 _Bool dolog;					/* logging? (exported) */
@@ -559,7 +559,7 @@ int diesig;					/* signal to distribute */
 int thread_count;				/* thread count */
 char *progname;					/* program name */
 char *sock;					/* listening socket */
-char *conffile;					/* configuration file */
+const char *conffile;				/* configuration file */
 struct dkimf_config *curconf;			/* current configuration */
 #ifdef POPAUTH
 DKIMF_DB popdb;					/* POP auth DB */
@@ -8823,7 +8823,7 @@ dkimf_apply_signtable(struct dkimf_config *conf, struct msgctx *dfc,
 */
 
 static void
-dkimf_sigreport(connctx cc, struct dkimf_config *conf, char *hostname)
+dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 {
 	_Bool sendreport = FALSE;
 	int bfd = -1;
@@ -11614,8 +11614,8 @@ mlfi_eom(SMFICTX *ctx)
 	connctx cc;
 	msgctx dfc;
 	DKIM *lastdkim = NULL;
-	char *authservid;
-	char *hostname;
+	const char *authservid;
+	const char *hostname;
 	struct dkimf_config *conf;
 	DKIM_SIGINFO *sig = NULL;
 	Header hdr;

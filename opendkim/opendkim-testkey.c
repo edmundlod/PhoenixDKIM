@@ -217,7 +217,7 @@ main(int argc, char **argv)
 	char *key = NULL;
 	char *dataset = NULL;
 	char *nslist = NULL;
-	char *conffile = NULL;
+	const char *conffile = NULL;
 	char *p;
 	DKIM_LIB *lib;
 	char *trustanchor = NULL;

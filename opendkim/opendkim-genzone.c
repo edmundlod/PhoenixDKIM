@@ -243,7 +243,7 @@ main(int argc, char **argv)
 	char *onlydomain = NULL;
 	char *contact = NULL;
 	char *nameservers = NULL;
-	char *configfile = NULL;
+	const char *configfile = NULL;
 	char *err = NULL;
 	char *nslist[MAXNS];
 	FILE *out;
