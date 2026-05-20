@@ -178,7 +178,7 @@ struct mt_lua_io
 {
 	_Bool		lua_io_done;
 	size_t		lua_io_scriptlen;
-	const char *	lua_io_script;
+	char *		lua_io_script;
 };
 
 static const luaL_Reg mt_library[] =
@@ -4037,7 +4037,7 @@ main(int argc, char **argv)
 			return 1;
 		}
 
-		io.lua_io_script = (const char *) malloc(s.st_size);
+		io.lua_io_script = malloc(s.st_size);
 		if (io.lua_io_script == NULL)
 		{
 			fprintf(stderr, "%s: malloc(): %s\n", progname,
@@ -4047,13 +4047,13 @@ main(int argc, char **argv)
 			return 1;
 		}
 
-		rlen = read(fd, (void *) io.lua_io_script, s.st_size);
+		rlen = read(fd, io.lua_io_script, s.st_size);
 		if (rlen != s.st_size)
 		{
 			fprintf(stderr,
 			        "%s: %s: read() returned %zu (expecting %ld)\n",
 			        progname, script, rlen, (long) s.st_size);
-			free((void *) io.lua_io_script);
+			free(io.lua_io_script);
 			close(fd);
 			lua_close(l);
 			return 1;
@@ -4244,7 +4244,7 @@ main(int argc, char **argv)
 		}
 		lua_close(l);
 		if (io.lua_io_script != NULL)
-			free((void *) io.lua_io_script);
+			free(io.lua_io_script);
 		return 1;
 
 	  default:
@@ -4287,7 +4287,7 @@ main(int argc, char **argv)
 
 	lua_close(l);
 	if (io.lua_io_script != NULL)
-		free((void *) io.lua_io_script);
+		free(io.lua_io_script);
 
 	if (filterpid != 0)
 	{
