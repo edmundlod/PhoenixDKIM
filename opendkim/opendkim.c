@@ -93,6 +93,9 @@
 #include "opendkim-db.h"
 #include "opendkim-config.h"
 #include "opendkim-crypto.h"
+#ifdef USE_LUA
+# define DKIMF_LUA_PROTOTYPES
+#endif /* USE_LUA */
 #include "opendkim.h"
 #include "opendkim-ar.h"
 #include "opendkim-arf.h"
