@@ -407,7 +407,12 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	memset(buf, '\0', sizeof buf);
 	memset(line, '\0', sizeof buf);
 
-	/* Legacy API constraint: libmilter xxfi_envfrom takes char ** argv. */
+	/*
+	**  libmilter's xxfi_envfrom callback takes argv as char **;
+	**  the milter never writes through these pointers -- cast away
+	**  const on our envfrom literal table.
+	*/
+
 	ms = mlfi_envfrom((SMFICTX *) tctx, (char **) envfrom);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
@@ -417,7 +422,12 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	if (ms != SMFIS_CONTINUE)
 		return EX_SOFTWARE;
 
-	/* Legacy API constraint: libmilter xxfi_envrcpt takes char ** argv. */
+	/*
+	**  libmilter's xxfi_envrcpt callback takes argv as char **;
+	**  the milter never writes through these pointers -- cast away
+	**  const on our envrcpt literal table.
+	*/
+
 	ms = mlfi_envrcpt((SMFICTX *) tctx, (char **) envrcpt);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
@@ -886,9 +896,10 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
 	/*
-	**  Legacy API constraint: mlfi_connect is the xxfi_connect callback,
-	**  whose libmilter prototype takes char * host but treats it
-	**  read-only.
+	**  mlfi_connect implements libmilter's xxfi_connect callback,
+	**  whose prototype takes the hostname as char *; libmilter never
+	**  writes through this pointer -- cast away const on our
+	**  "localhost" literal.
 	*/
 
 	ms = mlfi_connect((SMFICTX *) tctx, (char *) "localhost",

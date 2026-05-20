@@ -688,9 +688,10 @@ dkimf_insheader(SMFICTX *ctx, int idx, const char *hname, const char *hvalue)
 	else
 	{
 		/*
-		**  Legacy API constraint: libmilter's smfi_insheader and
-		**  smfi_addheader take char * but treat the header
-		**  name/value as read-only.
+		**  libmilter's smfi_insheader / smfi_addheader take the
+		**  header name and value as char *; libmilter never writes
+		**  through these pointers -- cast away const on our caller's
+		**  read-only strings.
 		*/
 
 #ifdef HAVE_SMFI_INSHEADER
@@ -775,7 +776,13 @@ dkimf_addheader(SMFICTX *ctx, const char *hname, const char *hvalue)
 	}
 	else
 	{
-		/* Legacy API constraint: smfi_addheader takes char *. */
+		/*
+		**  libmilter's smfi_addheader takes the header name and
+		**  value as char *; libmilter never writes through these
+		**  pointers -- cast away const on our caller's read-only
+		**  strings.
+		*/
+
 		return smfi_addheader(ctx, (char *) hname, (char *) hvalue);
 	}
 }
@@ -852,8 +859,10 @@ dkimf_setreply(SMFICTX *ctx, const char *rcode, const char *xcode,
 	else
 	{
 		/*
-		**  Legacy API constraint: libmilter's smfi_setreply takes
-		**  char * but treats the strings as read-only.
+		**  libmilter's smfi_setreply takes the SMTP reply code,
+		**  enhanced status code, and reply text as char *;
+		**  libmilter never writes through these pointers -- cast
+		**  away const on our caller's read-only strings.
 		*/
 
 		return smfi_setreply(ctx, (char *) rcode, (char *) xcode,
@@ -885,8 +894,9 @@ dkimf_getsymval(SMFICTX *ctx, const char *sym)
 	else
 	{
 		/*
-		**  Legacy API constraint: libmilter's smfi_getsymval takes
-		**  char * but treats the symbol name as read-only.
+		**  libmilter's smfi_getsymval takes the symbol name as
+		**  char *; libmilter never writes through this pointer --
+		**  cast away const on our caller's read-only string.
 		*/
 
 		return smfi_getsymval(ctx, (char *) sym);
@@ -12778,7 +12788,11 @@ mlfi_close(SMFICTX *ctx)
 
 struct smfiDesc smfilter =
 {
-	/* Legacy API constraint: smfiDesc::xxfi_name is char *. */
+	/*
+	**  libmilter's xxfi_name is char *; libmilter never writes
+	**  through this pointer -- cast away const on our string literal.
+	*/
+
 	(char *) DKIMF_PRODUCT,	/* filter name */
 	SMFI_VERSION,	/* version code -- do not change */
 	0,		/* flags; updated in main() */
