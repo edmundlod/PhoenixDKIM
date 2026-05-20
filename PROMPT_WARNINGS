@@ -14,9 +14,9 @@ Current state on `fix/wcast-qual-cleanup` after a full clean rebuild:
 | -Wsign-compare            | 113 | 113 | DONE
 | -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
-| -Wdiscarded-qualifiers    |3776 |   1 | DONE-ish (1 deferred straggler in miltertest)
-| -Wcast-qual               | 391 |  97 | DONE (all annotated, see below)
-| -Wmissing-prototypes      | 111 | 111 | next
+| -Wdiscarded-qualifiers    |3776 |   0 | DONE
+| -Wcast-qual               | 391 |  68 | DONE (all annotated, see below)
+| -Wmissing-prototypes      | 111 | 102 | next
 | -Wundef                   |  33 |  33 | next
 | -Wshadow                  |  25 |  25 | next
 
@@ -108,14 +108,9 @@ three follow-up commits on this branch:
   `tmpdir = DEFTMPDIR` locals flipped to `const char *`
   (commit a5a2b57c).
 
-One warning is **deferred**:
-
-- `miltertest/miltertest.c:2046` — `host = DEFCLIENTHOST;`.  Trivial
-  to fix (widen `char *host;` → `const char *host;`), but miltertest
-  still carries ~84 -Wcast-qual sites from a prior pass.  The user
-  has elected to treat miltertest as out-of-scope for this cleanup
-  pass; revisit as its own initiative if/when miltertest gets a
-  dedicated warning-cleanup sweep.
+The previously deferred `miltertest/miltertest.c:2046`
+`host = DEFCLIENTHOST;` straggler was cleared as part of the
+dedicated miltertest sweep below.
 
 ### What got done in the big -Wdiscarded-qualifiers sweep (20 commits, 6ae6ff80..d676e47d)
 
@@ -172,7 +167,53 @@ Discarded-qualifiers went 12 → 1 across:
 - Two local-var widens in t-test73.c and opendkim-testmsg.c
   (commit a5a2b57c).
 
-Only `miltertest/miltertest.c:2046` remains, deferred by user.
+Only `miltertest/miltertest.c:2046` remained after this round; it was
+picked up by the dedicated miltertest sweep below.
+
+### Dedicated miltertest sweep (6 commits, 9d12e214..fa0998d9)
+
+miltertest had previously been carved out of the wider cleanup
+because it held a long tail of -Wcast-qual sites.  Cleared in one
+focused pass:
+
+- 9 `-Wmissing-prototypes`: file-internal helpers (`mt_inet_ntoa`,
+  `mt_lua_reader` / `_alloc`, `mt_flush_eomreqs`, `mt_eom_request`,
+  `mt_milter_read` / `_write`, `mt_assert_state`, `usage`) marked
+  `static`; `mt_inet_ntoa`'s definition gated by the same
+  `!(HAVE_GETADDRINFO && HAVE_INET_NTOP)` condition as its call site
+  to avoid a fresh `-Wunused-function` (commit 9d12e214).
+- 1 `-Wcast-qual` at `mt_milter_read`: the `buf` out-parameter was
+  spuriously `const char *` even though the function `read()`s into
+  it; drop the const and the `(void *)` cast (commit cdb90767).
+- 4 `-Wcast-qual` from `mt_lua_io.lua_io_script`: bogus `const char *`
+  on the script buffer that miltertest allocates, fills via `read()`,
+  and `free()`s.  Retype the struct member as `char *`; the four
+  callsite casts (malloc, read, two frees) collapse away.  The
+  `mt_lua_reader` return stays `const char *` for Lua's `lua_Reader`
+  signature via implicit widening (commit 3e3c583a).
+- 29 `-Wcast-qual` + the deferred `-Wdiscarded-qualifiers` at
+  miltertest.c:2046: const-correct all `(char *) lua_tostring(...)`
+  sites across `mt_echo`, `_chdir`, `_macro`, `_conninfo`, `_unknown`,
+  `_helo`, `_mailfrom`, `_rcptto`, `_header`, `_bodystring`,
+  `_bodyfile`, `_eom_check` (all eight cases) and `_getheader`
+  (commit 14a09fb6).  The `mt_conninfo` `host` retype incidentally
+  cleared the 2046 straggler.
+- 1 `-Wcast-qual` at `mt_connect`: the function was casting away
+  const on `lua_tostring`'s return and mutating Lua-owned memory in
+  place to split the `proto:host:port` connection string.  Latent
+  bug: Lua is free to reclaim or share that buffer after the
+  `lua_pop` a few lines above.  Replace the pointer with a
+  `char sockinfo[BUFRSZ]` stack buffer populated via `strlcpy`; the
+  in-place ':'/'@' splits now operate on memory we own
+  (commit b6eab51a).
+- The two residual cast-qual sites (`writev`'s `iov_base`, `execv`'s
+  `argv`) are true POSIX/legacy-API const-strips and got the
+  project's standard block-comment annotation (commit fa0998d9).
+
+Net delta: miltertest went 47 → 2 warnings.  The 2 remaining are
+annotated legacy-API casts that contribute to the project-wide
+-Wcast-qual figure above and follow the same documented intentional
+pattern as the other 66.
 
 ### -Wmissing-prototypes / -Wundef / -Wshadow
 
