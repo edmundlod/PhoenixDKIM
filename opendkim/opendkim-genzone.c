@@ -539,11 +539,11 @@ main(int argc, char **argv)
 		status = dkimf_db_walk(db, c == 0, keyname, &keylen, dbd, 3);
 		if (status == -1)
 		{
-			char err[BUFRSZ];
+			char errbuf[BUFRSZ];
 
-			dkimf_db_strerror(db, err, sizeof err);
+			dkimf_db_strerror(db, errbuf, sizeof errbuf);
 			fprintf(stderr, "%s: dkimf_db_walk(%d) failed: %s\n",
-			        progname, c, err);
+			        progname, c, errbuf);
 			(void) dkimf_db_close(db);
 			(void) BIO_free(outbio);
 			return 1;

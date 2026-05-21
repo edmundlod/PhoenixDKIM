@@ -299,23 +299,23 @@ config_load_level(const char *file, struct configdef *def,
 					}
 					else
 					{
-						char *new;
+						char *combined;
 						size_t oldlen;
 						size_t newlen;
 
 						oldlen = strlen(*deprecated);
-						newlen = oldlen + 2 + 
+						newlen = oldlen + 2 +
 						         strlen(def[n].cd_name);
-						new = realloc(*deprecated,
-						              newlen);
-						if (new != NULL)
+						combined = realloc(*deprecated,
+						                   newlen);
+						if (combined != NULL)
 						{
-							new[oldlen] = ',';
-							new[oldlen + 1] = '\0';
+							combined[oldlen] = ',';
+							combined[oldlen + 1] = '\0';
 							strlcat(*deprecated,
 							        def[n].cd_name,
 							        newlen);
-							*deprecated = new;
+							*deprecated = combined;
 						}
 					}
 					break;
