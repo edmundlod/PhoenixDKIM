@@ -55,7 +55,7 @@ int kl;
 **  	A DKIM_STAT_* constant.
 */
 
-DKIM_STAT
+static DKIM_STAT
 key_lookup(DKIM *dkim, DKIM_SIGINFO *sig, unsigned char *buf, size_t buflen)
 {
 	const char *selector;

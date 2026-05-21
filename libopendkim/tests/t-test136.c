@@ -46,7 +46,7 @@
 **  	None.
 */
 
-void
+static void
 lowerhdr(char *str)
 {
 	char *p;
