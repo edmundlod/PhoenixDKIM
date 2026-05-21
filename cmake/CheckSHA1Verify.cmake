@@ -10,7 +10,7 @@
 # Effect: if the probe fails, a CMake WARNING is emitted that explains the
 # situation and gives platform-specific instructions for enabling SHA1.
 #
-# Background: opendkim-ng retains RSA-SHA1 VERIFICATION for interoperability
+# Background: PhoenixDKIM retains RSA-SHA1 VERIFICATION for interoperability
 # with legacy signed mail but drops RSA-SHA1 SIGNING.  Some distributions
 # (RHEL 9+, Fedora 38+, and derivatives) disable SHA1 for signature
 # operations in their DEFAULT crypto policy.  This does not indicate a
@@ -108,7 +108,7 @@ if(NOT OPENDKIM_SHA1_VERIFY_OK)
 
     message(WARNING
         "SHA1 RSA signature verification is disabled by the current OpenSSL/system "
-        "configuration.  opendkim-ng retains RSA-SHA1 VERIFICATION (not signing) "
+        "configuration.  PhoenixDKIM retains RSA-SHA1 VERIFICATION (not signing) "
         "for interoperability with legacy DKIM-signed mail; this is not a build "
         "defect.\n\n"
         "Consequences:\n"

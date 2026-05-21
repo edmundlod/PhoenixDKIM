@@ -1,4 +1,4 @@
-opendkim-ng (3.0.0~beta11-ng1) unstable; urgency=medium
+phoenixdkim (3.0.0~beta11-ng1) unstable; urgency=medium
 
   * Security: fix A-R stripping bypass via trailing-dot authserv-id
   * Security: fix TXT chunk-length OOB read in DNS key extraction

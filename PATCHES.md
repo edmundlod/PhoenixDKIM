@@ -1,4 +1,4 @@
-# PATCHES.md — External patch/issue review for opendkim-ng
+# PATCHES.md — External patch/issue review for PhoenixDKIM
 
 Generated: 2026-05-13. Sources: upstream GitHub issues (open + recently closed),
 Debian `salsa.debian.org/debian/opendkim` patch queue, FreeBSD ports rc script,
@@ -135,7 +135,7 @@ Comparing **FreeBSD** `milter-opendkim.in` and **OpenBSD** `opendkim.rc` against
 
 The following scripts are collected verbatim from upstream distro sources for eventual
 placement in `contrib/`. Each is annotated with its source URL and the version of
-opendkim it was written for. They will need adaptation for opendkim-ng paths
+opendkim it was written for. They will need adaptation for PhoenixDKIM paths
 (`/usr/sbin/opendkim`, `/etc/opendkim.conf`, user name, socket path).
 
 ---
@@ -361,7 +361,7 @@ fi
 run_rc_command "$1"
 ```
 
-**Adaptation notes for opendkim-ng:**
+**Adaptation notes for PhoenixDKIM:**
 - Replace `%%PREFIX%%` with `/usr/local` (FreeBSD) or the install prefix.
 - Default user/group: change `mailnull:mailnull` → `opendkim:opendkim`.
 - Config path: `%%PREFIX%%/etc/mail/opendkim.conf` → `/usr/local/etc/opendkim.conf`.
@@ -390,12 +390,12 @@ rc_reload=NO
 rc_cmd $1
 ```
 
-**Adaptation notes for opendkim-ng:**
+**Adaptation notes for PhoenixDKIM:**
 - `${TRUEPREFIX}` and `${SYSCONFDIR}` are substituted by the OpenBSD ports framework at
   package-install time; for a manual install use `/usr/local` and `/etc` respectively.
 - User is `_opendkim` (OpenBSD convention: underscore-prefix for system daemons).
 - `rc_reload=NO` deliberately omits the `USR1` reload — OpenBSD restarts instead.
-  For opendkim-ng, consider enabling reload: set `rc_reload=YES` and add
+  For PhoenixDKIM, consider enabling reload: set `rc_reload=YES` and add
   `rc_reload_signal=USR1` (supported in OpenBSD 7.0+).
 
 ---
@@ -437,7 +437,7 @@ Companion `conf.d/opendkim` (Alpine):
 #command_args=""
 ```
 
-**Adaptation notes for opendkim-ng:**
+**Adaptation notes for PhoenixDKIM:**
 - Config path matches our installed location (`/etc/opendkim/opendkim.conf` or
   `/etc/opendkim.conf` — adjust to whichever the package installs).
 - `start_pre()` parses `Socket` and `BaseDirectory` from opendkim.conf using grep/awk
@@ -472,7 +472,7 @@ Companion `conf` file (place in the service directory, e.g. `/etc/sv/opendkim/co
 OPTS="-x /etc/opendkim.conf -u opendkim"
 ```
 
-**Adaptation notes for opendkim-ng:**
+**Adaptation notes for PhoenixDKIM:**
 - Void Linux did not ship a `log/run` script; add one if svlogd logging is desired:
 
   ```sh

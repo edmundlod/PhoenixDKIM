@@ -121,7 +121,7 @@ jobs:
       - name: Dispatch to apt repository
         if: github.ref_type == 'tag'
         run: |
-          BASE="https://github.com/edmundlod/opendkim-ng/releases/download/${{ github.ref_name }}"
+          BASE="https://github.com/edmundlod/PhoenixDKIM/releases/download/${{ github.ref_name }}"
           PKGS_JSON="["
           first=true
           for deb in dist/*.deb; do

@@ -1,6 +1,6 @@
 # Removed Features
 
-`opendkim-ng` 3.0 narrows the scope of the upstream
+`PhoenixDKIM` 3.0 narrows the scope of the upstream
 [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM)
 tree to its DKIM core, retiring subsystems and build paths whose
 external dependencies are no longer maintained, or whose use cases

@@ -377,4 +377,4 @@ headers to the received headers whenever a `z=`-tagged signature fails.
 
 Report bugs and submit contributions via GitHub:
 
-https://github.com/edmundlod/opendkim-ng
+https://github.com/edmundlod/PhoenixDKIM

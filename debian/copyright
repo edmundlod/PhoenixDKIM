@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: opendkim-ng
+Upstream-Name: PhoenixDKIM
 Upstream-Contact: Edmund Lodewijks <edmund@proteamail.com>
-Source: https://github.com/edmundlod/opendkim-ng
+Source: https://github.com/edmundlod/PhoenixDKIM
 Comment: This package was originally debianized by Edmund Lodewijks
  <edmund@proteamail.com> on Sun, 3 May 2026 19:52:53 +0200.
 
