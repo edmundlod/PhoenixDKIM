@@ -13,6 +13,7 @@
 
 /* OpenSSL 3 is required; SHA256 is always present */
 #define HAVE_SHA256 1
+#define OPENSSL_VERSION_STR "@OPENSSL_VERSION@"
 
 /* LMDB is required */
 #define USE_MDB 1

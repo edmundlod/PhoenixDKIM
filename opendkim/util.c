@@ -87,6 +87,10 @@ static const char *optlist[] =
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
 
+#ifdef OPENSSL_VERSION_STR
+	"OpenSSL-" OPENSSL_VERSION_STR,
+#endif
+
 	NULL
 };
 
