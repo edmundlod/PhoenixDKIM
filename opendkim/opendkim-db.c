@@ -1645,9 +1645,9 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 
 		key.mv_size = buflen;
 		/*
-		**  Legacy API constraint: MDB_val.mv_data is void *, but
-		**  mdb_get is a read-only key lookup that does not mutate
-		**  the key buffer.
+		**  MDB_val.mv_data is void *; mdb_get never writes through
+		**  the key buffer -- cast away const to store buf in the
+		**  field.
 		*/
 
 		key.mv_data = (void *)(uintptr_t) buf;

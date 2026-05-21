@@ -7794,10 +7794,12 @@ dkimf_sendprogress(const void *ctx)
 		struct connctx *cc;
 		struct msgctx *dfc;
 
-		/* Legacy API constraint: dkim_set_dns_callback mandates
-		   void (*)(const void *), but the context we stored is a
-		   live SMFICTX * that the smfi entry points need to mutate;
-		   cast back to recover the original pointer identity. */
+		/*
+		**  The dns_callback signature delivers ctx as const void *;
+		**  the value stored there is a live SMFICTX * that smfi
+		**  entry points mutate -- cast away const to recover the
+		**  original pointer type.
+		*/
 		cc = (struct connctx *) dkimf_getpriv((SMFICTX *) ctx);
 		dfc = cc->cctx_msg;
 

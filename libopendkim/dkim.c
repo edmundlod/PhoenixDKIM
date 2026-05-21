@@ -1867,9 +1867,11 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_D;
 			continue;
 		}
-		/* Legacy API constraint: sig_domain is declared u_char *
-		   and exposed to callers via dkim_sig_getdomain(); the
-		   stored bytes are read-only in practice. */
+		/*
+		**  sig_domain is declared u_char * and returned as-is by
+		**  dkim_sig_getdomain(); the plist value it aliases is
+		**  read-only -- cast away const to store in the field.
+		*/
 		dkim->dkim_siglist[c]->sig_domain = (u_char *) param;
 
 		/* critical stuff: selector */
@@ -1884,9 +1886,11 @@ dkim_siglist_setup(DKIM *dkim)
 			dkim->dkim_siglist[c]->sig_error = DKIM_SIGERROR_EMPTY_S;
 			continue;
 		}
-		/* Legacy API constraint: sig_selector is declared u_char *
-		   and exposed via dkim_sig_getselector(); same read-only
-		   contract as sig_domain above. */
+		/*
+		**  sig_selector is declared u_char * and returned as-is by
+		**  dkim_sig_getselector(); the plist value it aliases is
+		**  read-only -- cast away const to store in the field.
+		*/
 		dkim->dkim_siglist[c]->sig_selector = (u_char *) param;
 
 		/* some basic checks first */
@@ -2228,9 +2232,11 @@ dkim_siglist_setup(DKIM *dkim)
 		}
 
 		/* canonicalization handle for the headers */
-		/* Legacy API constraint: dkim_add_canon stores hdrlist as
-		   u_char * for callers that pass mutable buffers; the
-		   plist-backed pointer here is read-only in practice. */
+		/*
+		**  dkim_add_canon() takes hdrlist as u_char *; the plist
+		**  value passed here is read-only -- cast away const to
+		**  match the parameter type.
+		*/
 		status = dkim_add_canon(dkim, TRUE, hdrcanon, hashtype,
 		                        (u_char *) hdrlist,
 		                        dkim_set_getudata(set), 0, &hc);
@@ -2916,8 +2922,11 @@ dkim_get_key(DKIM *dkim, DKIM_SIGINFO *sig, _Bool test)
 	if (!gotkey)
 	{
 		/* decode the key */
-		/* Legacy API constraint: sig_b64key is declared u_char *;
-		   the plist storage it aliases is read-only in practice. */
+		/*
+		**  sig_b64key is declared u_char *; the plist value it
+		**  aliases is read-only -- cast away const to store in
+		**  the field.
+		*/
 		sig->sig_b64key = (u_char *) dkim_param_get(set,
 		                                            (const u_char *) "p");
 		if (sig->sig_b64key == NULL)
@@ -5709,10 +5718,12 @@ dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 		return DKIM_STAT_INVALID;
 
 	/* find the tag */
-	/* Legacy API constraint: dkim_ohdrs has been writing through
-	   this pointer with strtok_r() below since long before the
-	   plist storage was const-tightened; the cast preserves
-	   that pre-existing (and likely buggy) behaviour. */
+	/*
+	**  dkim_param_get() returns const u_char *; the strtok_r() call
+	**  below writes through this pointer into plist storage -- this
+	**  mutation predates the const-tightening of plist and is a
+	**  latent bug.
+	*/
 	z = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "z");
 	if (z == NULL || *z == '\0')
 	{
@@ -7847,9 +7858,11 @@ dkim_sig_getalgorithm(DKIM_SIGINFO *siginfo)
 {
 	assert(siginfo != NULL);
 
-	/* Legacy API constraint: documented return type is unsigned
-	   char * but dkim_code_to_name returns const char *; the
-	   nametable storage is read-only in practice. */
+	/*
+	**  dkim_sig_getalgorithm() returns unsigned char *;
+	**  dkim_code_to_name() returns const char * into a read-only
+	**  name table -- cast away const to match the declared return type.
+	*/
 	return (unsigned char *) dkim_code_to_name(algorithms,
 	                                           siginfo->sig_signalg);
 }
@@ -8116,9 +8129,11 @@ dkim_sig_gettagvalue(DKIM_SIGINFO *sig, _Bool keytag, u_char *tag)
 
 	if (set == NULL)
 		return NULL;
-	/* Legacy API constraint: documented return type is u_char *
-	   to outside callers, but the underlying plist storage is
-	   read-only.  See the "Caveat emptor" note above. */
+	/*
+	**  dkim_sig_gettagvalue() returns u_char *; dkim_param_get()
+	**  returns const u_char * into read-only plist storage -- cast
+	**  away const to match the declared return type.
+	*/
 	else
 		return (u_char *) dkim_param_get(set, tag);
 }
