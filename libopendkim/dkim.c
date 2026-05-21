@@ -5684,7 +5684,8 @@ DKIM_STAT
 dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 {
 	int n = 0;
-	char *z;
+	size_t zlen;
+	const u_char *z;
 	u_char *ch;
 	u_char *p;
 	u_char *q;
@@ -5718,36 +5719,43 @@ dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 		return DKIM_STAT_INVALID;
 
 	/* find the tag */
-	/*
-	**  dkim_param_get() returns const u_char *; the strtok_r() call
-	**  below writes through this pointer into plist storage -- this
-	**  mutation predates the const-tightening of plist and is a
-	**  latent bug.
-	*/
-	z = (char *) dkim_param_get(sig->sig_taglist, (const u_char *) "z");
+	z = dkim_param_get(sig->sig_taglist, (const u_char *) "z");
 	if (z == NULL || *z == '\0')
 	{
 		*pcnt = 0;
 		return DKIM_STAT_OK;
 	}
 
-	/* get memory for the decode */
+	/*
+	**  Copy z into a writable scratch buffer.  strtok_r() and the
+	**  percent-decode loop below mutate the buffer in place, so we
+	**  must not work on the plist-owned storage that backs z (doing
+	**  so would corrupt the cached tag value for any later reader).
+	*/
 	if (dkim->dkim_zdecode == NULL)
 	{
 		dkim->dkim_zdecode = DKIM_MALLOC(dkim, MAXHEADERS);
 		if (dkim->dkim_zdecode == NULL)
 		{
 			dkim_error(dkim, "unable to allocate %d byte(s)",
-			           strlen(z));
+			           MAXHEADERS);
 			return DKIM_STAT_NORESOURCE;
 		}
 	}
 
-	/* copy it */
-	strlcpy((char *) dkim->dkim_zdecode, z, strlen(z));
+	zlen = strlcpy((char *) dkim->dkim_zdecode, (const char *) z,
+	               MAXHEADERS);
+	if (zlen >= MAXHEADERS)
+	{
+		dkim_error(dkim,
+		           "z= tag value too large (%zu bytes; max %d)",
+		           zlen, MAXHEADERS - 1);
+		return DKIM_STAT_NORESOURCE;
+	}
 
 	/* decode */
-	for (ch = (u_char *) strtok_r(z, "|", &last);
+	for (ch = (u_char *) strtok_r((char *) dkim->dkim_zdecode, "|",
+	                              &last);
 	     ch != NULL;
 	     ch = (u_char *) strtok_r(NULL, "|", &last))
 	{
