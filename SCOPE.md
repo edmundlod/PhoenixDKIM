@@ -245,6 +245,21 @@ dependency on any distribution package.
 - **openarc / flowerysong tools**: Improved genkey/testkey implementations
   exist. May be incorporated in a future phase once API compatibility is
   assessed.
+- **DKIM failure reporting (RFC 6651)**: Inherited from upstream and still
+  compiled in. Covers the signer-side request (`r=y` / `ra=` in the key
+  record) and the verifier-side ARF (RFC 5965) "feedback-report" emission
+  triggered by the `SendReports` / `RequestReports` / `ReportAddress` /
+  `ReportBccAddress` / `MTACommand` config options, plus the optional
+  libcurl SMTP transport gated by `WITH_CURL` and the `SMTPURI` option.
+  RFC 6651 is a Proposed Standard, not obsoleted, but has essentially zero
+  deployed footprint: DMARC failure reports (RFC 7489 §7.2.2, "RUF")
+  supplanted the use case, and even RUF is rarely emitted in practice due
+  to GDPR concerns about forwarding raw failing messages. Revisit in a
+  later phase: decide whether to keep the popen/sendmail report path,
+  drop only the libcurl `SMTPURI` alternate transport, or remove the
+  whole RFC 6651 surface (daemon-side ARF formatter, libopendkim
+  `dkim_sig_getreportinfo` and `dkim-report.c`, and the associated
+  `DKIM_SETTYPE_SIGREPORT` / `DKIM_LIBFLAGS_REQUESTREPORTS` plumbing).
 
 ---
 
