@@ -1,15 +1,16 @@
 /*
 **  Copyright (c) 2026, The Trusted Domain Project.  All rights reserved.
 **
-**  t-conformance -- RFC 6376 DKIM conformance test suite
+**  t-conformance -- DKIM conformance test suite (RFC 6376 + RFC 8463)
 **
-**  Tests organized by RFC 6376 section:
-**    Section 3.3  - Signing and Verification Algorithms
-**    Section 3.4  - Canonicalization
-**    Section 3.5  - Signature field tags
-**    Section 3.6  - Key management / key records
-**    Section 5.4  - Determine the header fields to sign
-**    Section 6    - Verifier actions
+**  Tests organized by RFC section:
+**    RFC 6376 Section 3.3  - Signing and Verification Algorithms
+**    RFC 6376 Section 3.4  - Canonicalization
+**    RFC 6376 Section 3.5  - Signature field tags
+**    RFC 6376 Section 3.6  - Key management / key records
+**    RFC 6376 Section 5.4  - Determine the header fields to sign
+**    RFC 6376 Section 6    - Verifier actions
+**    RFC 8463              - Ed25519-SHA256 signing and verification
 */
 
 #include "build-config.h"
@@ -2620,7 +2621,7 @@ main(int argc, char **argv)
 	int i;
 	int failed = 0;
 
-	printf("*** OpenDKIM RFC 6376 Conformance Test Suite\n");
+	printf("*** OpenDKIM DKIM Conformance Test Suite (RFC 6376 + RFC 8463)\n");
 
 	for (i = 0; all_tests[i].name != NULL; i++)
 	{
