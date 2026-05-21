@@ -478,7 +478,6 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 
 	if (ip->sa_family == AF_INET)
 	{
-		_Bool exists;
 		int c;
 		int status;
 		int bits;

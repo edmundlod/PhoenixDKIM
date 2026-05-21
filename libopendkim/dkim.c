@@ -2541,7 +2541,6 @@ dkim_gensighdr(DKIM *dkim, DKIM_SIGINFO *sig, struct dkim_dstring *dstr,
 	if (dkim->dkim_libhandle->dkiml_flags & DKIM_LIBFLAGS_ZTAGS)
 	{
 		_Bool first;
-		int status;
 		int len;
 		u_char *hend;
 		u_char *colon;

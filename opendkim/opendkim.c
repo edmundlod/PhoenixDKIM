@@ -7326,8 +7326,6 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	    conf->conf_stricthdrs || conf->conf_blen || conf->conf_ztags ||
 	    conf->conf_fixcrlf)
 	{
-		u_int opts;
-
 		status = dkim_getopt(conf->conf_libopendkim,
 		                      DKIM_OPTS_FLAGS, &opts, sizeof opts);
 
@@ -8221,7 +8219,6 @@ dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 		{
 			u_char *selector = NULL;
 			u_char *domain = NULL;
-			DKIM_SIGINFO *sig;
 
 			sig = dkim_getsignature(dkim);
 			if (sig != NULL)
@@ -8262,7 +8259,6 @@ dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 			const char *err = NULL;
 			u_char *selector = NULL;
 			u_char *domain = NULL;
-			DKIM_SIGINFO *sig;
 
 			err = dkim_geterror(dkim);
 
@@ -10374,7 +10370,6 @@ mlfi_eoh(SMFICTX *ctx)
 	if (conf->conf_exemptdb != NULL && dfc->mctx_domain[0] != '\0')
 	{
 		_Bool match = FALSE;
-		int status;
 
 		status = dkimf_db_get(conf->conf_exemptdb,
 		                      dfc->mctx_domain, 0, NULL, 0,
@@ -10951,7 +10946,6 @@ mlfi_eoh(SMFICTX *ctx)
 	if (dfc->mctx_srhead != NULL && conf->conf_dontsigntodb != NULL)
 	{
 		_Bool found;
-		int status;
 		struct addrlist *a;
 
 		a = dfc->mctx_rcptlist;
@@ -11186,7 +11180,6 @@ mlfi_eoh(SMFICTX *ctx)
 
 		if (conf->conf_identityhdr != NULL)
 		{
-			struct Header *hdr;
 			u_char *iuser = NULL;
 			u_char *idomain = NULL;
 
@@ -11713,8 +11706,6 @@ mlfi_eom(SMFICTX *ctx)
 	if (conf->conf_rmidentityhdr && conf->conf_identityhdr != NULL &&
 	    dfc->mctx_srhead != NULL)
 	{
-		struct Header *hdr;
-
 		hdr = dkimf_findheader(dfc, conf->conf_identityhdr, 0);
 		if (hdr != NULL)
 		{
@@ -11931,7 +11922,6 @@ mlfi_eom(SMFICTX *ctx)
 
 		if (conf->conf_logresults && conf->conf_dolog)
 		{
-			int c;
 			int nsigs;
 			DKIM_STAT lstatus;
 			DKIM_SIGINFO **sigs;
@@ -12131,9 +12121,6 @@ mlfi_eom(SMFICTX *ctx)
 				}
 				else
 				{
-					int c;
-					struct Header *hdr;
-
 					fprintf(f, "z tag headers:\n\n");
 
 					for (c = 0; c < nhdrs; c++)
@@ -13208,7 +13195,6 @@ main(int argc, char **argv)
 		_Bool exists = FALSE;
 		DKIMF_DB dbtest;
 		DKIMF_DBDATA dbdp;
-		char *p;
 		char dbname[BUFRSZ + 1];
 		char query[BUFRSZ + 1];
 		char **result;
@@ -13717,7 +13703,6 @@ main(int argc, char **argv)
 	{
 		_Bool quitloop = FALSE;
 		int restarts = 0;
-		int status;
 		pid_t pid;
 		pid_t wpid;
 		struct sigaction sa;

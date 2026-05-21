@@ -385,7 +385,6 @@ main(int argc, char **argv)
 	/* process a KeyTable if specified and not overridden */
 	if (dataset != NULL && argv_d == 0 && argv_k == 0 && argv_s == 0)
 	{
-		int c;
 		int pass = 0;
 		int fail = 0;
 		size_t keylen;
