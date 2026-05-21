@@ -54,6 +54,7 @@ option(WITH_LUA "Build with Lua 5.4 scripting support" OFF)
 
 if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
+    set(USE_LUA 1)
 endif()
 
 # ── Redis / Valkey — hiredis or libvalkey (optional) ─────────────────────────
@@ -76,6 +77,22 @@ if(WITH_REDIS)
         set(REDIS_IMPL_VALKEY FALSE)
         message(STATUS "Redis backend: using hiredis")
     endif()
+    set(WITH_REDIS 1)
+endif()
+
+# ── libcurl (optional, default OFF) ───────────────────────────────────────────
+# Enables SMTP report delivery via the SMTPURI config option.
+
+option(WITH_CURL "Enable libcurl SMTP report delivery (SMTPURI config option)" OFF)
+
+if(WITH_CURL)
+    find_package(CURL REQUIRED)
+    if(CURL_VERSION_STRING VERSION_LESS "7.20.0")
+        message(FATAL_ERROR
+            "libcurl >= 7.20.0 required (CURLOPT_MAIL_FROM/MAIL_RCPT); "
+            "found ${CURL_VERSION_STRING}")
+    endif()
+    set(HAVE_LIBCURL 1)
 endif()
 
 # ── pthreads ──────────────────────────────────────────────────────────────────
@@ -155,7 +172,6 @@ function(configure_daemon_target tgt)
     endif()
 
     if(WITH_LUA)
-        target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
         target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
         target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
     endif()
@@ -167,6 +183,11 @@ function(configure_daemon_target tgt)
         endif()
         target_include_directories(${tgt} PRIVATE ${HIREDIS_INCLUDE_DIR})
         target_link_libraries(${tgt} PRIVATE ${HIREDIS_LIBRARY})
+    endif()
+
+    if(WITH_CURL AND HAVE_LIBCURL)
+        target_compile_definitions(${tgt} PRIVATE HAVE_LIBCURL=1)
+        target_link_libraries(${tgt} PRIVATE CURL::libcurl)
     endif()
 endfunction()
 

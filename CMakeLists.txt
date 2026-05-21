@@ -22,6 +22,18 @@ include(Hardening)
 
 enable_testing()
 
+# ── Build-system consistency check ────────────────────────────────────────────
+# Verify every HAVE_* macro referenced in C sources has a corresponding CMake
+# probe.  Catches porting gaps like the HAVE_REALPATH incident (commit 6f9e571f).
+add_test(
+    NAME check-have-macro-coverage
+    COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/check-have-macros.sh"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+set_tests_properties(check-have-macro-coverage PROPERTIES
+    LABELS "buildsys"
+)
+
 add_subdirectory(libopendkim)
 add_subdirectory(opendkim)
 add_subdirectory(miltertest)

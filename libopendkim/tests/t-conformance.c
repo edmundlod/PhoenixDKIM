@@ -1,15 +1,16 @@
 /*
 **  Copyright (c) 2026, The Trusted Domain Project.  All rights reserved.
 **
-**  t-conformance -- RFC 6376 DKIM conformance test suite
+**  t-conformance -- DKIM conformance test suite (RFC 6376 + RFC 8463)
 **
-**  Tests organized by RFC 6376 section:
-**    Section 3.3  - Signing and Verification Algorithms
-**    Section 3.4  - Canonicalization
-**    Section 3.5  - Signature field tags
-**    Section 3.6  - Key management / key records
-**    Section 5.4  - Determine the header fields to sign
-**    Section 6    - Verifier actions
+**  Tests organized by RFC section:
+**    RFC 6376 Section 3.3  - Signing and Verification Algorithms
+**    RFC 6376 Section 3.4  - Canonicalization
+**    RFC 6376 Section 3.5  - Signature field tags
+**    RFC 6376 Section 3.6  - Key management / key records
+**    RFC 6376 Section 5.4  - Determine the header fields to sign
+**    RFC 6376 Section 6    - Verifier actions
+**    RFC 8463              - Ed25519-SHA256 signing and verification
 */
 
 #include "build-config.h"
@@ -85,7 +86,7 @@ make_lib(void)
 static void
 set_fixed_time(DKIM_LIB *lib, uint64_t t)
 {
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	(void) dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                    &t, sizeof t);
 }
 
@@ -94,9 +95,9 @@ set_file_query(DKIM_LIB *lib)
 {
 	dkim_query_t qtype = DKIM_QUERY_FILE;
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 }
 
@@ -169,9 +170,9 @@ test_rfc6376_s3_3_rsa_sha256_verify_rfc8463_vector(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1528637909);
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    RFC8463_KEYFILE, strlen(RFC8463_KEYFILE));
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);
@@ -641,10 +642,10 @@ test_rfc6376_s3_4_crlf_fixing(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1172620939);
 
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 	flags |= DKIM_LIBFLAGS_FIXCRLF;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	key = KEY;
@@ -776,7 +777,7 @@ test_rfc6376_s3_5_missing_required_tags(void)
 	set_file_query(lib);
 
 	flags = DKIM_LIBFLAGS_BADSIGHANDLES;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);
@@ -828,7 +829,7 @@ test_rfc6376_s3_5_expiration(void)
 	set_fixed_time(lib, 1172620939);
 
 	sigttl = 60;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_SIGNATURETTL,
+	(void) dkim_setopt(lib, DKIM_OPTS_SIGNATURETTL,
 	                    &sigttl, sizeof sigttl);
 
 	key = KEY;
@@ -900,10 +901,10 @@ test_rfc6376_s3_5_body_length(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1172620939);
 
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 	flags |= DKIM_LIBFLAGS_SIGNLEN;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &flags, sizeof flags);
 
 	key = KEY;
@@ -1367,7 +1368,8 @@ test_rfc6376_s6_tampered_body(void)
 
 	{
 		const char *tampered = "This body has been tampered with.\r\n";
-		status = dkim_body(vrfy_dkim, (u_char *) tampered, strlen(tampered));
+		status = dkim_body(vrfy_dkim, (const u_char *) tampered,
+		                   strlen(tampered));
 		CHECK(status == DKIM_STAT_OK, "tampered body feed failed");
 	}
 
@@ -1439,7 +1441,7 @@ test_rfc6376_s6_tampered_header(void)
 	{
 		const char *tampered_from =
 			"From: TAMPERED <evil@attacker.com>";
-		status = dkim_header(vrfy_dkim, (u_char *) tampered_from,
+		status = dkim_header(vrfy_dkim, (const u_char *) tampered_from,
 		                     strlen(tampered_from));
 		CHECK(status == DKIM_STAT_OK, "tampered From accepted by parser");
 	}
@@ -1861,7 +1863,7 @@ test_api_sig_syntax(void)
 		const char *valid_sig =
 			"v=1; a=rsa-sha1; d=example.com; s=test; "
 			"h=From:To; bh=AAAA; b=AAAA";
-		status = dkim_sig_syntax(dkim, (u_char *) valid_sig,
+		status = dkim_sig_syntax(dkim, (const u_char *) valid_sig,
 		                         strlen(valid_sig));
 		CHECK(status == DKIM_STAT_OK,
 		      "valid sig syntax must return OK");
@@ -1869,7 +1871,7 @@ test_api_sig_syntax(void)
 
 	{
 		const char *bad_sig = "GARBAGE DATA NOT A SIGNATURE";
-		status = dkim_sig_syntax(dkim, (u_char *) bad_sig,
+		status = dkim_sig_syntax(dkim, (const u_char *) bad_sig,
 		                         strlen(bad_sig));
 		CHECK(status == DKIM_STAT_SYNTAX,
 		      "invalid sig must return SYNTAX");
@@ -1898,7 +1900,7 @@ test_api_key_syntax(void)
 
 	{
 		const char *valid_key = "v=DKIM1; k=rsa; p=MIGfMA0G";
-		status = dkim_key_syntax(dkim, (u_char *) valid_key,
+		status = dkim_key_syntax(dkim, (const u_char *) valid_key,
 		                         strlen(valid_key));
 		CHECK(status == DKIM_STAT_OK,
 		      "valid key syntax must return OK");
@@ -1906,7 +1908,7 @@ test_api_key_syntax(void)
 
 	{
 		const char *bad_key = "GARBAGE NOT A KEY RECORD";
-		status = dkim_key_syntax(dkim, (u_char *) bad_key,
+		status = dkim_key_syntax(dkim, (const u_char *) bad_key,
 		                         strlen(bad_key));
 		CHECK(status == DKIM_STAT_SYNTAX,
 		      "invalid key must return SYNTAX");
@@ -1933,23 +1935,23 @@ test_api_options(void)
 	lib = make_lib();
 
 	flags_in = DKIM_LIBFLAGS_SIGNLEN | DKIM_LIBFLAGS_ZTAGS;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS,
+	status = dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                      &flags_in, sizeof flags_in);
 	CHECK(status == DKIM_STAT_OK, "setopt FLAGS failed");
 
 	flags_out = 0;
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS,
+	status = dkim_getopt(lib, DKIM_OPTS_FLAGS,
 	                      &flags_out, sizeof flags_out);
 	CHECK(status == DKIM_STAT_OK, "getopt FLAGS failed");
 	CHECK(flags_out == flags_in, "FLAGS round-trip must match");
 
 	time_in = 1234567890;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &time_in, sizeof time_in);
 	CHECK(status == DKIM_STAT_OK, "setopt FIXEDTIME failed");
 
 	time_out = 0;
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_getopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &time_out, sizeof time_out);
 	CHECK(status == DKIM_STAT_OK, "getopt FIXEDTIME failed");
 	CHECK(time_out == time_in, "FIXEDTIME round-trip must match");
@@ -2240,7 +2242,7 @@ test_api_chunk(void)
 			"\r\n"
 			BODY00;
 
-		status = dkim_chunk(sign_dkim, (u_char *) msg, strlen(msg));
+		status = dkim_chunk(sign_dkim, (const u_char *) msg, strlen(msg));
 		CHECK(status == DKIM_STAT_OK, "chunk sign failed");
 
 		status = dkim_chunk(sign_dkim, NULL, 0);
@@ -2352,8 +2354,8 @@ test_rfc8463_ed25519_verify_rfc_vector(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_ED_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_ED_PUBKEY);
 		CHECK(status == 0, "failed to inject ed25519 DNS key");
 	}
 
@@ -2391,7 +2393,8 @@ test_rfc8463_ed25519_roundtrip(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1528637909);
 
-	sign_dkim = dkim_sign(lib, JOBID, NULL, (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
+	sign_dkim = dkim_sign(lib, JOBID, NULL,
+	                      (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
 	                      RFC8463_ED_SEL, RFC8463_DOMAIN,
 	                      DKIM_CANON_RELAXED, DKIM_CANON_RELAXED,
 	                      DKIM_SIGN_ED25519SHA256, -1L, &status);
@@ -2425,8 +2428,8 @@ test_rfc8463_ed25519_roundtrip(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_ED_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_ED_PUBKEY);
 		CHECK(status == 0, "failed to inject ed25519 DNS key");
 	}
 
@@ -2457,7 +2460,8 @@ test_rfc8463_ed25519_wrong_keytype(void)
 	lib = make_lib();
 	set_fixed_time(lib, 1528637909);
 
-	sign_dkim = dkim_sign(lib, JOBID, NULL, (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
+	sign_dkim = dkim_sign(lib, JOBID, NULL,
+	                      (dkim_sigkey_t) RFC8463_ED_PRIVKEY_PEM,
 	                      RFC8463_ED_SEL, RFC8463_DOMAIN,
 	                      DKIM_CANON_RELAXED, DKIM_CANON_RELAXED,
 	                      DKIM_SIGN_ED25519SHA256, -1L, &status);
@@ -2491,8 +2495,8 @@ test_rfc8463_ed25519_wrong_keytype(void)
 	for (i = 0; i < 4; i++)
 	{
 		status = dkim_test_dns_put(vrfy_dkim, C_IN, T_TXT, 0,
-		                           (u_char *) RFC8463_ED_KEYNAME,
-		                           (u_char *) RFC8463_RSA_PUBKEY);
+		                           (const u_char *) RFC8463_ED_KEYNAME,
+		                           (const u_char *) RFC8463_RSA_PUBKEY);
 		CHECK(status == 0, "failed to inject rsa DNS key");
 	}
 
@@ -2617,7 +2621,7 @@ main(int argc, char **argv)
 	int i;
 	int failed = 0;
 
-	printf("*** OpenDKIM RFC 6376 Conformance Test Suite\n");
+	printf("*** OpenDKIM DKIM Conformance Test Suite (RFC 6376 + RFC 8463)\n");
 
 	for (i = 0; all_tests[i].name != NULL; i++)
 	{

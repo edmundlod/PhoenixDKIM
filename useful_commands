@@ -1,0 +1,39 @@
+$ cd /home/edmund/devel/projects/opendkim-ng
+
+# Check for HAVE_* macros used in C sources but missing from CMake probes:
+$ comm -23 \
+    <(grep -rh --include="*.c" --include="*.h" \
+               --exclude-dir=".git" --exclude-dir="build" \
+               -oE 'HAVE_[A-Z0-9_]+' . | sort -u) \
+    <(grep -rh --include="CMakeLists.txt" --include="*.cmake" --include="*.cmake.in" \
+               --exclude-dir=".git" --exclude-dir="build" \
+               -oE 'HAVE_[A-Z0-9_]+' . | sort -u)
+# (also available as: bash cmake/check-have-macros.sh)
+# (also available as: ctest -R check-have-macro-coverage)
+
+
+$ cmake -DWITH_LUA=1 -DWITH_REDIS=1 -B build && cmake --build build 2>&1 | tee build.log
+
+OR:
+    $ cmake --build build --target clean && cmake --build build 2>&1 | tee build.log
+
+$ grep -oE "\-W[a-z-]+\]" build.log | sort | uniq -c | sort -rn
+        894 -Wdiscarded-qualifiers]
+        111 -Wmissing-prototypes]
+        84 -Wcast-qual]
+        33 -Wundef]
+        25 -Wshadow]
+
+$ grep "Wundef" build.log | sort -u | wc -l && echo "---" && grep "Wundef" build.log | sort -u
+5
+---
+/home/edmund/devel/projects/opendkim-ng/opendkim/opendkim.h:87:5: warning: ‘POPAUTH’ is not defined, evaluates to ‘0’ [-Wundef]
+/home/edmund/devel/projects/opendkim-ng/opendkim/util.c:78:5: warning: ‘DEBUG’ is not defined, evaluates to ‘0’ [-Wundef]
+/home/edmund/devel/projects/opendkim-ng/opendkim/util.c:82:5: warning: ‘POLL’ is not defined, evaluates to ‘0’ [-Wundef]
+/home/edmund/devel/projects/opendkim-ng/opendkim/util.c:86:5: warning: ‘POPAUTH’ is not defined, evaluates to ‘0’ [-Wundef]
+/home/edmund/devel/projects/opendkim-ng/opendkim/util.c:90:5: warning: ‘USE_JANSSON’ is not defined, evaluates to ‘0’ [-Wundef]
+
+
+$ grep "Wundef" build.log | sort -u | awk -F: '{print $1}' | sort | uniq -c | sort -rn
+      4 /home/edmund/devel/projects/opendkim-ng/opendkim/util.c
+      1 /home/edmund/devel/projects/opendkim-ng/opendkim/opendkim.h

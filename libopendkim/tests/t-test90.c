@@ -55,13 +55,13 @@ main(int argc, char **argv)
 	assert(lib != NULL);
 
 	/* set flags */
-	(void) dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_getopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 	flags = DKIM_LIBFLAGS_FIXCRLF;
 #ifdef TEST_KEEP_FILES
 	flags |= (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
 #endif /* TEST_KEEP_FILES */
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 
 	key = KEY;
@@ -73,7 +73,7 @@ main(int argc, char **argv)
 
 	/* fix signing time */
 	fixed_time = 1172620939;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	(void) dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                    &fixed_time, sizeof fixed_time);
 
 	status = dkim_header(dkim, HEADER02, strlen(HEADER02));

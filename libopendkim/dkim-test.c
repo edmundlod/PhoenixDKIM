@@ -48,9 +48,6 @@
 #define	TESTTTL			300
 #define MAXPACKET		8192
 
-/* prototypes from elsewhere */
-extern DKIM_STAT dkim_get_key __P((DKIM *, DKIM_SIGINFO *, _Bool));
-
 /*
 **  DKIM_TEST_DNS_PUT -- enqueue a DNS reply for automated testing
 **
@@ -68,8 +65,8 @@ extern DKIM_STAT dkim_get_key __P((DKIM *, DKIM_SIGINFO *, _Bool));
 */
 
 int
-dkim_test_dns_put(DKIM *dkim, int class, int type, int prec, u_char *name,
-                  u_char *data)
+dkim_test_dns_put(DKIM *dkim, int class, int type, int prec,
+                  const u_char *name, const u_char *data)
 {
 	struct dkim_test_dns_data *td;
 
@@ -311,7 +308,7 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 	assert(selector != NULL);
 	assert(domain != NULL);
 
-	dkim = dkim_verify(lib, (u_char *) "test", NULL, &stat);
+	dkim = dkim_verify(lib, (const u_char *) "test", NULL, &stat);
 	if (dkim == NULL)
 	{
 		if (err != NULL)
@@ -342,7 +339,7 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 
 	sig = dkim->dkim_siglist[0];
 
-	dkim->dkim_user = dkim_strdup(dkim, (u_char *) "nobody", 0);
+	dkim->dkim_user = dkim_strdup(dkim, (const u_char *) "nobody", 0);
 	if (dkim->dkim_user == NULL)
 	{
 		(void) dkim_free(dkim);

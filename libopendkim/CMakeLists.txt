@@ -64,6 +64,7 @@ find_package(OpenSSL REQUIRED)
 if(OPENSSL_VERSION VERSION_LESS "3.0")
     message(FATAL_ERROR "OpenSSL 3.0 or newer required; found ${OPENSSL_VERSION}")
 endif()
+# OpenSSL 4.x is supported; tested with 4.0.0
 
 # ── LMDB (required) ───────────────────────────────────────────────────────────
 
@@ -100,6 +101,7 @@ option(WITH_LUA "Build with Lua 5.4 scripting support" OFF)
 
 if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
+    set(USE_LUA 1)
 endif()
 
 # ── pthreads (required) ───────────────────────────────────────────────────────
@@ -214,8 +216,12 @@ unset(CMAKE_REQUIRED_LIBRARIES)
 
 # ── Standard header checks ────────────────────────────────────────────────────
 
-check_include_file(limits.h   HAVE_LIMITS_H)
-check_include_file(stdbool.h  HAVE_STDBOOL_H)
+check_include_file(limits.h         HAVE_LIMITS_H)
+check_include_file(stdbool.h        HAVE_STDBOOL_H)
+check_include_file(iso/limits_iso.h HAVE_ISO_LIMITS_ISO_H)
+
+include(CheckTypeSize)
+check_type_size("useconds_t" USECONDS_T)
 
 
 # ── Daemon-specific configuration ────────────────────────────────────────────
@@ -379,7 +385,6 @@ function(configure_opendkim_target tgt)
     if(WITH_LUA)
         target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
         target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
-        target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
     endif()
 endfunction()
 

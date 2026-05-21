@@ -125,7 +125,7 @@ dkimf_log_ssl_errors(void)
 **  	TRUE on successful load, false otherwise
 */
 
-int
+static int
 loadkey(char *buf, size_t *buflen)
 {
 	assert(buf != NULL);
@@ -217,7 +217,7 @@ main(int argc, char **argv)
 	char *key = NULL;
 	char *dataset = NULL;
 	char *nslist = NULL;
-	char *conffile = NULL;
+	const char *conffile = NULL;
 	char *p;
 	DKIM_LIB *lib;
 	char *trustanchor = NULL;
@@ -385,7 +385,6 @@ main(int argc, char **argv)
 	/* process a KeyTable if specified and not overridden */
 	if (dataset != NULL && argv_d == 0 && argv_k == 0 && argv_s == 0)
 	{
-		int c;
 		int pass = 0;
 		int fail = 0;
 		size_t keylen;

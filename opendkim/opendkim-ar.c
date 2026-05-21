@@ -45,8 +45,8 @@
 /* tables */
 struct lookup
 {
-	char *	str;
-	int	code;
+	const char *	str;
+	int		code;
 };
 
 struct lookup methods[] =
@@ -291,7 +291,7 @@ ares_tokenize(u_char *input, u_char *outbuf, size_t outbuflen,
 */
 
 static int
-ares_convert(struct lookup *table, char *str)
+ares_convert(struct lookup *table, const char *str)
 {
 	int c;
 
@@ -320,7 +320,7 @@ ares_convert(struct lookup *table, char *str)
 **  	A string translation of "code".
 */
 
-static char *
+static const char *
 ares_xconvert(struct lookup *table, int code)
 {
 	int c;
@@ -350,7 +350,7 @@ ares_xconvert(struct lookup *table, int code)
 ** 	"n" open.
 */
 
-_Bool
+static _Bool
 ares_dedup(struct authres *ar, int n)
 {
 	int c;

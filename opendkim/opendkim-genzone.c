@@ -71,7 +71,7 @@ char *progname;
 **  	Rendered width (i.e. expand tabs, etc.).
 */
 
-int
+static int
 strflen(char *str)
 {
 	int olen = 0;
@@ -101,7 +101,7 @@ strflen(char *str)
 **  	TRUE on successful load, false otherwise
 */
 
-int
+static int
 loadkey(char *buf, size_t *buflen)
 {
 	assert(buf != NULL);
@@ -153,7 +153,7 @@ loadkey(char *buf, size_t *buflen)
 **  	None.
 */
 
-void
+static void
 despace(char *str)
 {
 	char *p;
@@ -182,7 +182,7 @@ despace(char *str)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [opts] [dataset]\n"
@@ -243,8 +243,8 @@ main(int argc, char **argv)
 	char *onlydomain = NULL;
 	char *contact = NULL;
 	char *nameservers = NULL;
-	char *configfile = NULL;
-	char *err = NULL;
+	const char *configfile = NULL;
+	const char *err = NULL;
 	char *nslist[MAXNS];
 	FILE *out;
 	BIO *private;
@@ -539,11 +539,11 @@ main(int argc, char **argv)
 		status = dkimf_db_walk(db, c == 0, keyname, &keylen, dbd, 3);
 		if (status == -1)
 		{
-			char err[BUFRSZ];
+			char errbuf[BUFRSZ];
 
-			dkimf_db_strerror(db, err, sizeof err);
+			dkimf_db_strerror(db, errbuf, sizeof errbuf);
 			fprintf(stderr, "%s: dkimf_db_walk(%d) failed: %s\n",
-			        progname, c, err);
+			        progname, c, errbuf);
 			(void) dkimf_db_close(db);
 			(void) BIO_free(outbio);
 			return 1;

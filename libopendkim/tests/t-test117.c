@@ -27,7 +27,7 @@
 
 #define SIG2 "v=1; a=rsa-sha1; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=ll/0h2aWgG+D3ewmE4Y3pY7Ukz8=; h=Received:Received:\r\n\t Received:From:To:Date:Subject:Message-ID; b=bj9kVUbnBYfe9sVzH9lT45\r\n\tTFKO3eQnDbXLfgmgu/b5QgxcnhT9ojnV2IAM4KUO8+hOo5sDEu5Co/0GASH0vHpSV4P\r\n\t377Iwew3FxvLpHsVbVKgXzoKD4QSbHRpWNxyL6LypaaqFa96YqjXuYXr0vpb88hticn\r\n\t6I16//WThMz8fMU="
 
-char *senderhdrs[] =
+const char *senderhdrs[] =
 {
 	"from",
 	"sender",
@@ -60,7 +60,7 @@ main(int argc, char **argv)
 	dkim_query_t qtype = DKIM_QUERY_FILE;
 	unsigned char hdr[MAXHEADER + 1];
 	char path[MAXPATHLEN + 1];
-	char *td = NULL;
+	const char *td = NULL;
 
 	printf("*** general utility functions\n");
 
@@ -72,17 +72,17 @@ main(int argc, char **argv)
 #ifdef TEST_KEEP_FILES
 	/* set flags */
 	flags = (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 #endif /* TEST_KEEP_FILES */
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 
 	/* exercise some dkim_options() stuff */
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_TMPDIR,
+	status = dkim_getopt(lib, DKIM_OPTS_TMPDIR,
 	                      path, sizeof path);
 	assert(status == DKIM_STAT_OK);
 	td = getenv("DKIM_TMPDIR");
@@ -91,37 +91,37 @@ main(int argc, char **argv)
 	assert(strcmp(path, td) == 0);
 
 	fixed_time = 1172620939;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &fixed_time, sizeof fixed_time);
 	assert(status == DKIM_STAT_OK);
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_FIXEDTIME,
+	status = dkim_getopt(lib, DKIM_OPTS_FIXEDTIME,
 	                      &test_time, sizeof test_time);
 	assert(status == DKIM_STAT_OK);
 	assert(test_time == fixed_time);
 
 	fixed_time = 300;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_SIGNATURETTL,
+	status = dkim_setopt(lib, DKIM_OPTS_SIGNATURETTL,
 	                      &fixed_time, sizeof fixed_time);
 	assert(status == DKIM_STAT_OK);
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_SIGNATURETTL,
+	status = dkim_getopt(lib, DKIM_OPTS_SIGNATURETTL,
 	                      &test_time, sizeof test_time);
 	assert(status == DKIM_STAT_OK);
 	assert(test_time == fixed_time);
 
 	fixed_time = 600;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_CLOCKDRIFT,
+	status = dkim_setopt(lib, DKIM_OPTS_CLOCKDRIFT,
 	                      &fixed_time, sizeof fixed_time);
 	assert(status == DKIM_STAT_OK);
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_CLOCKDRIFT,
+	status = dkim_getopt(lib, DKIM_OPTS_CLOCKDRIFT,
 	                      &test_time, sizeof test_time);
 	assert(status == DKIM_STAT_OK);
 	assert(test_time == fixed_time);
 
 	timeout = 5;
-	status = dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_TIMEOUT,
+	status = dkim_setopt(lib, DKIM_OPTS_TIMEOUT,
 	                      &timeout, sizeof timeout);
 	assert(status == DKIM_STAT_OK);
-	status = dkim_options(lib, DKIM_OP_GETOPT, DKIM_OPTS_TIMEOUT,
+	status = dkim_getopt(lib, DKIM_OPTS_TIMEOUT,
 	                      &test_uint, sizeof test_uint);
 	assert(status == DKIM_STAT_OK);
 	assert(test_uint == timeout);

@@ -95,9 +95,6 @@ struct configdef dkimf_config[] =
 	{ "OverSignHeaders",		CONFIG_TYPE_STRING,	FALSE },
 	{ "PeerList",			CONFIG_TYPE_STRING,	FALSE },
 	{ "PidFile",			CONFIG_TYPE_STRING,	FALSE },
-#ifdef POPAUTH
-	{ "POPDBFile",			CONFIG_TYPE_STRING,	FALSE },
-#endif /* POPAUTH */
 	{ "Quarantine",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RedirectFailuresTo",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RemoveARAll",		CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -127,9 +124,9 @@ struct configdef dkimf_config[] =
 	{ "SignatureTTL",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "SignHeaders",		CONFIG_TYPE_STRING,	FALSE },
 	{ "SigningTable",		CONFIG_TYPE_STRING,	FALSE },
-#ifdef HAVE_CURL_EASY_STRERROR
+#ifdef HAVE_LIBCURL
 	{ "SMTPURI",			CONFIG_TYPE_STRING,	FALSE },
-#endif /* HAVE_CURL_EASY_STRERROR */
+#endif /* HAVE_LIBCURL */
 	{ "Socket",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SoftwareHeader",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },

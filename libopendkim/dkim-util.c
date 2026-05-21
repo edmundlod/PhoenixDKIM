@@ -101,7 +101,7 @@ dkim_strdup(DKIM *dkim, const unsigned char *str, size_t len)
 	assert(str != NULL);
 
 	if (len == 0)
-		len = strlen((char *) str);
+		len = strlen((const char *) str);
 
 	new = dkim_malloc(dkim->dkim_libhandle, dkim->dkim_closure, len + 1);
 	if (new != NULL)
@@ -355,14 +355,14 @@ dkim_dstring_free(struct dkim_dstring *dstr)
 */
 
 _Bool
-dkim_dstring_copy(struct dkim_dstring *dstr, unsigned char *str)
+dkim_dstring_copy(struct dkim_dstring *dstr, const unsigned char *str)
 {
 	int len;
 
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str);
+	len = strlen((const char *) str);
 
 	/* too big? */
 	if (dstr->ds_max > 0 && len >= dstr->ds_max)
@@ -398,7 +398,7 @@ dkim_dstring_copy(struct dkim_dstring *dstr, unsigned char *str)
 */
 
 _Bool
-dkim_dstring_cat(struct dkim_dstring *dstr, unsigned char *str)
+dkim_dstring_cat(struct dkim_dstring *dstr, const unsigned char *str)
 {
 	size_t len;
 	size_t needed;
@@ -406,7 +406,7 @@ dkim_dstring_cat(struct dkim_dstring *dstr, unsigned char *str)
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str);
+	len = strlen((const char *) str);
 	needed = dstr->ds_len + len;
 
 	/* too big? */
@@ -486,7 +486,8 @@ dkim_dstring_cat1(struct dkim_dstring *dstr, int c)
 */
 
 _Bool
-dkim_dstring_catn(struct dkim_dstring *dstr, unsigned char *str, size_t nbytes)
+dkim_dstring_catn(struct dkim_dstring *dstr, const unsigned char *str,
+                  size_t nbytes)
 {
 	size_t needed;
 
@@ -583,7 +584,7 @@ dkim_dstring_blank(struct dkim_dstring *dstr)
 */
 
 size_t
-dkim_dstring_printf(struct dkim_dstring *dstr, char *fmt, ...)
+dkim_dstring_printf(struct dkim_dstring *dstr, const char *fmt, ...)
 {
 	size_t len;
 	size_t rem;

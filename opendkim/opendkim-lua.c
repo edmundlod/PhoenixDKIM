@@ -54,7 +54,6 @@ struct dkimf_lua_io
 /* libraries */
 static const luaL_Reg dkimf_lua_lib_setup[] =
 {
-	{ "check_popauth",	dkimf_xs_popauth	},
 	{ "db_check",		dkimf_xs_dbquery	},
 	{ "db_close",		dkimf_xs_dbclose	},
 	{ "db_open",		dkimf_xs_dbopen		},

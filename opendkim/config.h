@@ -30,25 +30,25 @@ struct config
 	_Bool		cfg_bool;
 	u_int		cfg_type;
 	int		cfg_int;
-	char *		cfg_name;
+	const char *	cfg_name;
 	char *		cfg_string;
 	struct config *	cfg_next;
 };
 
 struct configdef
 {
-	char *		cd_name;
+	const char *	cd_name;
 	u_int		cd_type;
 	u_int		cd_req;
 };
 
 /* prototypes */
-extern char *config_check __P((struct config *, struct configdef *));
+extern const char *config_check __P((struct config *, struct configdef *));
 extern unsigned int config_dump __P((struct config *, FILE *, const char *));
-extern char *config_error __P((void));
+extern const char *config_error __P((void));
 extern void config_free __P((struct config *));
 extern int config_get __P((struct config *, const char *, void *, size_t));
-extern struct config *config_load __P((char *, struct configdef *,
+extern struct config *config_load __P((const char *, struct configdef *,
                                        unsigned int *, char *, size_t, char **));
 extern _Bool config_validname __P((struct configdef *, const char *));
 

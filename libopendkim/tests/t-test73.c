@@ -77,7 +77,7 @@ stub_dns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	int elen;
 	int slen;
 	int olen;
-	char *q;
+	const char *q;
 	unsigned char *len;
 	unsigned char *dnptrs[3];
 	unsigned char **lastdnptr;
@@ -203,12 +203,12 @@ main(int argc, char **argv)
 #ifdef TEST_KEEP_FILES
 	flags |= DKIM_LIBFLAGS_KEEPFILES;
 #endif /* TEST_KEEP_FILES */
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);

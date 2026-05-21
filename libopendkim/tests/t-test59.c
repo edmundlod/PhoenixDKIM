@@ -56,13 +56,13 @@ main(int argc, char **argv)
 
 	/* set flags and options */
 	flags = (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_TMPDIR,
+	(void) dkim_setopt(lib, DKIM_OPTS_TMPDIR,
 	                    FAKETMPDIR, strlen(FAKETMPDIR));
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);

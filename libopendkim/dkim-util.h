@@ -32,15 +32,16 @@ extern unsigned char *dkim_strdup __P((DKIM *, const unsigned char *, size_t));
 extern DKIM_STAT dkim_tmpfile __P((DKIM *, int *, _Bool));
 
 extern void dkim_dstring_blank __P((struct dkim_dstring *));
-extern _Bool dkim_dstring_cat __P((struct dkim_dstring *, u_char *));
+extern _Bool dkim_dstring_cat __P((struct dkim_dstring *, const u_char *));
 extern _Bool dkim_dstring_cat1 __P((struct dkim_dstring *, int));
-extern _Bool dkim_dstring_catn __P((struct dkim_dstring *, u_char *, size_t));
-extern _Bool dkim_dstring_copy __P((struct dkim_dstring *, u_char *));
+extern _Bool dkim_dstring_catn __P((struct dkim_dstring *, const u_char *,
+                                    size_t));
+extern _Bool dkim_dstring_copy __P((struct dkim_dstring *, const u_char *));
 extern void dkim_dstring_free __P((struct dkim_dstring *));
 extern u_char *dkim_dstring_get __P((struct dkim_dstring *));
 extern int dkim_dstring_len __P((struct dkim_dstring *));
 extern struct dkim_dstring *dkim_dstring_new __P((DKIM *, int, int));
-extern size_t dkim_dstring_printf __P((struct dkim_dstring *dstr, char *fmt,
-                                       ...));
+extern size_t dkim_dstring_printf __P((struct dkim_dstring *dstr,
+                                       const char *fmt, ...));
 
 #endif /* _DKIM_UTIL_H_ */

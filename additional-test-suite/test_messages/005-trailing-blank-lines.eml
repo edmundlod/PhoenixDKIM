@@ -1,0 +1,13 @@
+From: Alice Sender <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: Test message 005 - multiple trailing blank lines
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+Message-ID: <test-005@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Body line one.
+Body line two.
+
+
+

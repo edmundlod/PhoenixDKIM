@@ -27,7 +27,7 @@
 **  	A string describing the "type" provided.
 */
 
-char *
+const char *
 arf_type_string(int type)
 {
 	switch (type)
@@ -62,7 +62,7 @@ arf_type_string(int type)
 **  	A string describing the "ftype" provided.
 */
 
-char *
+const char *
 arf_dkim_failure_string(int ftype)
 {
 	switch (ftype)
