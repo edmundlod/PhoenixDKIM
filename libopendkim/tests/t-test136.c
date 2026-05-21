@@ -4,7 +4,7 @@
 **
 **  Copyright (c) 2009-2013, The Trusted Domain Project.  All rights reserved.
 **
-**  Copyright (c) 2026, OpenDKIM contributors.
+**  Copyright (c) 2026, PhoenixDKIM contributors.
 **    All rights reserved.
 */
 

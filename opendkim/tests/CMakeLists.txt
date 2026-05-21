@@ -1,4 +1,4 @@
-# Copyright (c) 2026 OpenDKIM contributors
+# Copyright (c) 2026 PhoenixDKIM contributors
 #   All rights reserved.
 
 # Collect bare test names — files matching t-* with no extension

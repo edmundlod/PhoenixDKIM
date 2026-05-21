@@ -1,5 +1,5 @@
 /*
-**  Copyright (c) 2026, OpenDKIM contributors. All rights reserved.
+**  Copyright (c) 2026, PhoenixDKIM contributors. All rights reserved.
 **
 **  t-db-redis.c -- unit test for the Redis/Valkey dkimf_db backend
 **

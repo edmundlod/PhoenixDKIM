@@ -2,7 +2,7 @@
 
 ## Background
 
-opendkim-ng **drops RSA-SHA1 signing** — new signatures use RSA-SHA256 or
+PhoenixDKIM **drops RSA-SHA1 signing** — new signatures use RSA-SHA256 or
 Ed25519 — but **retains RSA-SHA1 verification** for interoperability.  A
 significant volume of mail in the wild is still signed with RSA-SHA1 (RFC 6376
 Section 3.3.1), and a verifying MTA that rejects or ignores those signatures

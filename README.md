@@ -1,19 +1,10 @@
 # PhoenixDKIM
 
 PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and
-verification daemon.
-
-PhoenixDKIM is a maintained and modernized fork of OpenDKIM,
-focused on security hardening, compatibility, testing, and
-modern platform support.
-
-PhoenixDKIM remains configuration- and deployment-compatible
-with existing OpenDKIM installations where practical.
-
-This is the modernised **opendkim-ng** fork of the original
-[trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM),
-updated for current cryptographic standards, a modern build system, and
-actively maintained dependencies.
+verification daemon, focused on security, correctness, and modern
+platform support. It originated as a fork of
+[trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM)
+and is a drop-in replacement for existing OpenDKIM deployments.
 
 ## What's New in 3.0
 
@@ -111,7 +102,7 @@ cmake --install build
 
 See `opendkim.conf(5)` for the full list of configuration options.
 A sample configuration file, which needs editing, is installed at
-`/usr/share/doc/opendkim-ng/opendkim.conf.sample`.
+`/usr/share/doc/phoenixdkim/opendkim.conf.sample`.
 
 For an example on using multiple signatures per e-mail (e.g. Ed25519 with
 an RSA key as fall-back), see `docs/multisigning.md`.
@@ -196,6 +187,31 @@ Solutions: disable the rewriting features, use a two-MTA setup where
 the signing MTA does no rewriting, or use multiple `DaemonPortOptions`
 entries to separate rewriting from signing.
 
+## Origin
+
+OpenDKIM had seen no meaningful upstream development for years, yet remained
+widely deployed. Rather than abandon it or switch to an alternative, I decided
+to fork it — to continue using a tool I relied on, updated and hardened to the
+standard an internet-facing daemon handling email deserves.
+
+The work focused on what matters for a long-lived, security-sensitive daemon:
+
+- Removed obsolete and unmaintained subsystems (VBR, ATPS, RBL, LDAP, GnuTLS,
+  BerkeleyDB, and others) — less code means fewer vulnerabilities and an easier
+  codebase to reason about
+- Modernised cryptography: ported to the OpenSSL 3 EVP API, added Ed25519
+  signing and verification
+- Replaced the autoconf/automake build system with CMake
+- Updated the systemd unit files to current best practices
+- Hardened the build (compiler warnings, sanitisers, security flags) and fixed
+  the bugs they exposed
+- Security-audited the daemon and library code, with assistance from AI tooling
+
+The project was originally named *opendkim-ng*. It was renamed to PhoenixDKIM
+to avoid confusion with the upstream trusteddomainproject/OpenDKIM project,
+which after a long period of inactivity has indicated plans to resume active
+development.
+
 ## Licence
 
 The licence for this package is in the `LICENSE` file. Portions of
@@ -210,4 +226,4 @@ A number of legal regimes restrict the use or export of cryptography. If you are
 
 Please report bugs and submit contributions via GitHub:
 
-https://github.com/edmundlod/opendkim-ng
+https://github.com/edmundlod/PhoenixDKIM

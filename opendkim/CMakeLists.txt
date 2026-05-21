@@ -1,4 +1,4 @@
-# Copyright (c) 2026, OpenDKIM contributors. All rights reserved.
+# Copyright (c) 2026, PhoenixDKIM contributors. All rights reserved.
 
 include(GNUInstallDirs)
 include(CheckFunctionExists)

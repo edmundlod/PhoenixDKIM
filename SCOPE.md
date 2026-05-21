@@ -1,9 +1,9 @@
-# OpenDKIM Modernisation — Project Scope
+# PhoenixDKIM — Project Scope
 
-This document defines the scope for the modernisation of OpenDKIM
-(trusteddomainproject/OpenDKIM). It is the authoritative reference for
-all AI-assisted work on this project. Do not modify it without explicit
-human approval.
+This document defines the scope for the PhoenixDKIM project
+(originally forked from trusteddomainproject/OpenDKIM). It is the
+authoritative reference for all AI-assisted work on this project.
+Do not modify it without explicit human approval.
 
 ---
 

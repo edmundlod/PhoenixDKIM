@@ -2,8 +2,8 @@ version=4
 
 opts="\
 pgpmode=none,\
-filenamemangle=s@.*\/v?(\d[\d\.\-a-zA-Z]*)\.tar\.gz@opendkim-ng-$1.tar.gz@,\
+filenamemangle=s@.*\/v?(\d[\d\.\-a-zA-Z]*)\.tar\.gz@phoenixdkim-$1.tar.gz@,\
 uversionmangle=s/-(beta)([0-9]+)/~$1$2/\
 " \
-https://github.com/edmundlod/opendkim-ng/tags \
-https://github.com/edmundlod/opendkim-ng/archive/refs/tags/v(\d[\d\.\-a-zA-Z]*)\.tar\.gz
+https://github.com/edmundlod/PhoenixDKIM/tags \
+https://github.com/edmundlod/PhoenixDKIM/archive/refs/tags/v(\d[\d\.\-a-zA-Z]*)\.tar\.gz

@@ -7,7 +7,7 @@ includedir=@includedir@
 
 Name: UT (URL Template Library)
 Description: Library for assisting in URI construction from templates
-URL: http://www.opendkim.org
+URL: https://github.com/edmundlod/PhoenixDKIM
 Version: @VERSION@
 Libs: -L${libdir} -lut
 Cflags: -I${includedir}

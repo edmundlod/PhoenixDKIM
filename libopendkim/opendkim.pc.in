@@ -7,7 +7,7 @@ includedir=@includedir@/opendkim
 
 Name: OpenDKIM Library
 Description: Library for performing DKIM signing and verification
-URL: http://opendkim.org
+URL: https://github.com/edmundlod/PhoenixDKIM
 Version: @VERSION@
 Libs: -L${libdir} @PTHREAD_CFLAGS@ -lopendkim
 Libs.private: @LIBOPENDKIM_LIBS_PKG@ @PTHREAD_LIBS@

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 OpenDKIM contributors. All rights reserved.
+# Copyright (c) 2026 PhoenixDKIM contributors. All rights reserved.
 
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=@CMAKE_INSTALL_PREFIX@
@@ -7,7 +7,7 @@ includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@/opendkim
 
 Name: OpenDKIM Library
 Description: Library for performing DKIM signing and verification
-URL: http://opendkim.org
+URL: https://github.com/edmundlod/PhoenixDKIM
 Version: @PACKAGE_VERSION@
 Requires: openssl
 Requires.private: libcrypto libssl@OPENDKIM_PC_REQUIRES_PRIVATE@

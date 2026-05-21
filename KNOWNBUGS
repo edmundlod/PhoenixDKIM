@@ -6,7 +6,7 @@
 The following are bugs or deficiencies in the OpenDKIM package that we
 are aware of but which have not been fixed in the current release.  You
 probably want to get the most up to date version of this from
-http://www.opendkim.org.  For descriptions of bugs that
+https://github.com/edmundlod/PhoenixDKIM.  For descriptions of bugs that
 have been fixed, see the file RELEASE_NOTES.
 
 This list is not guaranteed to be complete.  Check the OpenDKIM web site for
