@@ -64,6 +64,7 @@ find_package(OpenSSL REQUIRED)
 if(OPENSSL_VERSION VERSION_LESS "3.0")
     message(FATAL_ERROR "OpenSSL 3.0 or newer required; found ${OPENSSL_VERSION}")
 endif()
+# OpenSSL 4.x is supported; tested with 4.0.0
 
 # ── LMDB (required) ───────────────────────────────────────────────────────────
 
