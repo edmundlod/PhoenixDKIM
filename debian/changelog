@@ -1,3 +1,30 @@
+opendkim-ng (3.0.0~beta11-ng1) unstable; urgency=medium
+
+  * Security: fix A-R stripping bypass via trailing-dot authserv-id
+  * Security: fix TXT chunk-length OOB read in DNS key extraction
+  * Security: sandbox Lua policy hooks against dangerous standard libraries
+  * Security: zero per-signrequest private key data before free
+  * Security: fix mlfi_connect config-refcount race
+  * Fix: dkim_ohdrs z= decode overwrote plist storage (bugs #226, #233, #235)
+  * Fix: don't skip body when only one canonicalization mode is finished (issue #15)
+  * Fix: protect ub_ctx_config() with a mutex (issue #14)
+  * Fix: widen password file critical section in dkimf_securefile (issue #8)
+  * Fix: RequiredHeaders now reports specific error and rejects (issue #28)
+  * Fix: standard resolver DNSSEC-awareness; ub_ctx_config() concurrency
+  * Add: header.a and header.s to Authentication-Results output
+  * Add: SyslogName configuration option
+  * Add: odkim.internal_ip() to screen and final Lua policy hooks
+  * Feature: reject non-printable domain/selector in dkim_sign() (feature #190)
+  * Build: port missing HAVE_* probes to CMake; add HAVE_LIBCURL
+  * Build: CMake hardening infrastructure; OpenSSL 4 support
+  * Build: OpenSSL version string in build-config.h and -V output
+  * Remove: POPAUTH (POP-before-SMTP) support
+  * Remove: QUERY_CACHE BerkeleyDB-backed DNS-result cache
+  * Code: systematic -Wcast-qual / -Wshadow / -Wsign-compare / -Wpointer-sign
+    remediation across libopendkim, daemon, miltertest, and test programs (PR #3)
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Thu, 21 May 2026 00:00:00 +0200
+
 opendkim-ng (3.0.0~beta10-ng1) unstable; urgency=medium
 
   * CI: Fix YAML syntax in apt dispatch step
