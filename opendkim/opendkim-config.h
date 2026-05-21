@@ -95,9 +95,6 @@ struct configdef dkimf_config[] =
 	{ "OverSignHeaders",		CONFIG_TYPE_STRING,	FALSE },
 	{ "PeerList",			CONFIG_TYPE_STRING,	FALSE },
 	{ "PidFile",			CONFIG_TYPE_STRING,	FALSE },
-#ifdef POPAUTH
-	{ "POPDBFile",			CONFIG_TYPE_STRING,	FALSE },
-#endif /* POPAUTH */
 	{ "Quarantine",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "RedirectFailuresTo",		CONFIG_TYPE_STRING,	FALSE },
 	{ "RemoveARAll",		CONFIG_TYPE_BOOLEAN,	FALSE },
