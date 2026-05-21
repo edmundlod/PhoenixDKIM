@@ -1,8 +1,6 @@
-# OpenDKIM
+# PhoenixDKIM
 
-OpenDKIM is a community effort to develop and maintain an open source
-library for producing DKIM-aware applications, and a milter-based filter
-for providing DKIM signing and verification service to mail servers.
+PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and verification daemon.
 
 This is the modernised **opendkim-ng** fork of the original
 [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM),
