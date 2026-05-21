@@ -216,8 +216,12 @@ unset(CMAKE_REQUIRED_LIBRARIES)
 
 # ── Standard header checks ────────────────────────────────────────────────────
 
-check_include_file(limits.h   HAVE_LIMITS_H)
-check_include_file(stdbool.h  HAVE_STDBOOL_H)
+check_include_file(limits.h         HAVE_LIMITS_H)
+check_include_file(stdbool.h        HAVE_STDBOOL_H)
+check_include_file(iso/limits_iso.h HAVE_ISO_LIMITS_ISO_H)
+
+include(CheckTypeSize)
+check_type_size("useconds_t" USECONDS_T)
 
 
 # ── Daemon-specific configuration ────────────────────────────────────────────

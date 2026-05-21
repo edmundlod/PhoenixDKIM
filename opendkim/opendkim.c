@@ -59,6 +59,10 @@
 
 #include <openssl/err.h>
 
+#ifdef HAVE_LIBCURL
+# include <curl/curl.h>
+#endif /* HAVE_LIBCURL */
+
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif /* HAVE_PATHS_H */
@@ -230,9 +234,9 @@ struct dkimf_config
 	unsigned long	conf_sigttl;		/* signature TTLs */
 	dkim_alg_t	conf_signalg;		/* signing algorithm */
 	struct config *	conf_data;		/* configuration data */
-#ifdef HAVE_CURL_EASY_STRERROR
+#ifdef HAVE_LIBCURL
 	char *		conf_smtpuri;		/* outgoing mail URI */
-#endif /* HAVE_CURL_EASY_STRERROR */
+#endif /* HAVE_LIBCURL */
 	char *		conf_authservid;	/* authserv-id */
 	char *		conf_keyfile;		/* key file for single key */
 	char *		conf_keytable;		/* key table */
@@ -5568,10 +5572,10 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  &conf->conf_authservidwithjobid,
 		                  sizeof conf->conf_authservidwithjobid);
 
-#ifdef HAVE_CURL_EASY_STRERROR
+#ifdef HAVE_LIBCURL
 		(void) config_get(data, "SMTPURI", &conf->conf_smtpuri,
 		                  sizeof conf->conf_smtpuri);
-#endif /* HAVE_CURL_EASY_STRERROR */
+#endif /* HAVE_LIBCURL */
 
 		str = NULL;
 		(void) config_get(data, "BaseDirectory", &str, sizeof str);
@@ -8973,7 +8977,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 	if (!sendreport)
 		return;
 
-#ifdef HAVE_CURL_EASY_STRERROR
+#ifdef HAVE_LIBCURL
 	if (conf->conf_smtpuri != NULL)
 	{
 		int fd;
@@ -9023,7 +9027,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 			return;
 		}
 	}
-#else /* HAVE_CURL_EASY_STRERROR */
+#else /* HAVE_LIBCURL */
 	out = popen(reportcmd, "w");
 	if (out == NULL)
 	{
@@ -9035,7 +9039,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 
 		return;
 	}
-#endif /* HAVE_CURL_EASY_STRERROR */
+#endif /* HAVE_LIBCURL */
 
 	/* determine the type of ARF failure and, if needed, a DKIM fail code */
 	arftype = dkimf_arftype(dfc);
@@ -9198,7 +9202,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 	fprintf(out, "\n--dkimreport/%s/%s--\n", hostname, dfc->mctx_jobid);
 
 	/* send it */
-#ifdef HAVE_CURL_EASY_SETOPT
+#ifdef HAVE_LIBCURL
 	if (conf->conf_smtpuri != NULL)
 	{
 		CURLcode cc;
@@ -9278,14 +9282,14 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 			       dfc->mctx_jobid, status);
 		}
 	}
-#else /* HAVE_CURL_EASY_SETOPT */
+#else /* HAVE_LIBCURL */
 	status = pclose(out);
 	if (status != 0 && conf->conf_dolog)
 	{
 		syslog(LOG_ERR, "%s: pclose(): returned status %d",
 		       dfc->mctx_jobid, status);
 	}
-#endif /* HAVE_CURL_EASY_SETOPT */
+#endif /* HAVE_LIBCURL */
 }
 
 /*

@@ -40,6 +40,8 @@ Optional:
 
 - Lua 5.4 — policy scripting hooks (`-DWITH_LUA=ON`)
 - libunbound — DNSSEC-aware DNS resolution (`-DWITH_UNBOUND=ON`)
+- libcurl >= 7.20.0 — SMTP report delivery via the `SMTPURI` config option (`-DWITH_CURL=ON`)
+- hiredis or libvalkey — Redis/Valkey signing-table backend (`-DWITH_REDIS=ON`)
 - libbsd — provides `strlcpy`/`strlcat` on systems without them
   (not needed on glibc 2.38+, FreeBSD, or OpenBSD)
 
@@ -48,18 +50,24 @@ Optional:
 ```
 apt install build-essential cmake libssl-dev liblmdb-dev \
             libmilter-dev liblua5.4-dev
+# optional
+apt install libcurl4-openssl-dev libhiredis-dev
 ```
 
 ### RHEL / AlmaLinux / Rocky
 
 ```
 dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel lua-devel
+# optional
+dnf install libcurl-devel hiredis-devel
 ```
 
 ### FreeBSD
 
 ```
 pkg install cmake openssl lmdb milter lua54
+# optional
+pkg install curl hiredis
 ```
 
 ## Building
@@ -83,6 +91,8 @@ Common build options:
 |---|---|---|
 | `-DWITH_LUA=ON` | OFF | Enable Lua 5.4 policy scripting |
 | `-DWITH_UNBOUND=ON` | ON | Enable libunbound DNSSEC resolver |
+| `-DWITH_CURL=ON` | OFF | Enable libcurl SMTP report delivery (`SMTPURI`) |
+| `-DWITH_REDIS=ON` | OFF | Enable Redis/Valkey signing-table backend |
 | `-DCMAKE_BUILD_TYPE=Release` | `RelWithDebInfo` | Build type (Debug/Release/RelWithDebInfo/MinSizeRel) |
 
 To install:

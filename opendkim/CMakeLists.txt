@@ -80,6 +80,21 @@ if(WITH_REDIS)
     set(WITH_REDIS 1)
 endif()
 
+# ── libcurl (optional, default OFF) ───────────────────────────────────────────
+# Enables SMTP report delivery via the SMTPURI config option.
+
+option(WITH_CURL "Enable libcurl SMTP report delivery (SMTPURI config option)" OFF)
+
+if(WITH_CURL)
+    find_package(CURL REQUIRED)
+    if(CURL_VERSION_STRING VERSION_LESS "7.20.0")
+        message(FATAL_ERROR
+            "libcurl >= 7.20.0 required (CURLOPT_MAIL_FROM/MAIL_RCPT); "
+            "found ${CURL_VERSION_STRING}")
+    endif()
+    set(HAVE_LIBCURL 1)
+endif()
+
 # ── pthreads ──────────────────────────────────────────────────────────────────
 
 find_package(Threads REQUIRED)
@@ -168,6 +183,11 @@ function(configure_daemon_target tgt)
         endif()
         target_include_directories(${tgt} PRIVATE ${HIREDIS_INCLUDE_DIR})
         target_link_libraries(${tgt} PRIVATE ${HIREDIS_LIBRARY})
+    endif()
+
+    if(WITH_CURL AND HAVE_LIBCURL)
+        target_compile_definitions(${tgt} PRIVATE HAVE_LIBCURL=1)
+        target_link_libraries(${tgt} PRIVATE CURL::libcurl)
     endif()
 endfunction()
 
