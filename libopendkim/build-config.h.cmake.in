@@ -37,6 +37,13 @@
 #cmakedefine HAVE_REALPATH 1
 #cmakedefine HAVE_STRSEP 1
 
+/* libcurl SMTP report delivery (enabled with -DWITH_CURL=ON) */
+#cmakedefine HAVE_LIBCURL 1
+
+/* Platform type/header availability */
+#cmakedefine HAVE_ISO_LIMITS_ISO_H 1
+#cmakedefine HAVE_USECONDS_T 1
+
 /* Standard system headers */
 #cmakedefine HAVE_LIMITS_H 1
 #cmakedefine HAVE_STDBOOL_H 1
