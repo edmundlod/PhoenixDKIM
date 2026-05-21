@@ -55,13 +55,6 @@ in progress, and the connection that accepted it.
 These functions are made available to Lua for processing a message through
 the setup script:
 .TP
-.B odkim.check_popauth(ctx)
-Returns 1 if the SMTP client represented by
-.I ctx
-is coming from an IP address found in the POPAUTH database (if enabled
-and configured), and 0 otherwise.  Returns the Lua constant "nil" if
-the POPAUTH database is not enabled or not configured.
-.TP
 .B odkim.db_check(db, string)
 Returns 1 if
 .I db

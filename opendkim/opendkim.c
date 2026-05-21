@@ -565,9 +565,6 @@ char *progname;					/* program name */
 char *sock;					/* listening socket */
 const char *conffile;				/* configuration file */
 struct dkimf_config *curconf;			/* current configuration */
-#ifdef POPAUTH
-DKIMF_DB popdb;					/* POP auth DB */
-#endif /* POPAUTH */
 char reportcmd[BUFRSZ + 1];			/* reporting command */
 /* user@host: each part bounded by DKIM_MAXHOSTNAMELEN (same value as LOGIN_NAME_MAX on Linux) */
 char reportaddr[2 * DKIM_MAXHOSTNAMELEN + 2];	/* reporting address */
@@ -1959,70 +1956,6 @@ dkimf_xs_getheader(lua_State *l)
 		lua_pushstring(l, hdr->hdr_val);
 		return 1;
 	}
-}
-
-/*
-**  DKIMF_XS_POPAUTH -- see if the client's IP address is in the POPAUTH
-**                      database
-**
-**  Parameters:
-**  	l -- Lua state
-**
-**  Return value:
-**  	Number of stack items pushed.
-*/
-
-int
-dkimf_xs_popauth(lua_State *l)
-{
-	SMFICTX *ctx;
-
-	assert(l != NULL);
-
-	if (lua_gettop(l) != 1)
-	{
-		lua_pushstring(l,
-		               "odkim.check_popauth(): incorrect argument count");
-		lua_error(l);
-	}
-	else if (!lua_islightuserdata(l, 1))
-	{
-		lua_pushstring(l,
-		               "odkim.check_popauth(): incorrect argument type");
-		lua_error(l);
-	}
-
-	ctx = (SMFICTX *) lua_touserdata(l, 1);
-	lua_pop(l, 1);
-
-	if (ctx == NULL)
-	{
-		lua_pushnumber(l, 0);
-
-		return 1;
-	}
-
-#ifdef POPAUTH
-	if (popdb == NULL)
-	{
-		lua_pushnil(l);
-		return 1;
-	}
-	else
-	{
-		struct connctx *cc;
-		_Bool popauth;
-
-		cc = (struct connctx *) dkimf_getpriv(ctx);
-		popauth = dkimf_checkpopauth(popdb, &cc->cctx_ip);
-
-		lua_pushnumber(l, popauth ? 1 : 0);
-		return 1;
-	}
-#else /* POPAUTH */
-	lua_pushnil(l);
-	return 1;
-#endif /* POPAUTH */
 }
 
 /*
@@ -10731,9 +10664,7 @@ mlfi_eoh(SMFICTX *ctx)
 	if (!originok)
 	{
 		_Bool internal;
-#ifdef POPAUTH
-		_Bool popauth;
-#endif /* POPAUTH */
+
 		char *authtype;
 
 		internal = dkimf_checkhost(conf->conf_internal, cc->cctx_host);
@@ -10744,18 +10675,8 @@ mlfi_eoh(SMFICTX *ctx)
         if (authtype == NULL || authtype[0] == '\0') 
             authtype = dkimf_getsymval(ctx, "{auth_type}"); // Fallback
 
-#ifdef POPAUTH
-		popauth = dkimf_checkpopauth(popdb,
-		                             (struct sockaddr *) &cc->cctx_ip);
-#endif /* POPAUTH */
-
 		if ((authtype != NULL && authtype[0] != '\0') || internal)
 			originok = TRUE;
-
-#ifdef POPAUTH
-		if (popauth)
-			originok = TRUE;
-#endif /* POPAUTH */
 
 		if (!originok && conf->conf_logwhy)
 		{
@@ -10775,14 +10696,6 @@ mlfi_eoh(SMFICTX *ctx)
 				syslog(LOG_INFO, "%s: not authenticated",
 				       dfc->mctx_jobid);
 			}
-
-#ifdef POPAUTH
-			if (!popauth)
-			{
-				syslog(LOG_INFO, "%s: not POP authenticated",
-				       dfc->mctx_jobid);
-			}
-#endif /* POPAUTH */
 		}
 	}
 
@@ -12923,9 +12836,6 @@ main(int argc, char **argv)
 	char *p;
 	const char *liberr = NULL;
 	char *pidfile = NULL;
-#ifdef POPAUTH
-	char *popdbfile = NULL;
-#endif /* POPAUTH */
 	char *testfile = NULL;
 	char *testpubkeys = NULL;
 	struct config *cfg = NULL;
@@ -12937,9 +12847,6 @@ main(int argc, char **argv)
 	reload = FALSE;
 	testmode = FALSE;
 	sock = NULL;
-#ifdef POPAUTH
-	popdb = NULL;
-#endif /* POPAUTH */
 	no_i_whine = TRUE;
 	conffile = NULL;
 
@@ -13616,14 +13523,6 @@ main(int argc, char **argv)
 			(void) config_get(cfg, "Userid", &become,
 			                  sizeof become);
 		}
-
-#ifdef POPAUTH
-		if (popdbfile == NULL)
-		{
-			(void) config_get(cfg, "POPDBFile", &popdbfile,
-			                  sizeof popdbfile);
-		}
-#endif /* POPAUTH */
 
 		(void) config_get(cfg, "ChangeRootDirectory", &chrootdir,
 		                  sizeof chrootdir);
@@ -14376,44 +14275,6 @@ main(int argc, char **argv)
 		n -= status;
 	}
 
-#ifdef POPAUTH
-	if (popdbfile != NULL)
-	{
-		const char *err = NULL;
-
-		status = dkimf_initpopauth();
-		if (status != 0)
-		{
-			fprintf(stderr,
-			        "%s: can't initialize popauth mutex: %s\n",
-			        progname, strerror(status));
-			syslog(LOG_ERR, "can't initialize mutex: %s",
-			       popdbfile);
-		}
-
-		status = dkimf_db_open(&popdb, popdbfile,
-		                       DKIMF_DB_FLAG_READONLY, NULL, &err);
-		if (status != 0)
-		{
-			fprintf(stderr, "%s: can't open database %s: %s\n",
-			        progname, popdbfile, err);
-
-			if (dolog)
-			{
-				syslog(LOG_ERR, "can't open database %s: %s",
-				       popdbfile, err);
-			}
-
-			dkimf_zapkey(curconf);
-
-			if (!autorestart && pidfile != NULL)
-				(void) unlink(pidfile);
-
-			return EX_UNAVAILABLE;
-		}
-	}
-#endif /* POPAUTH */
-
 	if (curconf->conf_dolog)
 	{
 		syslog(LOG_INFO, "%s v%s starting%s%s%s", DKIMF_PRODUCT,
@@ -14449,11 +14310,6 @@ main(int argc, char **argv)
 		       "%s v%s terminating with status %d, errno = %d",
 		       DKIMF_PRODUCT, VERSION, status, errno);
 	}
-
-#ifdef POPAUTH
-	if (popdb != NULL)
-		dkimf_db_close(popdb);
-#endif /* POPAUTH */
 
 	dkimf_zapkey(curconf);
 

@@ -29,14 +29,8 @@ struct dkimf_dstring;
 extern void dkimf_base64_encode_file __P((int, FILE *, int, int, int));
 extern _Bool dkimf_checkhost __P((DKIMF_DB, char *));
 extern _Bool dkimf_checkip __P((DKIMF_DB, struct sockaddr *));
-#ifdef POPAUTH
-extern _Bool dkimf_checkpopauth __P((DKIMF_DB, struct sockaddr *));
-#endif /* POPAUTH */
 extern _Bool dkimf_hostlist __P((char *, char **));
 extern size_t dkimf_inet_ntoa __P((struct in_addr, char *, size_t));
-#ifdef POPAUTH
-extern int dkimf_initpopauth __P((void));
-#endif /* POPAUTH */
 extern void dkimf_ipstring __P((char *, size_t, struct sockaddr_storage *));
 extern _Bool dkimf_isblank __P((char *));
 extern void dkimf_lowercase __P((u_char *));

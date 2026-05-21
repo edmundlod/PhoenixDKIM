@@ -69,10 +69,6 @@
 #endif /* ! INADDR_NONE */
 
 /* globals */
-#ifdef POPAUTH
-static pthread_mutex_t pop_lock;
-#endif /* POPAUTH */
-
 static const char *optlist[] =
 {
 #if DEBUG
@@ -82,10 +78,6 @@ static const char *optlist[] =
 #if POLL
 	"POLL",
 #endif /* POLL */
-
-#if POPAUTH
-	"POPAUTH",
-#endif /* POPAUTH */
 
 #if USE_JANSSON
 	"USE_JANSSON",
@@ -102,19 +94,6 @@ static const char *optlist[] =
 #if USE_UNBOUND
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	NULL
 };
@@ -617,69 +596,6 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 
 	return FALSE;
 }
-
-#ifdef POPAUTH
-/*
-**  DKIMF_INITPOPAUTH -- initialize POPAUTH stuff
-**
-**  Parameters:
-**  	None.
-**
-**  Return value:
-**  	0 on success, an error code on failure.  See pthread_mutex_init().
-*/
-
-int
-dkimf_initpopauth(void)
-{
-	return pthread_mutex_init(&pop_lock, NULL);
-}
-
-/*
-**  DKIMF_CHECKPOPAUTH -- check a POP before SMTP database for client
-**                        authentication
-**
-**  Parameters:
-**  	db -- DB handle to use for searching
-**  	ip -- IP address to find
-**
-**  Return value:
-**  	TRUE iff the database could be opened and the client was verified.
-**
-**  Notes:
-**  	- does the key contain anything meaningful, like an expiry time?
-*/
-
-_Bool
-dkimf_checkpopauth(DKIMF_DB db, struct sockaddr *ip)
-{
-	_Bool exists;
-	int status;
-	struct sockaddr_in *sin;
-	struct in_addr addr;
-	char ipbuf[DKIM_MAXHOSTNAMELEN + 1];
-
-	assert(ip != NULL);
-
-	if (db == NULL)
-		return FALSE;
-
-	/* skip anything not IPv4 (for now) */
-	if (ip->sa_family != AF_INET)
-		return FALSE;
-	else
-		sin = (struct sockaddr_in *) ip;
-
-
-	memcpy(&addr.s_addr, &sin->sin_addr, sizeof addr.s_addr);
-
-	dkimf_inet_ntoa(addr, ipbuf, sizeof ipbuf);
-	exists = FALSE;
-	status = dkimf_db_get(db, ipbuf, 0, NULL, 0, &exists);
-	return (status == 0 && exists);
-}
-#endif /* POPAUTH */
-
 
 /*
 **  DKIMF_INET_NTOA -- thread-safe inet_ntoa()
