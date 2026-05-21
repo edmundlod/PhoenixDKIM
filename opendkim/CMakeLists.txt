@@ -54,6 +54,7 @@ option(WITH_LUA "Build with Lua 5.4 scripting support" OFF)
 
 if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
+    set(USE_LUA 1)
 endif()
 
 # ── Redis / Valkey — hiredis or libvalkey (optional) ─────────────────────────
@@ -76,6 +77,7 @@ if(WITH_REDIS)
         set(REDIS_IMPL_VALKEY FALSE)
         message(STATUS "Redis backend: using hiredis")
     endif()
+    set(WITH_REDIS 1)
 endif()
 
 # ── pthreads ──────────────────────────────────────────────────────────────────
@@ -155,7 +157,6 @@ function(configure_daemon_target tgt)
     endif()
 
     if(WITH_LUA)
-        target_compile_definitions(${tgt} PRIVATE USE_LUA=1)
         target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
         target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
     endif()

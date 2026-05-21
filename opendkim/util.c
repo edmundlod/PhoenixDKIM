@@ -71,27 +71,19 @@
 /* globals */
 static const char *optlist[] =
 {
-#if DEBUG
-	"DEBUG",
-#endif /* DEBUG */
-
-#if POLL
-	"POLL",
-#endif /* POLL */
-
-#if USE_JANSSON
-	"USE_JANSSON",
-#endif /* USE_JANSSON */
-
-#if USE_LUA
+#ifdef USE_LUA
 	"USE_LUA",
 #endif /* USE_LUA */
 
-#if USE_MDB
+#ifdef USE_MDB
 	"USE_MDB",
 #endif /* USE_MDB */
 
-#if USE_UNBOUND
+#ifdef WITH_REDIS
+	"WITH_REDIS",
+#endif /* WITH_REDIS */
+
+#ifdef USE_UNBOUND
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
 

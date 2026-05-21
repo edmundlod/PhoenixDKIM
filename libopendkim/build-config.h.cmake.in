@@ -70,4 +70,6 @@
 /* st_node field in struct stat (BSD-specific) */
 #cmakedefine HAVE_ST_NODE 1
 
+#cmakedefine WITH_REDIS 1
+
 #endif /* _BUILD_CONFIG_H_ */
