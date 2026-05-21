@@ -19,7 +19,6 @@
 
 /* libopendkim includes */
 #include "../dkim.h"
-#include "../dkim-tables.h"
 #include "t-testdata.h"
 
 #define	DEFMSGSIZE	1024
@@ -262,20 +261,7 @@ main(int argc, char **argv)
 	lib = dkim_init(NULL, NULL);
 
 	if (signalg == DKIM_SIGN_UNKNOWN)
-	{
-		if (dkim_libfeature(lib, DKIM_FEATURE_SHA256))
-			signalg = DKIM_SIGN_RSASHA256;
-		else
-			signalg = DKIM_SIGN_RSASHA1;
-	}
-	else if (signalg == DKIM_SIGN_RSASHA256 &&
-	         !dkim_libfeature(lib, DKIM_FEATURE_SHA256))
-	{
-		fprintf(stdout,
-		        "### requested signing algorithm not available\n");
-		dkim_close(lib);
-		return 1;
-	}
+		signalg = DKIM_SIGN_RSASHA256;
 
 	fprintf(stdout,
 	        "*** VERIFYING SPEED TEST: %s/%s with %s, size %u for %lds\n",
