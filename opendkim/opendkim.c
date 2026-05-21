@@ -13137,10 +13137,6 @@ main(int argc, char **argv)
 			return EX_CONFIG;
 		}
 
-#ifdef DEBUG
-		(void) config_dump(cfg, stdout, NULL);
-#endif /* DEBUG */
-
 		missing = config_check(cfg, dkimf_config);
 		if (missing != NULL)
 		{
