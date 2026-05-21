@@ -38,7 +38,7 @@
 **  	None.
 */
 
-void
+static void
 message(DKIM *dkim, char *hdr)
 {
 	int status;

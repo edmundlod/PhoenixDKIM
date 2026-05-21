@@ -46,7 +46,7 @@ char *progname;
 **  	dkim_canon_t
 */
 
-dkim_canon_t
+static dkim_canon_t
 canon_code(char *name)
 {
 	if (name == NULL)
@@ -69,7 +69,7 @@ canon_code(char *name)
 **  	Pointer to name string.
 */
 
-const char *
+static const char *
 canon_name(dkim_canon_t code)
 {
 	switch (code)
@@ -96,7 +96,7 @@ canon_name(dkim_canon_t code)
 **  	dkim_alg_t
 */
 
-dkim_alg_t
+static dkim_alg_t
 alg_code(char *name)
 {
 	if (name == NULL)
@@ -119,7 +119,7 @@ alg_code(char *name)
 **  	Pointer to name string.
 */
 
-const char *
+static const char *
 alg_name(dkim_alg_t code)
 {
 	switch (code)
@@ -149,7 +149,7 @@ alg_name(dkim_alg_t code)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [options]\n"

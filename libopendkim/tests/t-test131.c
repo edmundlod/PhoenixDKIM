@@ -47,7 +47,7 @@
 **  	None.
 */
 
-void
+static void
 eatws(char *str)
 {
 	char *p;

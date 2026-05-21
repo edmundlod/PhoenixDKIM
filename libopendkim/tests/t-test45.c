@@ -51,7 +51,7 @@ struct local_sig
 **  	Pointer to a local signature handle.
 */
 
-void *
+static void *
 alloc_handle(void *ignored)
 {
 	void *new;
@@ -75,7 +75,7 @@ alloc_handle(void *ignored)
 **  	None.
 */
 
-void
+static void
 tagvalues(void *user, dkim_param_t pcode,
           const u_char *param, const u_char *value)
 {
@@ -136,7 +136,7 @@ tagvalues(void *user, dkim_param_t pcode,
 **  	DKIM_CBSTAT_CONTINUE (assuming no assertions fire).
 */
 
-DKIM_CBSTAT
+static DKIM_CBSTAT
 prescreen(DKIM *dkim, DKIM_SIGINFO **sigs, int nsigs)
 {
 	int c;
@@ -172,7 +172,7 @@ prescreen(DKIM *dkim, DKIM_SIGINFO **sigs, int nsigs)
 **  	None.
 */
 
-void
+static void
 free_handle(void *ignored, void *handle)
 {
 	assert(handle != NULL);

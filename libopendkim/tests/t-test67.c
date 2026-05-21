@@ -40,7 +40,7 @@
 **  	DKIM_CBSTAT_CONTINUE (assuming no assertions fire).
 */
 
-DKIM_CBSTAT
+static DKIM_CBSTAT
 final(DKIM *dkim, DKIM_SIGINFO **sigs, int nsigs)
 {
 	DKIM_STAT status;
