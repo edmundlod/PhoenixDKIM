@@ -1,6 +1,14 @@
 # PhoenixDKIM
 
-PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and verification daemon.
+PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and
+verification daemon.
+
+PhoenixDKIM is a maintained and modernized fork of OpenDKIM,
+focused on security hardening, compatibility, testing, and
+modern platform support.
+
+PhoenixDKIM remains configuration- and deployment-compatible
+with existing OpenDKIM installations where practical.
 
 This is the modernised **opendkim-ng** fork of the original
 [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM),
