@@ -374,7 +374,6 @@ dkimf_test_getsymval(void *ctx, const char *sym)
 **  	file -- input file path
 **  	fixedtime -- time to use on signatures (or -1)
 **  	strict -- strict CRLF mode?
-**  	verbose -- verbose level
 **
 **  Return value:
 **  	An EX_* constant (see sysexits.h)
@@ -382,7 +381,7 @@ dkimf_test_getsymval(void *ctx, const char *sym)
 
 static int
 dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
-               FILE *f, const char *file, _Bool strict, int tverbose)
+               FILE *f, const char *file, _Bool strict)
 {
 	bool inheaders = TRUE;
 	bool newline = FALSE;
@@ -934,8 +933,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 			}
 		}
 
-		status = dkimf_testfile(libopendkim, tctx, f, file, strict,
-		                        tverbose);
+		status = dkimf_testfile(libopendkim, tctx, f, file, strict);
 
 		FCLOSE(f);
 

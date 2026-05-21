@@ -5220,16 +5220,16 @@ dkimf_reloader(/* UNUSED */ void *vp)
 **  Parameters:
 **  	pid -- process ID to signal
 **  	sig -- signal to use
-**  	dolog -- log it?
+**  	do_log -- log it?
 **
 **  Return value:
 **  	None.
 */
 
 static void
-dkimf_killchild(pid_t pid, int sig, _Bool dolog)
+dkimf_killchild(pid_t pid, int sig, _Bool do_log)
 {
-	if (kill(pid, sig) == -1 && dolog)
+	if (kill(pid, sig) == -1 && do_log)
 	{
 		syslog(LOG_ERR, "kill(%d, %d): %s", pid, sig,
 		       strerror(errno));
