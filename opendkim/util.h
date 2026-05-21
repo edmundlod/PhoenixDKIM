@@ -29,14 +29,8 @@ struct dkimf_dstring;
 extern void dkimf_base64_encode_file __P((int, FILE *, int, int, int));
 extern _Bool dkimf_checkhost __P((DKIMF_DB, char *));
 extern _Bool dkimf_checkip __P((DKIMF_DB, struct sockaddr *));
-#ifdef POPAUTH
-extern _Bool dkimf_checkpopauth __P((DKIMF_DB, struct sockaddr *));
-#endif /* POPAUTH */
 extern _Bool dkimf_hostlist __P((char *, char **));
 extern size_t dkimf_inet_ntoa __P((struct in_addr, char *, size_t));
-#ifdef POPAUTH
-extern int dkimf_initpopauth __P((void));
-#endif /* POPAUTH */
 extern void dkimf_ipstring __P((char *, size_t, struct sockaddr_storage *));
 extern _Bool dkimf_isblank __P((char *));
 extern void dkimf_lowercase __P((u_char *));
@@ -52,15 +46,17 @@ extern void dkimf_trimspaces __P((char *));
 
 extern struct dkimf_dstring *dkimf_dstring_new __P((int, int));
 extern void dkimf_dstring_free __P((struct dkimf_dstring *));
-extern _Bool dkimf_dstring_copy __P((struct dkimf_dstring *, u_char *));
-extern _Bool dkimf_dstring_cat __P((struct dkimf_dstring *, u_char *));
+extern _Bool dkimf_dstring_copy __P((struct dkimf_dstring *, const u_char *));
+extern _Bool dkimf_dstring_cat __P((struct dkimf_dstring *, const u_char *));
 extern _Bool dkimf_dstring_cat1 __P((struct dkimf_dstring *, int));
-extern _Bool dkimf_dstring_catn __P((struct dkimf_dstring *, u_char *, size_t));
+extern _Bool dkimf_dstring_catn __P((struct dkimf_dstring *, const u_char *,
+                                     size_t));
 extern void dkimf_dstring_chop __P((struct dkimf_dstring *, int));
 extern u_char *dkimf_dstring_get __P((struct dkimf_dstring *));
 extern int dkimf_dstring_len __P((struct dkimf_dstring *));
 extern void dkimf_dstring_blank __P((struct dkimf_dstring *));
-extern size_t dkimf_dstring_printf __P((struct dkimf_dstring *, char *, ...));
+extern size_t dkimf_dstring_printf __P((struct dkimf_dstring *, const char *,
+                                        ...));
 
 #ifdef USE_UNBOUND
 extern _Bool dkimf_timespec_past __P((struct timespec *tv));

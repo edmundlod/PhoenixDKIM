@@ -47,7 +47,7 @@ struct test_context
 	void *	tc_priv;		/* private data pointer */
 };
 
-char *milter_status[] =
+const char *milter_status[] =
 {
 	"SMFIS_CONTINUE",
 	"SMFIS_REJECT",
@@ -56,13 +56,13 @@ char *milter_status[] =
 	"SMFIS_TEMPFAIL"
 };
 
-char *envfrom[] =
+const char *envfrom[] =
 {
 	"<sender@example.org>",
 	NULL
 };
 
-char *envrcpt[] =
+const char *envrcpt[] =
 {
 	"<recipient@example.com>",
 	NULL
@@ -158,7 +158,8 @@ dkimf_test_progress(void *ctx)
 */
 
 int
-dkimf_test_setreply(void *ctx, char *rcode, char *xcode, char *replytxt)
+dkimf_test_setreply(void *ctx, const char *rcode, const char *xcode,
+                    const char *replytxt)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -188,7 +189,7 @@ dkimf_test_setreply(void *ctx, char *rcode, char *xcode, char *replytxt)
 */
 
 int
-dkimf_test_insheader(void *ctx, int idx, char *hname, char *hvalue)
+dkimf_test_insheader(void *ctx, int idx, const char *hname, const char *hvalue)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -244,7 +245,7 @@ dkimf_test_chgheader(void *ctx, char *hname, int idx, char *hvalue)
 */
 
 int
-dkimf_test_quarantine(void *ctx, char *reason)
+dkimf_test_quarantine(void *ctx, const char *reason)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -271,7 +272,7 @@ dkimf_test_quarantine(void *ctx, char *reason)
 */
 
 int
-dkimf_test_addheader(void *ctx, char *hname, char *hvalue)
+dkimf_test_addheader(void *ctx, const char *hname, const char *hvalue)
 {
 	(void) ctx;
 	assert(ctx != NULL);
@@ -351,7 +352,7 @@ dkimf_test_addrcpt(void *ctx, char *addr)
 */
 
 char *
-dkimf_test_getsymval(void *ctx, char *sym)
+dkimf_test_getsymval(void *ctx, const char *sym)
 {
 	static char symout[MAXBUFRSZ];
 
@@ -373,7 +374,6 @@ dkimf_test_getsymval(void *ctx, char *sym)
 **  	file -- input file path
 **  	fixedtime -- time to use on signatures (or -1)
 **  	strict -- strict CRLF mode?
-**  	verbose -- verbose level
 **
 **  Return value:
 **  	An EX_* constant (see sysexits.h)
@@ -381,7 +381,7 @@ dkimf_test_getsymval(void *ctx, char *sym)
 
 static int
 dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
-               FILE *f, char *file, _Bool strict, int tverbose)
+               FILE *f, const char *file, _Bool strict)
 {
 	bool inheaders = TRUE;
 	bool newline = FALSE;
@@ -406,7 +406,13 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	memset(buf, '\0', sizeof buf);
 	memset(line, '\0', sizeof buf);
 
-	ms = mlfi_envfrom((SMFICTX *) tctx, envfrom);
+	/*
+	**  libmilter's xxfi_envfrom callback takes argv as char **;
+	**  the milter never writes through these pointers -- cast away
+	**  const on our envfrom literal table.
+	*/
+
+	ms = mlfi_envfrom((SMFICTX *) tctx, (char **) envfrom);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: %s: mlfi_envfrom() returned %s\n",
@@ -415,7 +421,13 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	if (ms != SMFIS_CONTINUE)
 		return EX_SOFTWARE;
 
-	ms = mlfi_envrcpt((SMFICTX *) tctx, envrcpt);
+	/*
+	**  libmilter's xxfi_envrcpt callback takes argv as char **;
+	**  the milter never writes through these pointers -- cast away
+	**  const on our envrcpt literal table.
+	*/
+
+	ms = mlfi_envrcpt((SMFICTX *) tctx, (char **) envrcpt);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: %s: mlfi_envrcpt() returned %s\n",
@@ -726,7 +738,7 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 
 				if (selector != NULL || domain != NULL)
 				{
-					char *dnssec;
+					const char *dnssec;
 					int dnsseccode = DKIM_DNSSEC_UNKNOWN;
 
 					dnsseccode = dkim_sig_getdnssec(sig);
@@ -846,7 +858,7 @@ int
 dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
                 bool strict, int verbose)
 {
-	char *file;
+	const char *file;
 	char *ctx;
 	FILE *f;
 	int status;
@@ -862,7 +874,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	/* pass fixed signing time to the library */
 	if (fixedtime != (uint64_t) -1)
 	{
-		(void) dkim_options(libopendkim, DKIM_OP_SETOPT,
+		(void) dkim_setopt(libopendkim,
 		                    DKIM_OPTS_FIXEDTIME,
 		                    &fixedtime, sizeof fixedtime);
 	}
@@ -882,7 +894,15 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	sin.sin_port = htons(time(NULL) % 65536);
 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	ms = mlfi_connect((SMFICTX *) tctx, "localhost", (_SOCK_ADDR *) &sin);
+	/*
+	**  mlfi_connect implements libmilter's xxfi_connect callback,
+	**  whose prototype takes the hostname as char *; libmilter never
+	**  writes through this pointer -- cast away const on our
+	**  "localhost" literal.
+	*/
+
+	ms = mlfi_connect((SMFICTX *) tctx, (char *) "localhost",
+	                  (_SOCK_ADDR *) &sin);
 	if (MLFI_OUTPUT(ms, tverbose))
 	{
 		fprintf(stderr, "%s: mlfi_connect() returned %s\n",
@@ -913,8 +933,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 			}
 		}
 
-		status = dkimf_testfile(libopendkim, tctx, f, file, strict,
-		                        tverbose);
+		status = dkimf_testfile(libopendkim, tctx, f, file, strict);
 
 		FCLOSE(f);
 

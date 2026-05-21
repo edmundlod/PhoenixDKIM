@@ -58,8 +58,8 @@
 #endif /* USE_STRL_H */
 
 /* definitions */
-#define	CRLF	(u_char *) "\r\n"
-#define	SP	(u_char *) " "
+#define	CRLF	(const u_char *) "\r\n"
+#define	SP	(const u_char *) " "
 
 /* macros */
 #define	DKIM_ISWSP(x)	((x) == 011 || (x) == 040)
@@ -148,7 +148,7 @@ dkim_canon_free(DKIM *dkim, DKIM_CANON *canon)
 */
 
 static void
-dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_write(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 {
 	assert(canon != NULL);
 
@@ -196,7 +196,7 @@ dkim_canon_write(DKIM_CANON *canon, u_char *buf, size_t buflen)
 */
 
 static void
-dkim_canon_buffer(DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_buffer(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 {
 	assert(canon != NULL);
 
@@ -485,11 +485,12 @@ dkim_canon_flushblanks(DKIM_CANON *canon)
 */
 
 static DKIM_STAT
-dkim_canon_fixcrlf(DKIM *dkim, DKIM_CANON *canon, u_char *buf, size_t buflen)
+dkim_canon_fixcrlf(DKIM *dkim, DKIM_CANON *canon, const u_char *buf,
+                   size_t buflen)
 {
 	u_char prev;
-	u_char *p;
-	u_char *eob;
+	const u_char *p;
+	const u_char *eob;
 
 	assert(dkim != NULL);
 	assert(canon != NULL);
@@ -815,8 +816,8 @@ dkim_add_canon(DKIM *dkim, _Bool hdr, dkim_canon_t canon, int hashtype,
 */
 
 int
-dkim_canon_selecthdrs(DKIM *dkim, u_char *hdrlist, struct dkim_header **ptrs,
-                      int nptrs)
+dkim_canon_selecthdrs(DKIM *dkim, const u_char *hdrlist,
+                      struct dkim_header **ptrs, int nptrs)
 {
 	int c;
 	int n;
@@ -868,7 +869,8 @@ dkim_canon_selecthdrs(DKIM *dkim, u_char *hdrlist, struct dkim_header **ptrs,
 		}
 	}
 
-	strlcpy((char *) dkim->dkim_hdrlist, (char *) hdrlist, DKIM_MAXHEADER);
+	strlcpy((char *) dkim->dkim_hdrlist, (const char *) hdrlist,
+	        DKIM_MAXHEADER);
 
 	/* mark all headers as not used */
 	for (hdr = dkim->dkim_hhead; hdr != NULL; hdr = hdr->hdr_next)
@@ -1425,17 +1427,17 @@ dkim_canon_minbody(DKIM *dkim)
 */
 
 DKIM_STAT
-dkim_canon_bodychunk(DKIM *dkim, u_char *buf, size_t buflen)
+dkim_canon_bodychunk(DKIM *dkim, const u_char *buf, size_t buflen)
 {
 	_Bool fixcrlf;
 	DKIM_STAT status;
 	u_int wlen;
 	DKIM_CANON *cur;
 	size_t plen;
-	u_char *p;
-	u_char *wrote;
-	u_char *eob;
-	u_char *start;
+	const u_char *p;
+	const u_char *wrote;
+	const u_char *eob;
+	const u_char *start;
 
 	assert(dkim != NULL);
 
@@ -1514,7 +1516,7 @@ dkim_canon_bodychunk(DKIM *dkim, u_char *buf, size_t buflen)
 						else
 						{
 							dkim_canon_buffer(cur,
-							                  (u_char *) "\r",
+							                  (const u_char *) "\r",
 							                  1);
 						}
 					}

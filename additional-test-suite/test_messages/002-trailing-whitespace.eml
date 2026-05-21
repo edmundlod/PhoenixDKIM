@@ -1,0 +1,13 @@
+From: Alice Sender <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: Test message 002 - trailing whitespace   
+Date: Thu, 01 Jan 2026 12:00:00 +0000   
+Message-ID: <test-002@example.com>
+MIME-Version: 1.0   
+Content-Type: text/plain; charset=utf-8
+
+Body line with trailing spaces.   
+Another line with a tab	at the end.	
+Line with no trailing whitespace.
+   
+Line after a whitespace-only line.

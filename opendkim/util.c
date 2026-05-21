@@ -69,52 +69,27 @@
 #endif /* ! INADDR_NONE */
 
 /* globals */
-#ifdef POPAUTH
-static pthread_mutex_t pop_lock;
-#endif /* POPAUTH */
-
-static char *optlist[] =
+static const char *optlist[] =
 {
-#if DEBUG
-	"DEBUG",
-#endif /* DEBUG */
-
-#if POLL
-	"POLL",
-#endif /* POLL */
-
-#if POPAUTH
-	"POPAUTH",
-#endif /* POPAUTH */
-
-#if USE_JANSSON
-	"USE_JANSSON",
-#endif /* USE_JANSSON */
-
-#if USE_LUA
+#ifdef USE_LUA
 	"USE_LUA",
 #endif /* USE_LUA */
 
-#if USE_MDB
+#ifdef USE_MDB
 	"USE_MDB",
 #endif /* USE_MDB */
 
-#if USE_UNBOUND
+#ifdef WITH_REDIS
+	"WITH_REDIS",
+#endif /* WITH_REDIS */
+
+#ifdef USE_UNBOUND
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
 
-
-
-
-
-
-
-
-
-
-
-
-
+#ifdef OPENSSL_VERSION_STR
+	"OpenSSL-" OPENSSL_VERSION_STR,
+#endif
 
 	NULL
 };
@@ -503,7 +478,6 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 
 	if (ip->sa_family == AF_INET)
 	{
-		_Bool exists;
 		int c;
 		int status;
 		int bits;
@@ -617,69 +591,6 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 
 	return FALSE;
 }
-
-#ifdef POPAUTH
-/*
-**  DKIMF_INITPOPAUTH -- initialize POPAUTH stuff
-**
-**  Parameters:
-**  	None.
-**
-**  Return value:
-**  	0 on success, an error code on failure.  See pthread_mutex_init().
-*/
-
-int
-dkimf_initpopauth(void)
-{
-	return pthread_mutex_init(&pop_lock, NULL);
-}
-
-/*
-**  DKIMF_CHECKPOPAUTH -- check a POP before SMTP database for client
-**                        authentication
-**
-**  Parameters:
-**  	db -- DB handle to use for searching
-**  	ip -- IP address to find
-**
-**  Return value:
-**  	TRUE iff the database could be opened and the client was verified.
-**
-**  Notes:
-**  	- does the key contain anything meaningful, like an expiry time?
-*/
-
-_Bool
-dkimf_checkpopauth(DKIMF_DB db, struct sockaddr *ip)
-{
-	_Bool exists;
-	int status;
-	struct sockaddr_in *sin;
-	struct in_addr addr;
-	char ipbuf[DKIM_MAXHOSTNAMELEN + 1];
-
-	assert(ip != NULL);
-
-	if (db == NULL)
-		return FALSE;
-
-	/* skip anything not IPv4 (for now) */
-	if (ip->sa_family != AF_INET)
-		return FALSE;
-	else
-		sin = (struct sockaddr_in *) ip;
-
-
-	memcpy(&addr.s_addr, &sin->sin_addr, sizeof addr.s_addr);
-
-	dkimf_inet_ntoa(addr, ipbuf, sizeof ipbuf);
-	exists = FALSE;
-	status = dkimf_db_get(db, ipbuf, 0, NULL, 0, &exists);
-	return (status == 0 && exists);
-}
-#endif /* POPAUTH */
-
 
 /*
 **  DKIMF_INET_NTOA -- thread-safe inet_ntoa()
@@ -1017,14 +928,14 @@ dkimf_dstring_free(struct dkimf_dstring *dstr)
 */
 
 _Bool
-dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
+dkimf_dstring_copy(struct dkimf_dstring *dstr, const u_char *str)
 {
 	int len;
 
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str);
+	len = strlen((const char *) str);
 
 	/* too big? */
 	if (dstr->ds_max > 0 && len >= dstr->ds_max)
@@ -1039,7 +950,7 @@ dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
 	}
 
 	/* copy */
-	dstr->ds_len = strlcpy((char *) dstr->ds_buf, (char *) str,
+	dstr->ds_len = strlcpy((char *) dstr->ds_buf, (const char *) str,
 	                       dstr->ds_alloc);
 
 	return TRUE;
@@ -1060,14 +971,14 @@ dkimf_dstring_copy(struct dkimf_dstring *dstr, u_char *str)
 */
 
 _Bool
-dkimf_dstring_cat(struct dkimf_dstring *dstr, u_char *str)
+dkimf_dstring_cat(struct dkimf_dstring *dstr, const u_char *str)
 {
 	int len;
 
 	assert(dstr != NULL);
 	assert(str != NULL);
 
-	len = strlen((char *) str) + dstr->ds_len;
+	len = strlen((const char *) str) + dstr->ds_len;
 
 	/* too big? */
 	if (dstr->ds_max > 0 && len >= dstr->ds_max)
@@ -1082,7 +993,7 @@ dkimf_dstring_cat(struct dkimf_dstring *dstr, u_char *str)
 	}
 
 	/* append */
-	dstr->ds_len = strlcat((char *) dstr->ds_buf, (char *) str,
+	dstr->ds_len = strlcat((char *) dstr->ds_buf, (const char *) str,
 	                       dstr->ds_alloc);
 
 	return TRUE;
@@ -1146,7 +1057,7 @@ dkimf_dstring_cat1(struct dkimf_dstring *dstr, int c)
 */
 
 _Bool
-dkimf_dstring_catn(struct dkimf_dstring *dstr, unsigned char *str,
+dkimf_dstring_catn(struct dkimf_dstring *dstr, const unsigned char *str,
                    size_t nbytes)
 {
 	size_t needed;
@@ -1267,7 +1178,7 @@ dkimf_dstring_chop(struct dkimf_dstring *dstr, int len)
 */
 
 size_t
-dkimf_dstring_printf(struct dkimf_dstring *dstr, char *fmt, ...)
+dkimf_dstring_printf(struct dkimf_dstring *dstr, const char *fmt, ...)
 {
 	size_t len;
 	size_t rem;

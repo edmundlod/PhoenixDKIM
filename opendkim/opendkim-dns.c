@@ -394,7 +394,7 @@ dkimf_unbound_queue(struct dkimf_unbound *ub, char *name, int type,
 **  	-1 -- error
 */
 
-int
+static int
 dkimf_ub_trustanchor(void *srv, const char *file)
 {
 	int status;
@@ -405,7 +405,7 @@ dkimf_ub_trustanchor(void *srv, const char *file)
 
 	ub = srv;
 
-	status = ub_ctx_add_ta_file(ub->ub_ub, (char *) file);
+	status = ub_ctx_add_ta_file(ub->ub_ub, file);
 
 	return (status == 0 ? 0 : -1);
 }
@@ -423,7 +423,7 @@ dkimf_ub_trustanchor(void *srv, const char *file)
 **  	-1 -- error
 */
 
-int
+static int
 dkimf_ub_config(void *srv, const char *file)
 {
 	int status;
@@ -435,7 +435,7 @@ dkimf_ub_config(void *srv, const char *file)
 	ub = srv;
 
 	pthread_mutex_lock(&ub->ub_config_lock);
-	status = ub_ctx_config(ub->ub_ub, (char *) file);
+	status = ub_ctx_config(ub->ub_ub, file);
 	pthread_mutex_unlock(&ub->ub_config_lock);
 
 	return (status == 0 ? 0 : -1);
@@ -576,7 +576,7 @@ dkimf_ub_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 **  	DKIM_DNS_ERROR -- failure
 */
 
-int
+static int
 dkimf_ub_init(void **ub)
 {
 	struct dkimf_unbound *out;
@@ -622,7 +622,7 @@ dkimf_ub_init(void **ub)
 **  	-1 -- failure
 */
 
-void
+static void
 dkimf_ub_close(void *srv)
 {
 	struct dkimf_unbound *ub;
@@ -651,7 +651,7 @@ dkimf_ub_close(void *srv)
 **  	DKIM_DNS_SUCCESS or DKIM_DNS_ERROR
 */
 
-int
+static int
 dkimf_ub_nslist(void *srv, const char *nslist)
 {
 	char *cp;

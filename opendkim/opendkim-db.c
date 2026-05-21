@@ -22,6 +22,7 @@
 #ifdef HAVE_STDBOOL_H
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
+#include <stdint.h>
 #include <syslog.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,7 +125,7 @@ struct dkimf_db
 
 struct dkimf_db_table
 {
-	char *			name;
+	const char *		name;
 	int 			code;
 };
 
@@ -435,7 +436,7 @@ dkimf_db_type(DKIMF_DB db)
 
 int
 dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
-              char **err)
+              const char **err)
 {
 	DKIMF_DB new;
 	char *comma;
@@ -1440,7 +1441,7 @@ dkimf_db_put(DKIMF_DB db, void *buf, size_t buflen,
 */
 
 int
-dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
+dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
              DKIMF_DBDATA req, unsigned int reqnum, _Bool *exists)
 {
 	_Bool matched;
@@ -1456,12 +1457,12 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 
 	if ((db->db_flags & DKIMF_DB_FLAG_ASCIIONLY) != 0)
 	{
-		char *p;
-		char *end;
+		const char *p;
+		const char *end;
 
-		end = (char *) buf + buflen;
+		end = (const char *) buf + buflen;
 
-		for (p = (char *) buf; p <= end; p++)
+		for (p = (const char *) buf; p <= end; p++)
 		{
 			if (!isascii(*p))
 			{
@@ -1643,7 +1644,13 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		mdb = (struct dkimf_db_mdb *) db->db_data;
 
 		key.mv_size = buflen;
-		key.mv_data = buf;
+		/*
+		**  MDB_val.mv_data is void *; mdb_get never writes through
+		**  the key buffer -- cast away const to store buf in the
+		**  field.
+		*/
+
+		key.mv_data = (void *)(uintptr_t) buf;
 
 		status = mdb_get(mdb->mdb_txn, mdb->mdb_dbi, &key, &data);
 		if (status == MDB_NOTFOUND)
@@ -1687,7 +1694,7 @@ dkimf_db_get(DKIMF_DB db, void *buf, size_t buflen,
 		}
 
 		n = snprintf(query, sizeof query, "%s%.*s",
-		             r->redis_prefix, (int) buflen, (char *) buf);
+		             r->redis_prefix, (int) buflen, (const char *) buf);
 		if (n < 0 || (size_t) n >= sizeof query)
 		{
 			db->db_status = ENOMEM;

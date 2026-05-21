@@ -76,7 +76,7 @@ usage(void)
 **  	None.
 */
 
-void
+static void
 decr(char *str)
 {
 	char *p;
@@ -128,7 +128,7 @@ main(int argc, char **argv)
 	const char *selector = NULL;
 	const char *keyfile = NULL;
 	char *keydata = NULL;
-	char *tmpdir = DEFTMPDIR;
+	const char *tmpdir = DEFTMPDIR;
 	char buf[BUFRSZ];
 	char fn[BUFRSZ];
 
@@ -251,8 +251,8 @@ main(int argc, char **argv)
 	else
 	{
 		dkim = dkim_sign(lib, (u_char *) progname, NULL,
-		                 (u_char *) keydata, (u_char *) selector,
-		                 (u_char *) domain, hc, bc, sa, l, &status);
+		                 (u_char *) keydata, (const u_char *) selector,
+		                 (const u_char *) domain, hc, bc, sa, l, &status);
 		if (dkim == NULL)
 		{
 			fprintf(stderr, "%s: dkim_sign() failed: %s\n",
@@ -268,7 +268,7 @@ main(int argc, char **argv)
 	flags = (DKIM_LIBFLAGS_FIXCRLF|DKIM_LIBFLAGS_STRICTHDRS);
 	if (keepfiles)
 		flags |= (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 
 	tfd = mkstemp(fn);

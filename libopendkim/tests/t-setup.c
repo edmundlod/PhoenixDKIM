@@ -18,10 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
-
 /* libopendkim includes */
 #include "../dkim.h"
 #include "t-testdata.h"
@@ -40,7 +36,7 @@ int
 main(int argc, char **argv)
 {
 	int fd;
-	char *p;
+	const char *p;
 	FILE *f;
 
 	printf("*** test setup\n");

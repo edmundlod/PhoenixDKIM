@@ -1,0 +1,8 @@
+From: Alice Sender <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: Test message 004 - empty body
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+Message-ID: <test-004@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+

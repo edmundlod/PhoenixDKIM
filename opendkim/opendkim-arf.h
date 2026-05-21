@@ -50,7 +50,7 @@
 #define	ARF_OPTIONS_DKIM_EXPIRED "x"
 
 /* prototypes */
-extern char *arf_dkim_failure_string __P((int));
-extern char *arf_type_string __P((int));
+extern const char *arf_dkim_failure_string __P((int));
+extern const char *arf_type_string __P((int));
 
 #endif /* _DKIM_ARF_H_ */

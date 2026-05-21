@@ -178,7 +178,7 @@ struct mt_lua_io
 {
 	_Bool		lua_io_done;
 	size_t		lua_io_scriptlen;
-	const char *	lua_io_script;
+	char *		lua_io_script;
 };
 
 static const luaL_Reg mt_library[] =
@@ -224,6 +224,7 @@ pid_t filterpid;
 char scriptbuf[BUFRSZ];
 char *progname;
 
+#if !(HAVE_GETADDRINFO && HAVE_INET_NTOP)
 /*
 **  MT_INET_NTOA -- thread-safe inet_ntoa()
 **
@@ -237,7 +238,7 @@ char *progname;
 **  	then buf does not contain the complete result.
 */
 
-size_t
+static size_t
 mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 {
 	in_addr_t addr;
@@ -250,6 +251,7 @@ mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 	                (addr >> 24), (addr >> 16) & 0xff,
 	                (addr >> 8) & 0xff, addr & 0xff);
 }
+#endif /* ! (HAVE_GETADDRINFO && HAVE_INET_NTOP) */
 
 /*
 **  MT_LUA_READER -- "read" a script and make it available to Lua
@@ -263,7 +265,7 @@ mt_inet_ntoa(struct in_addr a, char *buf, size_t buflen)
 **  	Pointer to the data.
 */
 
-const char *
+static const char *
 mt_lua_reader(lua_State *l, void *data, size_t *size)
 {
 	struct mt_lua_io *io;
@@ -318,7 +320,7 @@ mt_lua_reader(lua_State *l, void *data, size_t *size)
 **  	Allocated memory, or NULL on failure.
 */
 
-void *
+static void *
 mt_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 {
 	(void) ud;
@@ -347,7 +349,7 @@ mt_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 **  	None.
 */
 
-void
+static void
 mt_flush_eomreqs(struct mt_context *ctx)
 {
 	struct mt_eom_request *r;
@@ -377,7 +379,7 @@ mt_flush_eomreqs(struct mt_context *ctx)
 **  	TRUE iff addition was successful.
 */
 
-_Bool
+static _Bool
 mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 {
 	struct mt_eom_request *r;
@@ -417,8 +419,8 @@ mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 **  	TRUE iff successful.
 */
 
-_Bool
-mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
+static _Bool
+mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
 {
 	int i;
 	int expl;
@@ -469,7 +471,7 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 
 	if (expl > 0)
 	{
-		rlen = read(fd, (void *) buf, expl);
+		rlen = read(fd, buf, expl);
 		/* expl > 0 guards the cast; rlen is size_t, expl is int */
 		if (rlen != (size_t) expl)
 		{
@@ -509,7 +511,7 @@ mt_milter_read(int fd, char *cmd, const char *buf, size_t *len)
 **  	TRUE iff successful.
 */
 
-_Bool
+static _Bool
 mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 {
 	char command = (char) cmd;
@@ -550,6 +552,11 @@ mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 	{
 		num_vectors = 2;
 		sl += len;
+		/*
+		**  struct iovec's iov_base is void *; writev only reads
+		**  from it -- cast away const on our caller's read-only
+		**  buf for the outbound vector.
+		*/
 		vector[1].iov_base = (void *) buf;
 		vector[1].iov_len  = len;
 	}
@@ -576,7 +583,7 @@ mt_milter_write(int fd, int cmd, const char *buf, size_t len)
 **  	TRUE if successful, FALSE otherwise.
 */
 
-_Bool
+static _Bool
 mt_assert_state(struct mt_context *ctx, int state)
 {
 	size_t len;
@@ -1007,7 +1014,7 @@ mt_assert_state(struct mt_context *ctx, int state)
 int
 mt_echo(lua_State *l)
 {
-	char *str;
+	const char *str;
 
 	assert(l != NULL);
 
@@ -1017,7 +1024,7 @@ mt_echo(lua_State *l)
 		lua_error(l);
 	}
 
-	str = (char *) lua_tostring(l, 1);
+	str = lua_tostring(l, 1);
 	lua_pop(l, 1);
 
 	fprintf(stdout, "%s\n", str);
@@ -1038,7 +1045,7 @@ mt_echo(lua_State *l)
 int
 mt_chdir(lua_State *l)
 {
-	char *str;
+	const char *str;
 
 	assert(l != NULL);
 
@@ -1048,7 +1055,7 @@ mt_chdir(lua_State *l)
 		lua_error(l);
 	}
 
-	str = (char *) lua_tostring(l, 1);
+	str = lua_tostring(l, 1);
 	lua_pop(l, 1);
 
 	if (chdir(str) != 0)
@@ -1223,6 +1230,12 @@ mt_startfilter(lua_State *l)
 
 	  case 0:
 		close(fds[0]);
+		/*
+		**  POSIX execv takes char *const argv[]; execv only reads
+		**  the argument strings before the exec replaces our
+		**  address space -- cast away const on the Lua-supplied
+		**  argv array we built above.
+		*/
 		execv(argv[0], (char * const *) argv);
 		exit(1);
 
@@ -1346,7 +1359,7 @@ mt_connect(lua_State *l)
 	useconds_t interval = 0;
 	char *at;
 	char *p;
-	const char *sockinfo;
+	char sockinfo[BUFRSZ];
 	struct mt_context *new;
 
 	assert(l != NULL);
@@ -1367,7 +1380,13 @@ mt_connect(lua_State *l)
 		lua_error(l);
 	}
 
-	sockinfo = lua_tostring(l, 1);
+	/*
+	**  lua_tostring returns a pointer into Lua-owned memory that may
+	**  be reclaimed by the next lua_pop; copy into a local writable
+	**  buffer so the in-place ':'/'@' splitting below operates on
+	**  memory we own.
+	*/
+	strlcpy(sockinfo, lua_tostring(l, 1), sizeof sockinfo);
 	if (top == 3)
 	{
 		char *f;
@@ -1388,7 +1407,7 @@ mt_connect(lua_State *l)
 	lua_pop(l, top);
 
 	af = AF_UNSPEC;
-	p = (char *) strchr(sockinfo, ':');
+	p = strchr(sockinfo, ':');
 	if (p == NULL)
 	{
 		af = AF_UNIX;
@@ -1927,8 +1946,8 @@ mt_macro(lua_State *l)
 	size_t s;
 	struct mt_context *ctx;
 	char *bp;
-	char *name;
-	char *value;
+	const char *name;
+	const char *value;
 	char buf[BUFRSZ];
 
 	assert(l != NULL);
@@ -1966,8 +1985,8 @@ mt_macro(lua_State *l)
 			lua_error(l);
 		}
 
-		name = (char *) lua_tostring(l, c);
-		value = (char *) lua_tostring(l, c + 1);
+		name = lua_tostring(l, c);
+		value = lua_tostring(l, c + 1);
 
 		if (strlen(name) + strlen(value) + 2 + bp > buf + sizeof buf)
 		{
@@ -2022,9 +2041,9 @@ mt_conninfo(lua_State *l)
 	size_t s;
 	uint16_t port;
 	struct mt_context *ctx;
-	char *host;
+	const char *host;
 	char *bp;
-	char *ipstr;
+	const char *ipstr;
 	char buf[BUFRSZ];
 	char tmp[BUFRSZ];
 
@@ -2041,11 +2060,11 @@ mt_conninfo(lua_State *l)
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
 	if (lua_isstring(l, 2))
-		host = (char *) lua_tostring(l, 2);
+		host = lua_tostring(l, 2);
 	else
 		host = DEFCLIENTHOST;
 	if (lua_isstring(l, 3))
-		ipstr = (char *) lua_tostring(l, 3);
+		ipstr = lua_tostring(l, 3);
 	else
 		ipstr = NULL;
 
@@ -2229,7 +2248,7 @@ mt_unknown(lua_State *l)
 	size_t buflen;
 	size_t s;
 	struct mt_context *ctx;
-	char *cmd;
+	const char *cmd;
 	char *bp;
 	char buf[BUFRSZ];
 #endif /* SMFIC_UNKNOWN */
@@ -2249,7 +2268,7 @@ mt_unknown(lua_State *l)
 	lua_error(l);
 #else /* ! SMFIC_UNKNOWN */
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	cmd = (char *) lua_tostring(l, 2);
+	cmd = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_CONNINFO))
@@ -2319,7 +2338,7 @@ mt_helo(lua_State *l)
 	size_t buflen;
 	size_t s;
 	struct mt_context *ctx;
-	char *host;
+	const char *host;
 	char *bp;
 	char buf[BUFRSZ];
 
@@ -2334,7 +2353,7 @@ mt_helo(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	host = (char *) lua_tostring(l, 2);
+	host = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_CONNINFO))
@@ -2404,7 +2423,7 @@ mt_mailfrom(lua_State *l)
 	int c;
 	size_t buflen;
 	size_t s;
-	char *p;
+	const char *p;
 	char *bp;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
@@ -2425,7 +2444,7 @@ mt_mailfrom(lua_State *l)
 
 	for (c = 2; c <= lua_gettop(l); c++)
 	{
-		p = (char *) lua_tostring(l, c);
+		p = lua_tostring(l, c);
 
 		s += strlen(p) + 1;
 
@@ -2499,7 +2518,7 @@ mt_rcptto(lua_State *l)
 	int c;
 	size_t buflen;
 	size_t s;
-	char *p;
+	const char *p;
 	char *bp;
 	char *end;
 	struct mt_context *ctx;
@@ -2523,7 +2542,7 @@ mt_rcptto(lua_State *l)
 
 	for (c = 2; c <= lua_gettop(l); c++)
 	{
-		p = (char *) lua_tostring(l, c);
+		p = lua_tostring(l, c);
 
 		s += strlen(p) + 1;
 
@@ -2680,8 +2699,8 @@ mt_header(lua_State *l)
 	size_t buflen;
 	size_t s;
 	char *bp;
-	char *name;
-	char *value;
+	const char *name;
+	const char *value;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
 
@@ -2697,8 +2716,8 @@ mt_header(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	name = (char *) lua_tostring(l, 2);
-	value = (char *) lua_tostring(l, 3);
+	name = lua_tostring(l, 2);
+	value = lua_tostring(l, 3);
 	lua_pop(l, 3);
 
 	s = strlen(name) + 1 + strlen(value) + 1;
@@ -2848,7 +2867,7 @@ mt_bodystring(lua_State *l)
 	char rcmd;
 	size_t buflen;
 	struct mt_context *ctx;
-	char *str;
+	const char *str;
 	char buf[BUFRSZ];
 
 	assert(l != NULL);
@@ -2862,7 +2881,7 @@ mt_bodystring(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	str = (char *) lua_tostring(l, 2);
+	str = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_EOH))
@@ -3019,7 +3038,7 @@ int
 mt_bodyfile(lua_State *l)
 {
 	char rcmd;
-	char *file;
+	const char *file;
 	FILE *f;
 	size_t rlen;
 	struct mt_context *ctx;
@@ -3036,7 +3055,7 @@ mt_bodyfile(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	file = (char *) lua_tostring(l, 2);
+	file = lua_tostring(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_EOH))
@@ -3227,8 +3246,8 @@ mt_eom_check(lua_State *l)
 	{
 	  case MT_HDRADD:
 	  {
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3239,7 +3258,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) == 4)
@@ -3251,7 +3270,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3291,8 +3310,8 @@ mt_eom_check(lua_State *l)
 	  {
 #ifdef SMFIR_INSHEADER
 		int idx = -1;
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3303,7 +3322,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) >= 4)
@@ -3315,7 +3334,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3366,8 +3385,8 @@ mt_eom_check(lua_State *l)
 	  case MT_HDRCHANGE:
 	  {
 		int idx = -1;
-		char *name = NULL;
-		char *value = NULL;
+		const char *name = NULL;
+		const char *value = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3378,7 +3397,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) >= 4)
@@ -3390,7 +3409,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			value = (char *) lua_tostring(l, 4);
+			value = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3440,7 +3459,7 @@ mt_eom_check(lua_State *l)
 	  case MT_HDRDELETE:
 	  {
 		int idx = -1;
-		char *name = NULL;
+		const char *name = NULL;
 
 		if (lua_gettop(l) >= 3)
 		{
@@ -3451,7 +3470,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			name = (char *) lua_tostring(l, 3);
+			name = lua_tostring(l, 3);
 		}
 
 		if (lua_gettop(l) == 4)
@@ -3505,7 +3524,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_RCPTADD:
 	  {
-		char *rcpt;
+		const char *rcpt;
 
 		if (lua_gettop(l) != 3 ||
 		    !lua_isstring(l, 3))
@@ -3514,7 +3533,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		rcpt = (char *) lua_tostring(l, 3);
+		rcpt = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3540,7 +3559,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_RCPTDELETE:
 	  {
-		char *rcpt;
+		const char *rcpt;
 
 		if (lua_gettop(l) != 3 ||
 		    !lua_isstring(l, 3))
@@ -3549,7 +3568,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		rcpt = (char *) lua_tostring(l, 3);
+		rcpt = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3575,7 +3594,7 @@ mt_eom_check(lua_State *l)
 
 	  case MT_BODYCHANGE:
 	  {
-		char *newbody = NULL;
+		const char *newbody = NULL;
 
 		if (lua_gettop(l) < 2 || lua_gettop(l) > 3 ||
 		    (lua_gettop(l) == 3 && !lua_isstring(l, 3)))
@@ -3585,7 +3604,7 @@ mt_eom_check(lua_State *l)
 		}
 
 		if (lua_gettop(l) == 3)
-			newbody = (char *) lua_tostring(l, 3);
+			newbody = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3614,7 +3633,7 @@ mt_eom_check(lua_State *l)
 #ifdef SMFIR_QUARANTINE
 	  case MT_QUARANTINE:
 	  {
-		char *reason = NULL;
+		const char *reason = NULL;
 
 		if (lua_gettop(l) < 2 || lua_gettop(l) > 3 ||
 		    (lua_gettop(l) == 3 && !lua_isstring(l, 3)))
@@ -3624,7 +3643,7 @@ mt_eom_check(lua_State *l)
 		}
 
 		if (lua_gettop(l) == 3)
-			reason = (char *) lua_tostring(l, 3);
+			reason = lua_tostring(l, 3);
 
 		lua_pop(l, lua_gettop(l));
 
@@ -3652,9 +3671,9 @@ mt_eom_check(lua_State *l)
 
 	  case MT_SMTPREPLY:
 	  {
-		char *smtp = NULL;
-		char *esc = NULL;
-		char *text = NULL;
+		const char *smtp = NULL;
+		const char *esc = NULL;
+		const char *text = NULL;
 
 		if (lua_gettop(l) < 3 || !lua_isstring(l, 3))
 		{
@@ -3662,7 +3681,7 @@ mt_eom_check(lua_State *l)
 			lua_error(l);
 		}
 
-		smtp = (char *) lua_tostring(l, 3);
+		smtp = lua_tostring(l, 3);
 
 		if (lua_gettop(l) >= 4)
 		{
@@ -3673,7 +3692,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			esc = (char *) lua_tostring(l, 4);
+			esc = lua_tostring(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -3685,7 +3704,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			text = (char *) lua_tostring(l, 5);
+			text = lua_tostring(l, 5);
 		}
 
 		lua_pop(l, lua_gettop(l));
@@ -3813,7 +3832,7 @@ int
 mt_getheader(lua_State *l)
 {
 	int idx;
-	char *name;
+	const char *name;
 	struct mt_context *ctx;
 	struct mt_eom_request *r;
 
@@ -3829,7 +3848,7 @@ mt_getheader(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	name = (char *) lua_tostring(l, 2);
+	name = lua_tostring(l, 2);
 	idx = lua_tonumber(l, 3);
 	lua_pop(l, 3);
 
@@ -3889,7 +3908,7 @@ mt_getheader(lua_State *l)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [options]\n"
@@ -4035,7 +4054,7 @@ main(int argc, char **argv)
 			return 1;
 		}
 
-		io.lua_io_script = (const char *) malloc(s.st_size);
+		io.lua_io_script = malloc(s.st_size);
 		if (io.lua_io_script == NULL)
 		{
 			fprintf(stderr, "%s: malloc(): %s\n", progname,
@@ -4045,13 +4064,13 @@ main(int argc, char **argv)
 			return 1;
 		}
 
-		rlen = read(fd, (void *) io.lua_io_script, s.st_size);
+		rlen = read(fd, io.lua_io_script, s.st_size);
 		if (rlen != s.st_size)
 		{
 			fprintf(stderr,
 			        "%s: %s: read() returned %zu (expecting %ld)\n",
 			        progname, script, rlen, (long) s.st_size);
-			free((void *) io.lua_io_script);
+			free(io.lua_io_script);
 			close(fd);
 			lua_close(l);
 			return 1;
@@ -4242,7 +4261,7 @@ main(int argc, char **argv)
 		}
 		lua_close(l);
 		if (io.lua_io_script != NULL)
-			free((void *) io.lua_io_script);
+			free(io.lua_io_script);
 		return 1;
 
 	  default:
@@ -4285,7 +4304,7 @@ main(int argc, char **argv)
 
 	lua_close(l);
 	if (io.lua_io_script != NULL)
-		free((void *) io.lua_io_script);
+		free(io.lua_io_script);
 
 	if (filterpid != 0)
 	{

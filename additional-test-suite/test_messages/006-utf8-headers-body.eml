@@ -1,0 +1,11 @@
+From: =?utf-8?q?=C3=81lice_S=C3=A9nder?= <alice@example.com>
+To: Bob Recipient <bob@example.org>
+Subject: =?utf-8?q?Test_message_006_-_caf=C3=A9_=E2=98=95_non-ASCII?=
+Date: Thu, 01 Jan 2026 12:00:00 +0000
+Message-ID: <test-006@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+This body contains UTF-8: café résumé naïve.
+And some emoji: ☕ ✉ 🔑

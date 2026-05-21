@@ -26,7 +26,7 @@
 
 #define SIG2 "v=1; a=rsa-sha256; c=relaxed/simple; d=example.com; s=test;\r\n\tt=1172620939; bh=yHBAX+3IwxTZIynBuB/5tlsBInJq9n8qz5fgAycHi80=;\r\n\th=Received:Received:Received:From:To:Date:Subject:Message-ID:\r\n\t Subject:Cc:Bcc;\r\n\tb=JnpjSGdhCoW24zo+rEFTiIywLtjLE7vuImy8s/DJWDxSWmduy7CfHMLnocXRpqPeI\r\n\t 7F3B2ZpEo+lhTvNvqTu6Us1Fv7yDdLJGhYxe/QDxao705CZg/40w11xyT/1YDl2cgk\r\n\t y/+4W/1qXa52XdaN+XGDLwV+xzZFWHwU1Pb/taXc="
 
-char *extra_hdrs[] =
+const char *extra_hdrs[] =
 {
 	"Subject",
 	"Cc",
@@ -67,13 +67,13 @@ main(int argc, char **argv)
 #ifdef TEST_KEEP_FILES
 	/* set flags */
 	flags = (DKIM_LIBFLAGS_TMPFILES|DKIM_LIBFLAGS_KEEPFILES);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FLAGS, &flags,
+	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS, &flags,
 	                    sizeof flags);
 #endif /* TEST_KEEP_FILES */
 
 	key = KEY;
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_OVERSIGNHDRS,
+	(void) dkim_setopt(lib, DKIM_OPTS_OVERSIGNHDRS,
 	                    &extra_hdrs, sizeof (char **));
 
 	dkim = dkim_sign(lib, JOBID, NULL, key, SELECTOR, DOMAIN,
@@ -83,7 +83,7 @@ main(int argc, char **argv)
 
 	/* fix signing time */
 	fixed_time = 1172620939;
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_FIXEDTIME,
+	(void) dkim_setopt(lib, DKIM_OPTS_FIXEDTIME,
 	                    &fixed_time, sizeof fixed_time);
 
 	status = dkim_header(dkim, HEADER02, strlen(HEADER02));

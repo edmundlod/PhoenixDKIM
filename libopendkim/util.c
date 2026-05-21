@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <resolv.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 /* libopendkim includes */
@@ -91,12 +92,13 @@ dkim_collapse(u_char *str)
 */
 
 _Bool
-dkim_hdrlist(u_char *buf, size_t buflen, u_char **hdrlist, _Bool first)
+dkim_hdrlist(u_char *buf, size_t buflen, const u_char *const *hdrlist,
+             _Bool first)
 {
 	_Bool escape = FALSE;
 	int c;
 	size_t len;
-	u_char *p;
+	const u_char *p;
 	u_char *q;
 	u_char *end;
 
@@ -265,7 +267,7 @@ dkim_hexchar(int c)
 */
 
 int
-dkim_qp_encode(unsigned char *in, unsigned char *out, int outlen)
+dkim_qp_encode(const unsigned char *in, unsigned char *out, int outlen)
 {
 	unsigned char const *p;
 	unsigned char *q;
@@ -322,7 +324,7 @@ dkim_qp_encode(unsigned char *in, unsigned char *out, int outlen)
 */
 
 int
-dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
+dkim_qp_decode(const unsigned char *in, unsigned char *out, int outlen)
 {
 	unsigned char next1;
 	unsigned char next2 = 0;
@@ -330,7 +332,7 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 	int decode = 0;
 	unsigned char const *p;
 	unsigned char *q;
-	unsigned char *pos;
+	const char *pos;
 	unsigned char const *start;
 	unsigned char const *stop;
 	unsigned char *end;
@@ -388,15 +390,15 @@ dkim_qp_decode(unsigned char *in, unsigned char *out, int outlen)
 			}
 
 			/* = elsewhere */
-			pos = (unsigned char *) strchr(hexdigits, next1);
+			pos = strchr(hexdigits, next1);
 			if (pos == NULL)
 				return -1;
-			xl = (pos - (unsigned char *) hexdigits) * 16;
+			xl = (pos - hexdigits) * 16;
 
-			pos = (unsigned char *) strchr(hexdigits, next2);
+			pos = strchr(hexdigits, next2);
 			if (pos == NULL)
 				return -1;
-			xl += (pos - (unsigned char *) hexdigits);
+			xl += (pos - hexdigits);
 
 			stop = p;
 			if (start != NULL)
@@ -886,7 +888,7 @@ dkim_min_timeval(struct timeval *t1, struct timeval *t2, struct timeval *t,
 **  	A copy of "in" and its elements, or NULL on failure.
 */
 
-const char **
+char **
 dkim_copy_array(char **in)
 {
 	unsigned int c;
@@ -914,7 +916,7 @@ dkim_copy_array(char **in)
 
 	out[c] = NULL;
 
-	return (const char **) out;
+	return out;
 }
 
 /*
@@ -928,16 +930,20 @@ dkim_copy_array(char **in)
 */
 
 void
-dkim_clobber_array(char **in)
+dkim_clobber_array(const char *const *in)
 {
 	unsigned int n;
 
 	assert(in != NULL);
 
+	/* The function takes ownership of the array memory; free() does
+	   not preserve const, so route the discard through uintptr_t at
+	   the single sink rather than triggering -Wcast-qual at every
+	   caller (or for every free) site. */
 	for (n = 0; in[n] != NULL; n++)
-		free(in[n]);
+		free((void *) (uintptr_t) in[n]);
 
-	free(in);
+	free((void *) (uintptr_t) in);
 }
 
 /*
@@ -951,9 +957,9 @@ dkim_clobber_array(char **in)
 */
 
 _Bool
-dkim_strisprint(unsigned char *str)
+dkim_strisprint(const unsigned char *str)
 {
-	unsigned char *p;
+	const unsigned char *p;
 
 	assert(str != NULL);
 

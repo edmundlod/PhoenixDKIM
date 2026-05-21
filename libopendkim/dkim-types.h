@@ -57,7 +57,7 @@ struct dkim_xtag
 struct dkim_queryinfo
 {
 	int			dq_type;
-	const char		dq_name[DKIM_MAXHOSTNAMELEN + 1];
+	char			dq_name[DKIM_MAXHOSTNAMELEN + 1];
 };
 
 /* struct dkim_dstring -- a dynamically-sized string */
@@ -87,8 +87,8 @@ struct dkim_header
 /* struct dkim_plist -- a parameter/value pair */
 struct dkim_plist
 {
-	u_char *		plist_param;
-	u_char *		plist_value;
+	const u_char *		plist_param;
+	const u_char *		plist_value;
 	struct dkim_plist *	plist_next;
 };
 
@@ -267,7 +267,7 @@ struct dkim
 	DKIM_SIGINFO *		dkim_signature;
 	void *			dkim_keydata;
 	void *			dkim_closure;
-	const void *		dkim_user_context;
+	void *			dkim_user_context;
 	DKIM *			dkim_resign;
 	struct dkim_xtag *	dkim_xtags;
 	struct dkim_siginfo **	dkim_siglist;
@@ -307,9 +307,9 @@ struct dkim_lib
 	u_int *			dkiml_flist;
 	void *			(*dkiml_malloc) (void *closure, size_t nbytes);
 	void			(*dkiml_free) (void *closure, void *p);
-	u_char **		dkiml_requiredhdrs;
-	u_char **		dkiml_oversignhdrs;
-	u_char **		dkiml_mbs;
+	const u_char *const *	dkiml_requiredhdrs;
+	const u_char *const *	dkiml_oversignhdrs;
+	const u_char *const *	dkiml_mbs;
 	regex_t			dkiml_hdrre;
 	regex_t			dkiml_skiphdrre;
 	DKIM_CBSTAT		(*dkiml_key_lookup) (DKIM *dkim,

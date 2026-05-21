@@ -17,13 +17,8 @@
 #include <unistd.h>
 #include <sysexits.h>
 
-#ifdef USE_GNUTLS
-# include <gnutls/gnutls.h>
-#endif /* USE_GNUTLS */
-
 /* libopendkim includes */
 #include "../dkim.h"
-#include "../dkim-tables.h"
 #include "t-testdata.h"
 
 #define	DEFMSGSIZE	1024
@@ -47,7 +42,7 @@ char *progname;
 **  	dkim_canon_t
 */
 
-dkim_canon_t
+static dkim_canon_t
 canon_code(char *name)
 {
 	if (name == NULL)
@@ -70,7 +65,7 @@ canon_code(char *name)
 **  	Pointer to name string.
 */
 
-char *
+static const char *
 canon_name(dkim_canon_t code)
 {
 	switch (code)
@@ -97,7 +92,7 @@ canon_name(dkim_canon_t code)
 **  	dkim_alg_t
 */
 
-dkim_alg_t
+static dkim_alg_t
 alg_code(char *name)
 {
 	if (name == NULL)
@@ -120,7 +115,7 @@ alg_code(char *name)
 **  	Pointer to name string.
 */
 
-char *
+static const char *
 alg_name(dkim_alg_t code)
 {
 	switch (code)
@@ -150,7 +145,7 @@ alg_name(dkim_alg_t code)
 **  	EX_USAGE
 */
 
-int
+static int
 usage(void)
 {
 	fprintf(stderr, "%s: usage: %s [options]\n"
@@ -262,28 +257,11 @@ main(int argc, char **argv)
 		}
 	}
 
-#ifdef USE_GNUTLS
-	(void) gnutls_global_init();
-#endif /* USE_GNUTLS */
-
 	/* instantiate the library */
 	lib = dkim_init(NULL, NULL);
 
 	if (signalg == DKIM_SIGN_UNKNOWN)
-	{
-		if (dkim_libfeature(lib, DKIM_FEATURE_SHA256))
-			signalg = DKIM_SIGN_RSASHA256;
-		else
-			signalg = DKIM_SIGN_RSASHA1;
-	}
-	else if (signalg == DKIM_SIGN_RSASHA256 &&
-	         !dkim_libfeature(lib, DKIM_FEATURE_SHA256))
-	{
-		fprintf(stdout,
-		        "### requested signing algorithm not available\n");
-		dkim_close(lib);
-		return 1;
-	}
+		signalg = DKIM_SIGN_RSASHA256;
 
 	fprintf(stdout,
 	        "*** VERIFYING SPEED TEST: %s/%s with %s, size %u for %lds\n",
@@ -292,9 +270,9 @@ main(int argc, char **argv)
 
 	key = KEY;
 
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
-	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
+	(void) dkim_setopt(lib, DKIM_OPTS_QUERYINFO,
 	                    KEYFILE, strlen(KEYFILE));
 
 	srandom(time(NULL));
