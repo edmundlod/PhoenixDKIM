@@ -9205,7 +9205,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 #ifdef HAVE_LIBCURL
 	if (conf->conf_smtpuri != NULL)
 	{
-		CURLcode cc;
+		CURLcode curl_rc;
 		CURL *curl;
 		struct curl_slist *rcpts = NULL;
 		char dest[MAXADDRESS + 1];
@@ -9223,31 +9223,31 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 		}
 		else
 		{
-			cc = curl_easy_setopt(curl, CURLOPT_URL,
-			                      conf->conf_smtpuri);
+			curl_rc = curl_easy_setopt(curl, CURLOPT_URL,
+			                           conf->conf_smtpuri);
 
-			if (cc == CURLE_OK)
+			if (curl_rc == CURLE_OK)
 			{
-				cc = curl_easy_setopt(curl, CURLOPT_READDATA,
-				                      out);
+				curl_rc = curl_easy_setopt(curl, CURLOPT_READDATA,
+				                           out);
 			}
 
-			if (cc == CURLE_OK)
+			if (curl_rc == CURLE_OK)
 			{
-				cc = curl_easy_setopt(curl, CURLOPT_MAIL_FROM,
-				                      reportaddr);
+				curl_rc = curl_easy_setopt(curl, CURLOPT_MAIL_FROM,
+				                           reportaddr);
 			}
 
-			if (cc == CURLE_OK)
+			if (curl_rc == CURLE_OK)
 			{
 				snprintf(dest, sizeof dest, "%s@%s", addr,
 				         dkim_sig_getdomain(sig));
 				rcpts = curl_slist_append(rcpts, dest);
-				cc = curl_easy_setopt(curl, CURLOPT_MAIL_RCPT,
-				                      rcpts);
+				curl_rc = curl_easy_setopt(curl, CURLOPT_MAIL_RCPT,
+				                           rcpts);
 			}
 
-			if (cc != CURLE_OK)
+			if (curl_rc != CURLE_OK)
 			{
 				if (conf->conf_dolog)
 				{
@@ -9258,13 +9258,13 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 			}
 			else
 			{
-				cc = curl_easy_perform(curl);
-				if (cc != CURLE_OK && conf->conf_dolog)
+				curl_rc = curl_easy_perform(curl);
+				if (curl_rc != CURLE_OK && conf->conf_dolog)
 				{
 					syslog(LOG_ERR,
 					       "%s: curl_easy_perform() to %s failed: %s",
 					       dfc->mctx_jobid, dest,
-					       curl_easy_strerror(cc));
+					       curl_easy_strerror(curl_rc));
 				}
 			}
 
