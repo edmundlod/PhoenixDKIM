@@ -183,7 +183,7 @@ struct dkimf_db_table dbtypes[] =
 	{ "lua",		DKIMF_DB_TYPE_LUA },
 #endif /* USE_LUA */
 #ifdef USE_MDB
-	{ "mdb",		DKIMF_DB_TYPE_MDB },
+	{ "lmdb",		DKIMF_DB_TYPE_MDB },
 #endif /* USE_MDB */
 #ifdef USE_REDIS
 	{ "redis",		DKIMF_DB_TYPE_REDIS },
@@ -420,18 +420,13 @@ dkimf_db_type(DKIMF_DB db)
 **  	Currently defined types:
 **  	csl -- "name" contains a comma-separated list
 **  	file -- a flat file; may be simply a list of names if only a
-**  	        memership test is needed, or it can be "key value" lines
+**  	        membership test is needed, or it can be "key value" lines
 **  	        in which case dkimf_db_get() can be used to extract the
 **  	        value of a named key
 **  	refile -- a flat file containing patterns (i.e. strings with the
 **  	          wildcard "*"); only membership tests are allowed
-**  	db -- a Sleepycat hash or b-tree database file, which can be used
-**  	      for membership tests or key-value pairs
-**  	dsn -- a data store name, meaning SQL or ODBC in the backend,
-**  	       with interface provided by OpenDBX
-**  	ldap -- an LDAP server, interace provide by OpenLDAP
+**  	lmdb -- a directory containing an LMDB key-value store
 **  	lua -- a Lua script; the returned value is the result
-**  	erlang -- an erlang function to be called in a distributed erlang node
 */
 
 int
