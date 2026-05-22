@@ -1,4 +1,4 @@
-.TH miltertest 8 "The Trusted Domain Project"
+.TH miltertest 8 "PhoenixDKIM"
 .SH NAME
 .B miltertest
 \- milter unit test utility
@@ -16,7 +16,7 @@ See documentation on Lua (e.g. http://www.lua.org) for the syntax
 of the language in general.  The documentation below describes functions
 that are added to Lua by this application to make testing possible.
 
-Documentation on milter can be found at http://www.milter.org.  A particular
+A particular
 transaction must follow a series of steps to be completed, namely
 negotiate, connection information, envelope sender, envelope recipient(s),
 header field(s), end-of-header, body chunk(s), end-of-message.  To make the
@@ -542,7 +542,9 @@ This man page covers version 1.5.0 of
 .I miltertest.
 .SH COPYRIGHT
 Copyright (c) 2009-2014, The Trusted Domain Project.  All rights reserved.
+.SH HISTORY
+.B miltertest
+was originally developed by The Trusted Domain Project and is shipped as
+part of PhoenixDKIM.
 .SH SEE ALSO
-Milter -- http://www.milter.org
-.P
 Lua -- http://www.lua.org
