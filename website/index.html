@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="shortcut icon" href="/favicon.ico">
+
+  <style>
+:root {
+    color-scheme: light dark;
+}
+
+body {
+    --sans: "Gill Sans", "Trebuchet MS", sans-serif;
+    --serif: "Palatino Linotype", "Palatino", "Book Antiqua", serif;
+    --fixed: "Monaco", "Consolas", "Courier New", monospace;
+    --font-size: 16px;
+    --fg: CanvasText;
+    --accent: #c0392b;
+    color: var(--fg);
+    font-family: var(--serif);
+    font-size: var(--font-size);
+    max-width: 864px;
+    margin: 1rem auto;
+    padding: 0 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        --fg: #cccccc;
+        --accent: #e74c3c;
+        background: #111;
+    }
+    a:link    { color: skyblue; }
+    a:visited { color: plum; }
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--sans);
+    font-weight: normal;
+}
+
+h1 > a:link, h1 > a:visited,
+h2 > a:link, h2 > a:visited {
+    color: var(--fg);
+    text-decoration: none;
+}
+
+tt, code, pre {
+    font-family: var(--fixed);
+    font-size: 0.9em;
+}
+
+pre {
+    margin-left: 1rem;
+    padding: 0.5rem 1rem;
+    overflow-x: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+    pre {
+        background: #1e1e1e;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    pre {
+        background: #f4f4f4;
+    }
+}
+
+p {
+    margin-left: 1rem;
+    margin-right: 1rem;
+    line-height: 1.6;
+}
+
+li > p { margin-left: 0; }
+
+blockquote {
+    font-style: italic;
+    margin-inline-start: 1rem;
+    border-left: 3px solid var(--accent);
+    padding-left: 1rem;
+}
+
+/* ── header ── */
+
+header {
+    margin: 1rem 0;
+}
+
+header > h1 {
+    font-size: 2rem;
+    margin: 0.5rem 0;
+    color: var(--accent);
+    font-family: var(--sans);
+    font-weight: normal;
+    letter-spacing: -0.02em;
+}
+
+header > h1 > a:link,
+header > h1 > a:visited {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+header > p.tagline {
+    font-family: var(--sans);
+    font-size: 0.9rem;
+    margin: 0 0 0.75rem 0;
+    opacity: 0.7;
+}
+
+/* ── nav ── */
+
+header > nav > ul {
+    font-family: var(--sans);
+    list-style: none;
+    margin: 0.5rem 0;
+    padding: 0;
+}
+
+header > nav > ul > li {
+    display: inline;
+    margin-inline-end: 1.25rem;
+}
+
+header > nav > ul > li > a {
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+header > nav > ul > li > a:hover {
+    text-decoration: underline;
+}
+
+header > nav > ul > li > a.active {
+    color: var(--accent);
+    border-bottom: 1px solid var(--accent);
+}
+
+/* ── main ── */
+
+main {
+    margin-top: 1rem;
+}
+
+main h2 {
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.5rem 0;
+}
+
+/* ── fork notice on man pages ── */
+
+p.fork-notice {
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    opacity: 0.75;
+    margin-left: 0;
+    border-left: 2px solid var(--accent);
+    padding-left: 0.75rem;
+}
+
+/* ── footer ── */
+
+footer {
+    margin: 2rem 0 1rem 0;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    opacity: 0.65;
+}
+
+footer a:link, footer a:visited {
+    color: var(--fg);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid;
+    opacity: 0.2;
+    margin: 1rem 0;
+}
+
+  </style>
+
+  <title>Home — PhoenixDKIM</title>
+</head>
+<body>
+
+<header>
+  <h1><a href="/">PhoenixDKIM</a></h1>
+  <p class="tagline">A maintained fork of OpenDKIM</p>
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/announcements.html">Announcements</a></li>
+      <li><a href="/download.html">Download</a></li>
+      <li><a href="/documentation.html">Documentation</a></li>
+      <li><a href="/packages.html">Packages &amp; Ports</a></li>
+      <li><a href="/contributing.html">Contributing</a></li>
+      <li><a href="/security.html">Security</a></li>
+    </ul>
+  </nav>
+</header>
+
+<hr>
+
+<main>
+
+<h2><a name="about" href="#about">About PhoenixDKIM</a></h2>
+
+<p>PhoenixDKIM is a maintained fork of
+<a href="http://www.opendkim.org/">OpenDKIM</a>, a widely-deployed
+milter providing DKIM signing and verification for SMTP mail servers.</p>
+
+<p>OpenDKIM is no longer actively maintained. PhoenixDKIM picks up where
+it left off: fixing bugs, updating defaults, and keeping the codebase
+current with modern mail infrastructure requirements.</p>
+
+<p>PhoenixDKIM is compatible with any MTA that supports the milter
+protocol, including <a href="https://www.postfix.org/">Postfix</a> and
+<a href="https://www.sendmail.org/">Sendmail</a>.</p>
+
+<h2><a name="news" href="#news">Latest announcements</a></h2>
+
+<ul>
+  <li><a href="/announcements.html">See all announcements</a></li>
+</ul>
+
+<h2><a name="quickstart" href="#quickstart">Quick start</a></h2>
+
+<p>See the <a href="/documentation.html">documentation</a> for
+installation and configuration instructions.</p>
+
+<p>Source releases are available on the
+<a href="/download.html">download page</a>.
+Binary packages for various distributions are listed on the
+<a href="/packages.html">packages and ports page</a>.</p>
+
+</main>
+
+<hr>
+
+<footer>
+  <p>
+    <a href="/">PhoenixDKIM</a> —
+    a maintained fork of <a href="http://www.opendkim.org/">OpenDKIM</a> —
+    <a href="mailto:info@phoenixdkim.org">info@phoenixdkim.org</a>
+  </p>
+</footer>
+
+</body>
+</html>
