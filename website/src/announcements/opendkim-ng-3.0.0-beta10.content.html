@@ -1,0 +1,85 @@
+<h1> opendkim-ng 3.0.0-beta5 through beta10 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
+
+<p> <b>13 May 2026.</b> </p>
+
+<p> beta5 is a substantive release. beta6 through beta10 are a sequence
+of CI fixes — each one fired to see whether the GitHub Actions workflow
+would correctly build and publish packages. It did, eventually. </p>
+
+<h2> CVE fixes </h2>
+
+<ul>
+  <li> <p> CVE-2020-12272: missing character-set validation on the
+       <tt>d=</tt> tag value in the DKIM Signature header. </p> </li>
+
+  <li> <p> CVE-2020-35766: insecure fixed <tt>/tmp/testkeys</tt> path in the
+       test harness. </p> </li>
+
+  <li> <p> CVE-2022-48521. </p> </li>
+</ul>
+
+<h2> Bug fixes </h2>
+
+<ul>
+  <li> <p> Issue #222: division by zero in the Minimum % check when the
+       message body is empty. </p> </li>
+
+  <li> <p> Issue #229: use <tt>refile:</tt> in <tt>t-sign-rs-tables-bad</tt>
+       to properly exercise the sign-table validation walk. </p> </li>
+
+  <li> <p> Issue #233: report <tt>dkim=policy</tt> for signatures carrying
+       <tt>DKIM_SIGFLAG_IGNORE</tt>. </p> </li>
+
+  <li> <p> Issue #244: fix an always-false NULL check on the
+       <tt>mctx_domain</tt> array. </p> </li>
+
+  <li> <p> Issue #262: correct <tt>DKIM_STAT_KEYFAIL</tt> handling in
+       <tt>mlfi_eoh</tt> and <tt>mlfi_eom</tt>. </p> </li>
+
+  <li> <p> Fix use-after-free in <tt>mlfi_close</tt>; remove dead
+       <tt>QUERY_CACHE</tt> blocks from the same function. </p> </li>
+
+  <li> <p> Insert added headers before all existing headers rather than
+       appending them. </p> </li>
+
+  <li> <p> Guard NULL <tt>%s</tt> arguments in miltertest <tt>snprintf</tt>
+       calls. </p> </li>
+
+  <li> <p> Correct swapped state assertions in miltertest's
+       <tt>DATA</tt> handler. </p> </li>
+
+  <li> <p> Replace <tt>assert()</tt> with a logged guard in
+       <tt>dkimf_config_free()</tt>. </p> </li>
+</ul>
+
+<h2> Database backends </h2>
+
+<ul>
+  <li> <p> Removed dead database backends. Added a Redis/Valkey backend.
+       Fixed bugs in the LMDB and datasplit backends. </p> </li>
+</ul>
+
+<h2> Deployment </h2>
+
+<ul>
+  <li> <p> Systemd: do not create a PID file; do not fork. Let systemd manage
+       the process lifecycle. Added a generic service file in
+       <tt>contrib/systemd/</tt>. </p> </li>
+
+  <li> <p> Patched Lua interface for Lua 5.5+ API changes. </p> </li>
+
+  <li> <p> Moved the sample configuration file to
+       <tt>/usr/share/doc/opendkim-ng/</tt>; the <tt>/etc/opendkim.conf</tt>
+       conffile entry is dropped — administrators provide their own. </p> </li>
+</ul>
+
+<h2> CI (beta6–beta10) </h2>
+
+<ul>
+  <li> <p> Matrix build for Debian bookworm and trixie. </p> </li>
+  <li> <p> Post-release dispatch to the apt repository. </p> </li>
+  <li> <p> Various workflow and artifact-naming fixes accumulated while
+       getting all of the above to fire correctly. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
