@@ -90,60 +90,22 @@ contains a Lua script to be executed whenever a query is performed.  The
 key for the query is placed in a global variable called "query", which the
 called script can then access.  The script may return any number of values
 as required for the type of query being performed.
+(Requires Lua 5.4; enabled with -DWITH_LUA=ON.)
 .TP
 .I d)
-If the string begins with "memcache:", it is presumed to refer to a
-memory cache database provided by
-.B memcached.
-The remainder of the string is a comma-separated list of hosts to which
-query attempts should be made, each optionally followed by ":" and a port
-number; that list must be followed by a slash ("/") character and a
-string that will be used to prefix queries send to the cache.  For example:
-
-memcache:localhost,otherhost/keyname
-
-This would use either "localhost" or "otherhost" to conduct queries,
-and all strings sent to the dataset will be prefixed with "keyname:".
-.TP
-.I e)
 If the string contains none of these prefixes but starts with a slash ("/")
 character, it is presumed to be a flat file as described above.
 .TP
-.I f)
+.I e)
 If the string begins with "csl:", the string is treated as a comma-separated
-list as described in i) below.
+list as described in g) below.
+.TP
+.I f)
+If the string begins with "lmdb:", it refers to a directory containing an
+LMDB (Lightning Memory-Mapped Database) key-value store.
+(Requires liblmdb; enabled with -DWITH_LMDB=ON.)
 .TP
 .I g)
-If the string begins with "erlang:", it is presumed to refer to a function
-called to be made to the specified distributed Erlang node(s). The
-specification is of the form
-
-erlang:node@host[,...]:cookie:module:function
-
-where
-.I node[,...]
-is a list of comma-separated erlang nodes,
-.I cookie
-is the cookie for the known nodes of the distributed Erlang setup,
-.I module
-is the name of the Erlang module where the function to be called resides,
-.I function
-is the name of the Erlang function to be called. For example, (all in one
-line):
-
-erlang:mynode@myhost,myothernode@myotherhost:
-.br
-       chocolate:dkim:lookup
-
-will join the distributed Erlang setup connecting to either "mynode@myhost"
-or "myothernode@myotherhost" (connections to nodes are tried in order) using
-"chocolate" as the cookie, and use the function "dkim:lookup/1" for lookups.
-.TP
-.I h)
-If the string begins with "lmdb:", it refers to a directory that contains
-a memory database, as provided by libmdb from OpenLDAP.
-.TP
-.I i)
 In any other case, the string is presumed to be a comma-separated list.
 Elements in the list are either simple data elements that are part of the
 set or, in the case of an entry of the form "x=y", are stored as key-value
@@ -440,9 +402,7 @@ AutoRestartRate,
 Background,
 MilterDebug,
 PidFile (\-P),
-POPDBFile,
 Quarantine (\-q),
-QueryCache,
 Socket (\-p),
 StrictTestMode,
 TestPublicKeys,
@@ -494,15 +454,6 @@ being used for interaction between
 and the filter.  Otherwise, the MTA could abort a message while waiting for
 a reply from the filter, which in turn is still waiting for a DNS reply.
 
-The POP authentication database is expected to be a Sleepycat DB file
-(formerly known as a Berkeley DB) in hash format with keys containing
-the IP address in text form without a terminating NULL.  The values of
-these records are not checked; only the existence of such records is of
-interest.  The filter will attempt to establish a shared lock on the
-database before reading from it, so any programs which write to the
-database should keep their lock use to a minimum or else this filter
-will appear to hang while waiting for the lock operation to complete.
-
 Features that involve specification of IPv4 addresses or CIDR blocks
 will use the
 .I inet_addr(3)
@@ -519,7 +470,7 @@ proposal, and Cisco's
 .B Internet Identified Mail
 (IIM) proposal.
 .SH VERSION
-This man page covers version 3.0 of
+This man page covers version 3.0.0 of
 .I opendkim.
 .SH COPYRIGHT
 Copyright (c) 2007, 2008, Sendmail, Inc. and its suppliers.
