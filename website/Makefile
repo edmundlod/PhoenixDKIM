@@ -59,15 +59,37 @@ HTML = $(patsubst %,$(OUTDIR)/%.html,$(PAGES))
 MANPAGES    := $(shell find .. -name '*.[358]' -not -path '*/build/*')
 MANHTML     := $(patsubst %,$(OUTDIR)/man/%.html,$(notdir $(MANPAGES)))
 
+# ── announcement pages ────────────────────────────────────────────────────────
+
+ANN_SRCS := $(wildcard src/announcements/*.content.html)
+ANN_HTML := $(patsubst src/announcements/%.content.html,$(OUTDIR)/announcements/%.html,$(ANN_SRCS))
+
 # ── targets ───────────────────────────────────────────────────────────────────
 
-all: $(OUTDIR) $(OUTDIR)/man $(HTML) $(MANHTML)
+all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(HTML) $(MANHTML) $(ANN_HTML)
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
 
 $(OUTDIR)/man:
 	mkdir -p $(OUTDIR)/man
+
+$(OUTDIR)/announcements:
+	mkdir -p $(OUTDIR)/announcements
+
+$(OUTDIR)/announcements/%.html: src/announcements/%.content.html $(TMPL) | $(OUTDIR)/announcements
+	@page=$*; \
+	titlefile=src/announcements/$$page.title; \
+	if [ -f "$$titlefile" ]; then \
+	    title=$$(cat "$$titlefile"); \
+	else \
+	    title=$$page; \
+	fi; \
+	sed \
+	    -e "s|%%TITLE%%|$$title|g" \
+	    -e "/%%CONTENT%%/{r src/announcements/$$page.content.html" -e "d}" \
+	    $(TMPL) > $@
+	@echo "  built $@"
 
 # Regular pages: substitute %%TITLE%% from .title file, %%CONTENT%% from .content.html
 
