@@ -107,33 +107,28 @@ $(OUTDIR)/%.html: src/%.content.html $(TMPL)
 	    $(TMPL) > $@
 	@echo "  built $@"
 
-# Man pages: strip man2html wrapper, inject fork notice, wrap in template
-
-# man2html sed cleanup below:
-#   1. strip everything before <BODY> (man2html html header)
-#   2. strip everything after </BODY>
-#   3. remove "Return to Main Contents" link
-#   4. join <HR> with following index anchor so rule 5 can strip the <HR> too
-#   5. strip index block (<A NAME="index"> through </DL>)
-#   6. strip man2html's own header (H1 + Section/Updated line) before first section
-#   7. remove empty named anchors (&nbsp;) used as section targets
-#   8. remove mailto: links auto-generated from node@host patterns
+# Man pages: use groff -T html, inject fork notice, wrap in template
+#   groff cleanup:
+#   1. save Creator/CreationDate comments to append at bottom
+#   2. strip everything before <h2>NAME (head, body tag, h1 title, TOC, hr)
+#   3. strip </body> and </html>
 $(OUTDIR)/man/%.html: $(TMPL)
 	$(eval MANSRC := $(filter %/$(patsubst $(OUTDIR)/man/%.html,%,$@),$(MANPAGES)))
 	@name=$(patsubst $(OUTDIR)/man/%.html,%,$@); \
 	tmpfile=$$(mktemp); \
+	groftmp=$$(mktemp); \
+	groff -man -T html $(MANSRC) 2>/dev/null > $$groftmp; \
+	credate=$$(sed -n 's/<!-- CreationDate: \(.*\) -->/\1/p' $$groftmp); \
 	cat src/fork-notice.html > $$tmpfile; \
-	man2html $(MANSRC) \
-	| sed \
-		-e '1,/<BODY/d' \
-		-e '/<\/BODY/,$$d' \
-		-e '/<A HREF="\/man\/man2html/d' \
-		-e '/<HR>/{N;s/<HR>\n<A NAME="index">/<A NAME="index">/}' \
-		-e '/<A NAME="index">/,/<\/DL>/d' \
-		-e '1,/<A NAME="lbAB"/{ /<A NAME="lbAB"/!d }' \
-		-e 's/<A NAME="[^"]*">&nbsp;<\/A>//g' \
-		-e 's/<A HREF="mailto:[^"]*">\([^<]*\)<\/A>/\1/g' \
+	sed \
+		-e '1,/<h2>NAME/{ /<h2>NAME/!d }' \
+		-e '/<hr>/{N;/\n<\/body>/d}' \
+		-e '/<\/body>/,$$d' \
+		-e '/<\/html>/d' \
+		$$groftmp \
 	>> $$tmpfile; \
+	printf '<hr>\nThis document was created from the manual pages using groff.<br>\nTime: %s\n' "$$credate" >> $$tmpfile; \
+	rm $$groftmp; \
 	sed \
 	    -e "s|%%TITLE%%|$$name|g" \
 	    -e "/%%CONTENT%%/{r $$tmpfile" -e "d}" \

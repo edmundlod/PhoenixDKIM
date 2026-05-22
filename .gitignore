@@ -20,6 +20,7 @@ Testing/
 build-config.h.in
 missing
 stamp-h*
+build.log
 build-config.h
 config.log
 config.status
