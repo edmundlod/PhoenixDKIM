@@ -1,9 +1,9 @@
 <h1> opendkim-ng 3.0.0-beta3 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
 
-<p> <b>11 May 2026.</b> </p>
+<p> <b>11 May 2026</b> </p>
 
 <p> Autotools is gone. This release also removes the last of the FFR
-preprocessor guards, fixes a batch of buffer-handling and DNSSEC defects
+preprocessor guards; fixes a batch of buffer-handling and DNSSEC defects
 found during audits, and rounds out the build and packaging. </p>
 
 <h2> Build system </h2>
@@ -33,9 +33,16 @@ found during audits, and rounds out the build and packaging. </p>
 <h2> Security and correctness </h2>
 
 <ul>
-  <li> <p> Applied buffer-handling fixes from the AUDIT-BUFFERS review. </p> </li>
+  <li> <p> A code audit of buffer management (conducted with Claude AI)
+       identified a class of <tt>snprintf</tt> misuse throughout the daemon
+       and library: missing return-value checks, incorrect size arguments, and
+       truncated strings silently used as if complete. These were fixed across
+       the affected files. </p> </li>
 
-  <li> <p> Fixed additional DNSSEC defects from the AUDIT-DNSSEC review. </p> </li>
+  <li> <p> A separate audit of the DNSSEC implementation (also conducted with
+       Claude AI) identified five defects, including incorrect error propagation
+       on validation failure, missing checks on DNS response fields, and gaps
+       in DNSSEC status handling. All five were fixed. </p> </li>
 
   <li> <p> Fixed <tt>assert()</tt> misuse in the test suite that caused
        silent test failures when built with <tt>-DNDEBUG</tt>. </p> </li>
@@ -50,7 +57,9 @@ found during audits, and rounds out the build and packaging. </p>
 <h2> Documentation </h2>
 
 <ul>
-  <li> <p> Added <tt>opendkim-lua(3)</tt> man page. </p> </li>
+  <li> <p> The pre-existing <tt>opendkim-lua(3)</tt> man page was added to the
+       CMake build — it had been inadvertently omitted when the build system
+       was ported from Autotools. </p> </li>
 
   <li> <p> Updated project documentation and sample configuration to reflect
        changes since the fork. Added a README for miltertest. </p> </li>

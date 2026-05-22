@@ -12,17 +12,26 @@ would correctly build and publish packages. It did, eventually. </p>
   <li> <p> CVE-2020-12272: missing character-set validation on the
        <tt>d=</tt> tag value in the DKIM Signature header. </p> </li>
 
-  <li> <p> CVE-2020-35766: insecure fixed <tt>/tmp/testkeys</tt> path in the
-       test harness. </p> </li>
+  <li> <p> CVE-2020-35766: the test harness used a hardcoded
+       <tt>/tmp/testkeys</tt> path, making key material predictable and
+       potentially writable by other local users. </p> </li>
 
-  <li> <p> CVE-2022-48521. </p> </li>
+  <li> <p> CVE-2022-48521: a crafted email with a malformed DKIM signature
+       could trigger abnormal termination of the daemon. Never fixed in the
+       upstream OpenDKIM project. </p> </li>
 </ul>
 
 <h2> Bug fixes </h2>
 
+<p> The issues below are bug reports and feature requests filed against the
+original OpenDKIM project that were never addressed upstream. As part of this
+fork, we went through the full backlog and fixed all applicable issues. </p>
+
 <ul>
-  <li> <p> Issue #222: division by zero in the Minimum % check when the
-       message body is empty. </p> </li>
+  <li> <p> Issue #222: the <tt>Minimum</tt> configuration option accepts a
+       percentage value (e.g. <tt>100%</tt>) to require that at least that
+       fraction of the message body is covered by a DKIM signature. A message
+       with an empty body caused a division by zero. </p> </li>
 
   <li> <p> Issue #229: use <tt>refile:</tt> in <tt>t-sign-rs-tables-bad</tt>
        to properly exercise the sign-table validation walk. </p> </li>
@@ -55,8 +64,16 @@ would correctly build and publish packages. It did, eventually. </p>
 <h2> Database backends </h2>
 
 <ul>
-  <li> <p> Removed dead database backends. Added a Redis/Valkey backend.
-       Fixed bugs in the LMDB and datasplit backends. </p> </li>
+  <li> <p> Removed the opendbx backend. opendbx was an abstraction layer that
+       had provided access to MySQL, PostgreSQL, SQLite, MSSQL, and other
+       databases, but has been abandoned upstream and is no longer
+       maintainable. Also removed: the BerkeleyDB, Erlang, and several other
+       backends that are no longer in a position to be actively
+       maintained. </p> </li>
+
+  <li> <p> Added a Redis/Valkey backend via hiredis. </p> </li>
+
+  <li> <p> Fixed bugs in the LMDB and datasplit backends. </p> </li>
 </ul>
 
 <h2> Deployment </h2>
