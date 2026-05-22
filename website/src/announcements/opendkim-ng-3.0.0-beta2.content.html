@@ -1,0 +1,79 @@
+<h1> opendkim-ng 3.0.0-beta2 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
+
+<p> <b>9 May 2026.</b> </p>
+
+<p> A large release covering dead-code removal, documentation rewriting,
+security hardening, and completing the CMake transition. </p>
+
+<h2> Build system </h2>
+
+<ul>
+  <li> <p> Completed the CMake transition. Autotools files are still present
+       in this release but are no longer used; they will be removed in the next
+       release. </p> </li>
+
+  <li> <p> Ported all integration tests (Lua-based) to CMake. </p> </li>
+
+  <li> <p> miltertest: CMake build and Lua 5.4 compatibility. </p> </li>
+</ul>
+
+<h2> Dead-code removal </h2>
+
+<ul>
+  <li> <p> Removed dead subsystems: ATPS, flowrate, libar (abandoned since
+       2012). </p> </li>
+
+  <li> <p> Stripped all <tt>#ifdef _FFR_RESIGN</tt>,
+       <tt>_FFR_IDENTITY_HEADER</tt>, and <tt>_FFR_SENDER_MACRO</tt>
+       preprocessor guards, keeping the feature branches throughout. </p> </li>
+
+  <li> <p> Removed deprecated functions and obsolete documentation from the
+       OpenDKIM 2.x era. </p> </li>
+</ul>
+
+<h2> Key management </h2>
+
+<ul>
+  <li> <p> <tt>opendkim-genkey</tt>: added Ed25519 key generation. </p> </li>
+
+  <li> <p> <tt>dkim_privkey_load</tt>: infer the signing algorithm from the
+       key type rather than requiring explicit configuration. </p> </li>
+</ul>
+
+<h2> Configuration </h2>
+
+<ul>
+  <li> <p> <tt>TrustedHostsFile</tt> is now disabled by default. Administrators
+       who use DNSSEC can re-enable it explicitly. </p> </li>
+</ul>
+
+<h2> Security and correctness </h2>
+
+<ul>
+  <li> <p> Hardened <tt>snprintf</tt> usage across the codebase: added
+       return-value checks, corrected buffer-size arguments, and fixed
+       several unsafe constructions in the daemon, library, and
+       <tt>opendkim-genzone</tt>. </p> </li>
+
+  <li> <p> Fixed five DNSSEC defects identified during a code audit. </p> </li>
+
+  <li> <p> Added <tt>/etc/opendkim.conf</tt> as a Debian conffile so that
+       <tt>dpkg</tt> does not overwrite local configuration on upgrade. </p> </li>
+</ul>
+
+<h2> Documentation </h2>
+
+<ul>
+  <li> <p> Rewrote the README for the new fork and the 3.0.0 release. </p> </li>
+
+  <li> <p> Rewrote <tt>opendkim.conf(5)</tt> for OpenDKIM 3.0, removing all
+       2.x-era configuration options that have been dropped. </p> </li>
+
+  <li> <p> New plain-text man pages, replacing the Autotools-generated
+       <tt>.in</tt> variants. </p> </li>
+
+  <li> <p> Updated the <tt>opendkim-lua(3)</tt> man page to reflect the
+       functions that remain after subsystem removal. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>

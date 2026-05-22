@@ -1,0 +1,159 @@
+<h1> opendkim-ng 3.0.0-beta11 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
+
+<p> <b>21 May 2026.</b> </p>
+
+<p> A large release. The headline is a systematic compiler warning cleanup that
+turned up a number of real bugs along the way. There are also new features,
+several security fixes, and a handful of upstream bug fixes. </p>
+
+<h2> New features </h2>
+
+<ul>
+  <li> <p> <tt>Authentication-Results</tt> now includes <tt>header.a</tt>
+       (signing algorithm) and <tt>header.s</tt> (selector). </p> </li>
+
+  <li> <p> New <tt>SyslogName</tt> configuration option to set the syslog
+       identity string. </p> </li>
+
+  <li> <p> <tt>odkim.internal_ip()</tt> is now available in the screen and
+       final Lua policy hooks. </p> </li>
+
+  <li> <p> The OpenSSL version string is included in <tt>build-config.h</tt>
+       and reported by the <tt>-V</tt> flag. </p> </li>
+
+  <li> <p> OpenSSL 4 build support. </p> </li>
+</ul>
+
+<h2> Removals </h2>
+
+<ul>
+  <li> <p> Removed <tt>QUERY_CACHE</tt>: libopendkim's BerkeleyDB-backed
+       DNS result cache. </p> </li>
+
+  <li> <p> Removed POPAUTH (POP-before-SMTP) support. </p> </li>
+</ul>
+
+<h2> Security fixes </h2>
+
+<ul>
+  <li> <p> Sandboxed Lua policy hooks against dangerous standard libraries
+       (<tt>io</tt>, <tt>os</tt>, <tt>package</tt>, etc.). </p> </li>
+
+  <li> <p> Fixed a TXT chunk-length out-of-bounds read in DNS key
+       extraction. </p> </li>
+
+  <li> <p> Fixed an <tt>Authentication-Results</tt> stripping bypass via a
+       trailing-dot authserv-id. </p> </li>
+
+  <li> <p> Fixed a race in <tt>mlfi_connect</tt>: the current configuration
+       was read without holding a reference count. </p> </li>
+
+  <li> <p> Fixed a related race in <tt>dkimf_add_signrequest</tt>, which was
+       reading per-connection configuration from the global
+       <tt>curconf</tt>. </p> </li>
+
+  <li> <p> Fixed a too-small buffer for the report address
+       (<tt>user@host</tt> worst case). </p> </li>
+
+  <li> <p> Fixed undefined behaviour: <tt>(int) buflen</tt> cast is UB when
+       <tt>buflen &gt; INT_MAX</tt>. </p> </li>
+</ul>
+
+<h2> Bug fixes </h2>
+
+<ul>
+  <li> <p> Fixed <tt>dkim_ohdrs</tt> <tt>z=</tt> decode: it was writing into
+       plist storage, using the wrong <tt>strlcpy</tt> size, and ignoring the
+       scratch buffer. </p> </li>
+
+  <li> <p> Fixed <tt>dkimf_xs_delheader</tt> ignoring its <tt>idx</tt>
+       argument. </p> </li>
+
+  <li> <p> Fixed potential dereference of an uninitialised <tt>sig</tt> pointer
+       in <tt>dkim_eoh_verify</tt>. </p> </li>
+
+  <li> <p> Fixed potential use of an uninitialised <tt>ar</tt> in the
+       <tt>mlfi_eom</tt> header-only path. </p> </li>
+
+  <li> <p> Fixed <tt>dkim_diffheaders</tt> stub falling off the end of a
+       non-void function. </p> </li>
+
+  <li> <p> Fixed <tt>DKIM_SIGFLAG_PROCESSED</tt> not being set in all
+       <tt>dkim_sig_process</tt> error paths. </p> </li>
+
+  <li> <p> Fixed missing <tt>dn_expand</tt> return-value check in the DNS
+       qdcount loop. </p> </li>
+
+  <li> <p> Fixed an off-by-one in snprintf truncation detection in key
+       queries. </p> </li>
+
+  <li> <p> Fixed missing truncation detection in <tt>Authentication-Results</tt>
+       field copies in the <tt>ares</tt> parser. </p> </li>
+
+  <li> <p> Zero per-sign-request private key data before freeing. </p> </li>
+
+  <li> <p> Fixed missing leading space on <tt>Authentication-Results</tt>
+       header when <tt>SMFIP_HDR_LEADSPC</tt> is not negotiated. </p> </li>
+
+  <li> <p> Quote <tt>header.b</tt> values in <tt>Authentication-Results</tt>
+       (bug #235). </p> </li>
+
+  <li> <p> Constrain the <tt>header.b</tt> substring correctly for duplicate
+       signatures (bug #233). </p> </li>
+
+  <li> <p> Handle header fields wrapped before any content (bug #226). </p> </li>
+
+  <li> <p> Remove the upper bound on the canonicalisation buffer size. </p> </li>
+
+  <li> <p> Fix quote handling in <tt>dkim_mail_parse_multi()</tt>. </p> </li>
+
+  <li> <p> Make the standard (non-unbound) resolver DNSSEC-aware. </p> </li>
+
+  <li> <p> Protect <tt>ub_ctx_config()</tt> calls with a mutex (issue
+       #14). </p> </li>
+
+  <li> <p> Widen the password-file critical section in
+       <tt>dkimf_securefile</tt> (issue #8). </p> </li>
+
+  <li> <p> <tt>RequiredHeaders</tt> now reports the specific missing header and
+       rejects the message (issue #28). </p> </li>
+
+  <li> <p> Do not skip the body when only one canonicalisation mode has
+       finished (issue #15). </p> </li>
+
+  <li> <p> Reject non-printable characters in the domain and selector passed to
+       <tt>dkim_sign()</tt> (feature #190). </p> </li>
+</ul>
+
+<h2> Compiler warning cleanup </h2>
+
+<p> The following warning categories were addressed across the daemon, library,
+miltertest, and test suite. Several real bugs were found and fixed in the
+process (listed above). </p>
+
+<ul>
+  <li> <p> <b>-Wcast-qual</b>: extensive <tt>const</tt>-qualification work
+       throughout <tt>libopendkim</tt>, <tt>opendkim</tt>, and miltertest.
+       The <tt>dkim_options()</tt> API was split into separate
+       <tt>dkim_setopt()</tt> and <tt>dkim_getopt()</tt> functions to make
+       the const split clean. Unavoidable legacy libmilter cast sites are
+       annotated. </p> </li>
+
+  <li> <p> <b>-Wmissing-prototypes</b>: file-internal helpers marked
+       <tt>static</tt>; missing prototypes hoisted into headers. </p> </li>
+
+  <li> <p> <b>-Wshadow</b>: shadowing locals renamed or removed across the
+       daemon, library, and tests. </p> </li>
+
+  <li> <p> <b>-Wsign-compare</b>: signed/unsigned comparison fixes; loop
+       counters and sentinel values correctly typed; a wraparound in
+       <tt>dkim_get_sigsubstring</tt> fixed. </p> </li>
+
+  <li> <p> <b>-Wpointer-sign</b>: <tt>u_char</tt>/<tt>char</tt> pointer
+       mismatches resolved at libopendkim API boundaries. </p> </li>
+
+  <li> <p> <b>-Wunused-parameter</b>, <b>-Wunused-variable</b>,
+       <b>-Wreturn-type</b>: remaining stragglers cleaned up. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>

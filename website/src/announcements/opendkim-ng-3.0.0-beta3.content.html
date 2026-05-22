@@ -1,0 +1,59 @@
+<h1> opendkim-ng 3.0.0-beta3 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
+
+<p> <b>11 May 2026.</b> </p>
+
+<p> Autotools is gone. This release also removes the last of the FFR
+preprocessor guards, fixes a batch of buffer-handling and DNSSEC defects
+found during audits, and rounds out the build and packaging. </p>
+
+<h2> Build system </h2>
+
+<ul>
+  <li> <p> Removed the Autotools build system. The CMake transition is
+       complete; all tests pass on Debian 12 and Arch Linux. The upstream
+       Autotools source is preserved at
+       <a href="https://github.com/trusteddomainproject/OpenDKIM">trusteddomainproject/OpenDKIM</a>
+       for reference. </p> </li>
+
+  <li> <p> miltertest, <tt>opendkim.pc</tt>, and <tt>opendkim-lua(3)</tt> added
+       to the CMake and Debian builds. </p> </li>
+
+  <li> <p> Various CMake housekeeping. </p> </li>
+</ul>
+
+<h2> Dead-code removal </h2>
+
+<ul>
+  <li> <p> Stripped all remaining <tt>#ifdef _FFR_*</tt> preprocessor guards
+       across seven source files, keeping the feature branches. </p> </li>
+
+  <li> <p> Removed the final FFR guards from <tt>opendkim-db</tt>. </p> </li>
+</ul>
+
+<h2> Security and correctness </h2>
+
+<ul>
+  <li> <p> Applied buffer-handling fixes from the AUDIT-BUFFERS review. </p> </li>
+
+  <li> <p> Fixed additional DNSSEC defects from the AUDIT-DNSSEC review. </p> </li>
+
+  <li> <p> Fixed <tt>assert()</tt> misuse in the test suite that caused
+       silent test failures when built with <tt>-DNDEBUG</tt>. </p> </li>
+
+  <li> <p> Fixed a malformed Debian changelog from the previous
+       release. </p> </li>
+
+  <li> <p> Added a refile type-check for the sign-table validation walk, which
+       only works on flat files. </p> </li>
+</ul>
+
+<h2> Documentation </h2>
+
+<ul>
+  <li> <p> Added <tt>opendkim-lua(3)</tt> man page. </p> </li>
+
+  <li> <p> Updated project documentation and sample configuration to reflect
+       changes since the fork. Added a README for miltertest. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>

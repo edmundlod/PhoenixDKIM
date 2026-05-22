@@ -1,0 +1,45 @@
+<h1> opendkim-ng 3.0.0-beta1 <small>(project renamed to PhoenixDKIM on 21 May 2026)</small> </h1>
+
+<p> <b>5 May 2026.</b> </p>
+
+<p> This is the first public pre-release of PhoenixDKIM, forked from
+<a href="https://github.com/trusteddomainproject/OpenDKIM">OpenDKIM</a>
+in early 2026. The goal is to bring the OpenDKIM filter up to date — working
+on current platforms, building cleanly against current library versions,
+and fit to face the internet. </p>
+
+<p> This release covers the initial porting work. </p>
+
+<h2> Build system </h2>
+
+<ul>
+  <li> <p> Replaced the Autotools build with CMake. The daemon, library,
+       miltertest, and Debian packaging all build from CMake. </p> </li>
+</ul>
+
+<h2> Cryptography </h2>
+
+<ul>
+  <li> <p> Ported the daemon's crypto layer to OpenSSL 3. </p> </li>
+
+  <li> <p> Added Ed25519-SHA256 signing and verification per
+       <a href="https://www.rfc-editor.org/rfc/rfc8463">RFC 8463</a>. </p> </li>
+
+  <li> <p> Removed rsa-sha1 from the signing algorithm table. </p> </li>
+</ul>
+
+<h2> Packaging and deployment </h2>
+
+<ul>
+  <li> <p> Added Debian packaging targeting Debian 12 (bookworm). </p> </li>
+
+  <li> <p> Modernised the systemd service unit: <tt>Type=notify</tt>, no PID
+       file, no self-daemonisation — let systemd manage the process
+       lifecycle. </p> </li>
+
+  <li> <p> Added support for the modern Postfix SASL authentication macro
+       <tt>auth_authen</tt>, keeping <tt>auth_type</tt> as a fallback for
+       older Postfix deployments. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
