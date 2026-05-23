@@ -1,16 +1,36 @@
 <h1>Download PhoenixDKIM</h1>
 
-<p>
-PhoenixDKIM source code is hosted on
-<a href="https://github.com/edmundlod/PhoenixDKIM">GitHub</a>.
-Release tags and commits are signed with the author's PGP key, which can be
-verified directly on GitHub.
-Debian packages built by the release workflow are attached to each GitHub
-Release.
-Separate standalone tarball signature files are not yet available.
+<p class="page-index">
+<a href="#about">About this archive</a> |
+<a href="#beta">Current beta release</a> |
+<a href="#old">Older beta releases</a>
 </p>
 
-<h2><a name="beta">PhoenixDKIM 3.0.0 beta releases</a></h2>
+<h2><a name="about">About this source-code archive</a></h2>
+
+<p>
+All PhoenixDKIM source tarballs are signed with the
+<a href="/phoenixdkim-releases.asc">release PGP key</a>.
+The source repository on
+<a href="https://github.com/edmundlod/PhoenixDKIM">GitHub</a>
+also carries signed release tags.
+Debian packages built by the release workflow are attached to each
+GitHub Release.
+</p>
+
+<p>
+To verify a tarball, first import the release key:
+</p>
+
+<pre>gpg --fetch-keys https://www.phoenixdkim.org/phoenixdkim-releases.asc</pre>
+
+<p>
+Then verify the signature:
+</p>
+
+<pre>gpg --verify phoenixdkim-3.0.0-beta11.tar.gz.asc phoenixdkim-3.0.0-beta11.tar.gz</pre>
+
+<h2><a name="beta">PhoenixDKIM 3.0.0 beta release</a></h2>
 
 <p>
 Beta releases are pre-release versions of PhoenixDKIM 3.0.0.
@@ -25,7 +45,8 @@ Only the most recent beta is maintained; all earlier betas are superseded.
 
 <li> <p> PhoenixDKIM 3.0.0-beta11 &nbsp; (21 May 2026)
 
-<a href="https://github.com/edmundlod/PhoenixDKIM/archive/refs/tags/v3.0.0-beta11.tar.gz">Source tarball</a> |
+<a href="/releases/phoenixdkim-3.0.0-beta11.tar.gz">Source tarball</a> |
+<a href="/releases/phoenixdkim-3.0.0-beta11.tar.gz.asc">PGP signature</a> |
 <a href="https://github.com/edmundlod/PhoenixDKIM/releases/tag/v3.0.0-beta11">GitHub Release</a> (includes Debian packages) |
 <a href="/announcements/opendkim-ng-3.0.0-beta11.html">Release notes</a>
 
