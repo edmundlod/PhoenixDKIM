@@ -1,0 +1,34 @@
+<h1>Packages &amp; Ports</h1>
+
+<p class="page-index">
+<a href="#debian">Debian</a>
+</p>
+
+<h2><a name="debian">Debian</a></h2>
+
+<p>
+Signed Debian packages for trixie are available from the PhoenixDKIM
+APT repository.
+</p>
+
+<p>
+Import the release signing key:
+</p>
+
+<pre>sudo wget -O /etc/apt/keyrings/phoenixdkim.asc \
+    https://www.phoenixdkim.org/phoenixdkim-releases.asc</pre>
+
+<p>
+Add the repository:
+</p>
+
+<pre>echo "deb [signed-by=/etc/apt/keyrings/phoenixdkim.asc] \
+    https://apt.phoenixdkim.org trixie main" \
+    | sudo tee /etc/apt/sources.list.d/phoenixdkim.list
+sudo apt-get update</pre>
+
+<p>
+Install PhoenixDKIM:
+</p>
+
+<pre>sudo apt-get install phoenixdkim</pre>

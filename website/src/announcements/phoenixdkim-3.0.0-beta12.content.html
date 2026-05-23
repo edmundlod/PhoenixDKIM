@@ -1,0 +1,50 @@
+<h1>PhoenixDKIM 3.0.0-beta12</h1>
+
+<p> <b>23 May 2026</b> </p>
+
+<p> A joyful housekeeping release, completing the rename from
+<tt>opendkim-ng</tt> to <tt>phoenixdkim</tt>, with packaging fixes
+and removal of orphaned files. No changes to the daemon, library,
+or test suite. </p>
+
+<h2> Rename </h2>
+
+<ul>
+  <li> <p> The source package is now named <tt>phoenixdkim</tt>, completing
+       the rename that began in beta11. </p> </li>
+
+  <li> <p> Man page <tt>.TH</tt> headers updated to identify PhoenixDKIM
+       as the source package. </p> </li>
+
+  <li> <p> Man pages: removed references to backends and options that were
+       removed in earlier releases. </p> </li>
+</ul>
+
+<h2> Packaging fixes </h2>
+
+<ul>
+  <li> <p> Debian: An apt repository is provided at
+       <a href="https://apt.phoenixdkim.org">apt.phoenixdkim.org</a> which
+       currently hosts .deb packages for Debian Trixie. For more information,
+       see <a href="/packages.html"> Ports & Packages</a>. </p> </li>
+
+  <li> <p> Debian: The <tt>miltertest</tt> binary is now correctly installed into
+       the <tt>miltertest</tt> package; previously it was being placed in
+       the <tt>phoenixdkim</tt> package. </p> </li>
+
+  <li> <p> Debian: Removed obsolete <tt>syslog.target</tt> dependency from the
+       systemd service unit. </p> </li>
+
+  <li> <p> Debian: Removed empty <tt>debian/conffiles</tt>. </p> </li>
+</ul>
+
+<h2> Removals </h2>
+
+<ul>
+  <li> <p> Removed orphaned <tt>libut</tt> directory. </p> </li>
+
+  <li> <p> Removed <tt>autobuild/</tt>, the last relic from the autotools era,
+       which was superseded by CMake. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
