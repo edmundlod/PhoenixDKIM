@@ -1,0 +1,7 @@
+# PhoenixDKIM vulnerability disclosure policy
+# https://www.phoenixdkim.org/security.html
+Contact: mailto:security@proteamail.com
+Expires: 2027-05-23T00:00:00.000Z
+Encryption: https://www.phoenixdkim.org/phoenixdkim-security.asc
+Policy: https://www.phoenixdkim.org/security.html
+Preferred-Languages: en
