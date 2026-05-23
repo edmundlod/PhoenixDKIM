@@ -1,3 +1,18 @@
+phoenixdkim (3.0.0~beta12-ng1) trixie; urgency=medium
+
+  * Rename: project and source package renamed from opendkim-ng to
+    phoenixdkim
+  * Man pages: updated .TH headers to identify PhoenixDKIM as the
+    source package; removed obsolete references to eliminated backends
+  * Remove: orphaned libut directory
+  * Remove: autobuild/ (superseded by CMake)
+  * Packaging: miltertest binary now correctly installed into the
+    miltertest package rather than phoenixdkim
+  * Packaging: remove empty conffiles
+  * Packaging: remove obsolete syslog.target from systemd service unit
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Fri, 23 May 2026 00:00:00 +0200
+
 phoenixdkim (3.0.0~beta11-ng1) trixie; urgency=medium
 
   * Security: fix A-R stripping bypass via trailing-dot authserv-id
