@@ -1,7 +1,7 @@
 [Unit]
 Description=opendkim Milter
 Documentation=man:opendkim(8) man:opendkim.conf(5) man:opendkim-lua(3) man:opendkim-genkey(8) man:opendkim-genzone(8) man:opendkim-testkey(8) man:opendkim-testmsg(8)
-After=network-online.target nss-lookup.target syslog.target
+After=network-online.target nss-lookup.target
 Wants=network-online.target
 
 [Service]
