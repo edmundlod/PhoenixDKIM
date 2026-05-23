@@ -64,9 +64,17 @@ MANHTML     := $(patsubst %,$(OUTDIR)/man/%.html,$(notdir $(MANPAGES)))
 ANN_SRCS := $(wildcard src/announcements/*.content.html)
 ANN_HTML := $(patsubst src/announcements/%.content.html,$(OUTDIR)/announcements/%.html,$(ANN_SRCS))
 
+# ── well-known / static assets ───────────────────────────────────────────────
+
+WELLKNOWN_DIR   = $(OUTDIR)/.well-known
+WELLKNOWN_FILES = $(WELLKNOWN_DIR)/security.txt
+
+STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc
+
 # ── targets ───────────────────────────────────────────────────────────────────
 
-all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(HTML) $(MANHTML) $(ANN_HTML)
+all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(WELLKNOWN_DIR) \
+     $(HTML) $(MANHTML) $(ANN_HTML) $(WELLKNOWN_FILES) $(STATIC_FILES)
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
@@ -76,6 +84,17 @@ $(OUTDIR)/man:
 
 $(OUTDIR)/announcements:
 	mkdir -p $(OUTDIR)/announcements
+
+$(WELLKNOWN_DIR):
+	mkdir -p $(WELLKNOWN_DIR)
+
+$(WELLKNOWN_DIR)/security.txt: src/security.txt | $(WELLKNOWN_DIR)
+	cp $< $@
+	@echo "  built $@"
+
+$(OUTDIR)/phoenixdkim-security.asc: src/phoenixdkim-security.asc | $(OUTDIR)
+	cp $< $@
+	@echo "  built $@"
 
 $(OUTDIR)/announcements/%.html: src/announcements/%.content.html $(TMPL) | $(OUTDIR)/announcements
 	@page=$*; \

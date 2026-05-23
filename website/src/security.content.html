@@ -1,0 +1,104 @@
+<h1>Security</h1>
+
+<p>We do all we can to keep PhoenixDKIM secure. As an Internet-facing daemon
+that processes mail directly from external networks, security is a primary
+concern for this project. Even so, it is possible that you may spot a
+weakness we have missed. If you do, please let us know so we can address it
+quickly.</p>
+
+<p>Reporting security problems is known as <em>vulnerability disclosure</em>
+(also known as coordinated vulnerability disclosure and responsible
+disclosure).</p>
+
+<p>This is not an invitation to scan and test our infrastructure for
+weaknesses — we are doing that ourselves. We are interested specifically in
+weaknesses in the <strong>PhoenixDKIM source code</strong> and the libraries
+it depends on.</p>
+
+<h2>How to report a problem</h2>
+
+<ul>
+  <li>Please e-mail details to
+      <a href="mailto:security@proteamail.com">security@proteamail.com</a>;</li>
+  <li>Preferably encrypt your e-mail with our
+      <a href="/phoenixdkim-security.asc">PGP key</a>
+      (fingerprint: <code>3DE7 C0C4 6B9B CED9 1A0E&nbsp; 33F9 DEC0 1373 068A 9F5B</code>);</li>
+  <li>Include as much information as possible — a description of what you
+      found, the version of PhoenixDKIM affected, steps to reproduce, and any
+      relevant logs or proof-of-concept code. This helps us reproduce the
+      problem and fix it;</li>
+  <li>Please include your contact details (e-mail address or other means) so
+      that we can follow up if we need more information.</li>
+</ul>
+
+<h2>Other important points</h2>
+
+<ul>
+  <li>Please do not disclose the vulnerability publicly until we have had a
+      reasonable opportunity to investigate and release a fix.</li>
+  <li>Do not go deeper into the affected system than is necessary to
+      demonstrate the problem.</li>
+  <li>Do not exploit a vulnerability beyond what is needed to verify it
+      exists.</li>
+  <li>Please delete any sensitive data you have inadvertently accessed in
+      the course of your research.</li>
+</ul>
+
+<h2>What you do not need to report</h2>
+
+<ul>
+  <li>Social engineering.</li>
+  <li>Resource exhaustion / (Distributed) Denial of Service.</li>
+  <li>Physical access testing.</li>
+  <li>Situations that cannot be reproduced, or exploits not validated by a
+      second tool or method.</li>
+  <li>Cosmetic issues in the PhoenixDKIM web pages.</li>
+  <li>Situations where the problem lies at the user-awareness level (e.g.
+      unattended workstations).</li>
+  <li>Simple fingerprinting or version listings on OS, services, or
+      ports.</li>
+  <li>Publicly available files that contain only public information.</li>
+  <li>Secure/HTTP-only flag missing on cookies that contain only public
+      information.</li>
+  <li>TLS misconfiguration without a proof of concept demonstrating
+      exploitability.</li>
+  <li>Services running at third-party providers — check their own responsible
+      disclosure statement first.</li>
+  <li>E-mail addresses found in a third-party data breach.</li>
+  <li>Publicly disclosed vulnerabilities patched within the last two
+      weeks.</li>
+  <li>URL redirection to a valid web page.</li>
+  <li>Missing security headers, options, and flags without a proof of concept
+      showing real-world impact.</li>
+  <li>Outdated dependency versions without a working proof of concept.</li>
+</ul>
+
+<h2>Known issues</h2>
+
+<p>Some issues are already known to us and are being worked on, or have been
+assessed and accepted as risks. Duplicate reports of these will not result in
+any action. Our security contact is aware of them.</p>
+
+<h2>What we will do</h2>
+
+<ul>
+  <li>We will e-mail you within one working day, confirming receipt of your
+      report.</li>
+  <li>Within five working days, we will respond with our assessment of the
+      issue and tell you when we expect it to be resolved. We aim to fix
+      confirmed vulnerabilities as promptly as possible, and certainly within
+      three months.</li>
+  <li>We will keep you updated on progress.</li>
+  <li>With your agreement, we will credit you as the discoverer of the
+      problem in our release notes or security advisories — but only if you
+      want us to.</li>
+</ul>
+
+<h2>security.txt</h2>
+
+<p><a href="https://www.rfc-editor.org/rfc/rfc9116">RFC&nbsp;9116</a> defines
+a straightforward mechanism for organisations to publish their vulnerability
+disclosure policy and contact details in a machine-readable format. We follow
+this internet standard. Our
+<a href="/.well-known/security.txt">security.txt</a> file is available at
+<a href="/.well-known/security.txt">https://www.phoenixdkim.org/.well-known/security.txt</a>.</p>
