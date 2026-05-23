@@ -13,3 +13,8 @@ Website:
 - add contributing
 - when cutting new beta12, update announcements.
 
+=======================
+
+CI / Github:
+- use only one git commit key
+- add release signing key to CI
