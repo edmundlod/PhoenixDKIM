@@ -833,7 +833,16 @@ dkim_canon_selecthdrs(DKIM *dkim, const u_char *hdrlist,
 
 	assert(dkim != NULL);
 	assert(ptrs != NULL);
-	assert(nptrs != 0);
+
+	/*
+	**  With no pointer slots there is nothing to select; this happens
+	**  when DKIM_OPTS_SKIPHDRS causes every header to be excluded, in
+	**  which case dkim_hdrcnt (and hence nptrs) is 0.  Return cleanly
+	**  rather than asserting -- callers treat 0 as "no headers".
+	*/
+
+	if (nptrs == 0)
+		return 0;
 
 	/* if there are no headers named, use them all */
 	if (hdrlist == NULL)
@@ -1007,8 +1016,14 @@ dkim_canon_runheaders(DKIM *dkim)
 	tmp = tmpbuf;
 	end = tmpbuf + sizeof tmpbuf - 1;
 
+	/*
+	**  Allocate at least one byte: when every header has been skipped
+	**  (e.g. via DKIM_OPTS_SKIPHDRS) dkim_hdrcnt is 0, and the behaviour
+	**  of malloc(0) is implementation-defined.
+	*/
+
 	n = dkim->dkim_hdrcnt * sizeof(struct dkim_header *);
-	hdrset = DKIM_MALLOC(dkim, n);
+	hdrset = DKIM_MALLOC(dkim, n == 0 ? 1 : n);
 	if (hdrset == NULL)
 		return DKIM_STAT_NORESOURCE;
 
