@@ -185,7 +185,53 @@ dkim_res_query(void *srv, int type, unsigned char *query, unsigned char *buf,
 	ret = res_query((char *) query, C_IN, type, buf, buflen);
 #endif /* HAVE_RES_NINIT */
 	if (ret == -1)
-		return DKIM_DNS_ERROR;
+	{
+		/*
+		**  Distinguish "the name does not exist" from a genuine
+		**  resolver failure.  res_query()/res_nquery() report the
+		**  former by setting h_errno to HOST_NOT_FOUND or NO_DATA
+		**  (both res_ functions update the thread-local h_errno on
+		**  this platform).  Per RFC 6376 a missing key selector is a
+		**  permanent condition and must surface as DKIM_STAT_NOKEY,
+		**  not the transient DKIM_STAT_KEYFAIL that DKIM_DNS_ERROR
+		**  would produce.
+		**
+		**  Synthesise an NXDOMAIN reply and let the normal parsing
+		**  path classify it.  We echo the question section (name,
+		**  type, class) rather than emitting a bare header: the shared
+		**  answer parsers read the type/class out of the question
+		**  before they test the RCODE, so a header-only packet would
+		**  be rejected as an "unexpected reply class/type" before the
+		**  NXDOMAIN check was ever reached.
+		*/
+
+		unsigned char *cp;
+		size_t avail;
+		int n;
+
+		if ((h_errno != HOST_NOT_FOUND && h_errno != NO_DATA) ||
+		    buflen < HFIXEDSZ + 2 * INT16SZ)
+			return DKIM_DNS_ERROR;
+
+		memset(buf, '\0', HFIXEDSZ);
+		hdr = (HEADER *) buf;
+		hdr->qr = 1;
+		hdr->rcode = NXDOMAIN;
+		hdr->qdcount = htons(1);
+
+		/* reserve room for the trailing QTYPE and QCLASS */
+		cp = buf + HFIXEDSZ;
+		avail = buflen - HFIXEDSZ - 2 * INT16SZ;
+
+		n = dn_comp((char *) query, cp, (int) avail, NULL, NULL);
+		if (n < 0)
+			return DKIM_DNS_ERROR;
+		cp += n;
+		PUTSHORT((unsigned short) type, cp);
+		PUTSHORT(C_IN, cp);
+
+		ret = cp - buf;
+	}
 
 	rq = (struct dkim_res_qh *) malloc(sizeof *rq);
 	if (rq == NULL)

@@ -156,6 +156,13 @@ dkim_repinfo(DKIM *dkim, DKIM_SIGINFO *sig, struct timeval *timeout,
 		return DKIM_STAT_CANTVRFY;
 	}
 
+	/*
+	**  NXDOMAIN: no report record exists.  The stub resolver
+	**  (dkim_res_query() in dkim-dns.c) also synthesises such a reply for
+	**  HOST_NOT_FOUND/NO_DATA, echoing the question section so the loop
+	**  above sets type/class and we reach this test as for a real
+	**  response; keep this check after the question is parsed.
+	*/
 	if (hdr.rcode == NXDOMAIN)
 	{
 		buf[0] = '\0';

@@ -250,7 +250,18 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 		return DKIM_STAT_KEYFAIL;
 	}
 
-	/* if NXDOMAIN, return DKIM_STAT_NOKEY */
+	/*
+	**  NXDOMAIN means the selector does not exist: a permanent "no key"
+	**  (DKIM_STAT_NOKEY), not a transient failure.
+	**
+	**  This is also reached for synthetic replies: the stub resolver
+	**  (dkim_res_query() in dkim-dns.c) manufactures an NXDOMAIN response
+	**  when res_query() reports HOST_NOT_FOUND/NO_DATA, and deliberately
+	**  echoes the question section so that the loop above sets type/class
+	**  and we arrive here exactly as we would for a real response.  Keep
+	**  this RCODE test after the question is parsed; revisit dkim-dns.c
+	**  before changing that ordering or removing this check.
+	*/
 	if (hdr.rcode == NXDOMAIN)
 	{
 		dkim_error(dkim, "'%s' record not found", qname);
