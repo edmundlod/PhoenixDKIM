@@ -12218,17 +12218,28 @@ mlfi_eom(SMFICTX *ctx)
 			memset(val, '\0', sizeof val);
 			memset(header, '\0', sizeof header);
 
-			snprintf(header, sizeof header, "%s%s",
-		        	 cc->cctx_noleadspc ? " " : "",
-		        	 authservid);
-
 			if (conf->conf_authservidwithjobid &&
 			    dfc->mctx_jobid != NULL)
 			{
-				strlcat(header, "/", sizeof header);
-				strlcat(header,
-				        (const char *) dfc->mctx_jobid,
-				        sizeof header);
+				/*
+				**  RFC 8601, Section 2.2 requires the
+				**  authserv-id to be a token or a
+				**  quoted-string.  Appending the job ID after
+				**  a "/" introduces a tspecial (RFC 2045,
+				**  Section 5.1) that may not appear in a bare
+				**  token, so emit the combined value as a
+				**  quoted-string.
+				*/
+				snprintf(header, sizeof header, "%s\"%s/%s\"",
+				         cc->cctx_noleadspc ? " " : "",
+				         authservid,
+				         (const char *) dfc->mctx_jobid);
+			}
+			else
+			{
+				snprintf(header, sizeof header, "%s%s",
+				         cc->cctx_noleadspc ? " " : "",
+				         authservid);
 			}
 
 			strlcat(header, ";", sizeof header);
