@@ -227,6 +227,7 @@ main(int argc, char **argv)
 	char domain[BUFRSZ];
 	char selector[BUFRSZ];
 	char keypath[MAXBUFRSZ];
+	dkim_alg_t signalg = DKIM_SIGN_RSASHA256;
 
 	progname = (p = strrchr(argv[0], '/')) == NULL ? argv[0] : p + 1;
 
@@ -328,6 +329,30 @@ main(int argc, char **argv)
 
 		(void) config_get(cfg, "Nameservers",
 		                  &nslist, sizeof nslist);
+
+		/*
+		**  Pick up the configured signing algorithm so the key is
+		**  tested as the matching key type.  Absent this, the test
+		**  defaults to RSA and would misjudge an Ed25519 key.  The
+		**  accepted names mirror the daemon's SignatureAlgorithm
+		**  values (see dkimf_sign[] in opendkim.c).
+		*/
+		p = NULL;
+		(void) config_get(cfg, "SignatureAlgorithm", &p, sizeof p);
+		if (p != NULL)
+		{
+			if (strcasecmp(p, "rsa-sha256") == 0)
+				signalg = DKIM_SIGN_RSASHA256;
+			else if (strcasecmp(p, "ed25519-sha256") == 0)
+				signalg = DKIM_SIGN_ED25519SHA256;
+			else
+			{
+				fprintf(stderr,
+				        "%s: unknown SignatureAlgorithm '%s'\n",
+				        progname, p);
+				return EX_CONFIG;
+			}
+		}
 	}
 
 	lib = dkim_init(NULL, NULL);
@@ -500,9 +525,9 @@ main(int argc, char **argv)
 
 			dnssec = DKIM_DNSSEC_UNKNOWN;
 
-			status = dkim_test_key(lib, selector, domain,
-			                       keypath, keylen, &dnssec,
-			                       err, sizeof err);
+			status = dkim_test_key2(lib, selector, domain,
+			                        keypath, keylen, signalg,
+			                        &dnssec, err, sizeof err);
 
 			switch (status)
 			{
@@ -654,8 +679,8 @@ main(int argc, char **argv)
 		        progname, selector, domain);
 	}
 
-	status = dkim_test_key(lib, selector, domain, key, (size_t) s.st_size,
-	                       &dnssec, err, sizeof err);
+	status = dkim_test_key2(lib, selector, domain, key, (size_t) s.st_size,
+	                        signalg, &dnssec, err, sizeof err);
 
 	(void) dkim_close(lib);
 

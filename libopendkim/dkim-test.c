@@ -271,8 +271,8 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 }
 
 /*
-**  DKIM_TEST_KEY -- retrieve a public key and verify it against a provided
-**                   private key
+**  DKIM_TEST_KEY2 -- retrieve a public key and verify it against a provided
+**                    private key, for a caller-specified signing algorithm
 **
 **  Parameters:
 **  	lib -- DKIM library handle
@@ -280,6 +280,9 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 **  	domain -- domain name
 **  	key -- private key to verify (PEM format)
 **  	keylen -- size of private key
+**  	alg -- signing algorithm the key is expected to use; selects how the
+**  	       public key is compared (RSA: DER SubjectPublicKeyInfo;
+**  	       Ed25519: the raw 32-byte public key)
 **  	dnssec -- DNSSEC result (may be NULL)
 **  	err -- error buffer (may be NULL)
 **  	errlen -- size of error buffer
@@ -291,17 +294,14 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 */
 
 int
-dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
-              char *key, size_t keylen, int *dnssec, char *err, size_t errlen)
+dkim_test_key2(DKIM_LIB *lib, char *selector, char *domain,
+               char *key, size_t keylen, dkim_alg_t alg,
+               int *dnssec, char *err, size_t errlen)
 {
 	int status = 0;
 	DKIM_STAT stat;
 	DKIM *dkim;
 	DKIM_SIGINFO *sig;
-	BIO *keybuf;
-	BIO *outkey;
-	void *ptr;
-	struct dkim_rsa *rsa;
 	char buf[BUFRSZ];
 
 	assert(lib != NULL);
@@ -374,20 +374,10 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 
 	if (key != NULL)
 	{
-		rsa = DKIM_MALLOC(dkim, sizeof(struct dkim_rsa));
-		if (rsa == NULL)
-		{
-			(void) dkim_free(dkim);
-			if (err != NULL)
-			{
-				snprintf(err, errlen,
-				         "unable to allocate %zu byte(s)",
-				         sizeof(struct dkim_rsa));
-			}
-			return -1;
-		}
-		memset(rsa, '\0', sizeof(struct dkim_rsa));
+		BIO *keybuf;
+		EVP_PKEY *pkey;
 
+		/* read the supplied private key (any algorithm) */
 		keybuf = BIO_new_mem_buf(key, keylen);
 		if (keybuf == NULL)
 		{
@@ -401,65 +391,195 @@ dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
 			return -1;
 		}
 
-		sig->sig_signature = (void *) rsa;
-		sig->sig_keytype = DKIM_KEYTYPE_RSA;
-
-		rsa->rsa_pkey = PEM_read_bio_PrivateKey(keybuf, NULL,
-		                                        NULL, NULL);
-		if (rsa->rsa_pkey == NULL)
+		pkey = PEM_read_bio_PrivateKey(keybuf, NULL, NULL, NULL);
+		BIO_free(keybuf);
+		if (pkey == NULL)
 		{
-			BIO_free(keybuf);
-			(void) dkim_free(dkim);
 			if (err != NULL)
 			{
 				strlcpy(err,
 				        "PEM_read_bio_PrivateKey() failed",
 				        errlen);
 			}
-			return -1;
-		}
 
-		rsa->rsa_keysize = EVP_PKEY_get_size(rsa->rsa_pkey);
-
-		outkey = BIO_new(BIO_s_mem());
-		if (outkey == NULL)
-		{
-			BIO_free(keybuf);
 			(void) dkim_free(dkim);
-			if (err != NULL)
-				strlcpy(err, "BIO_new() failed", errlen);
 			return -1;
 		}
 
-		status = i2d_PUBKEY_bio(outkey, rsa->rsa_pkey);
-		if (status == 0)
+		/*
+		**  Derive the public key from the private key and compare it
+		**  with the one published in DNS (sig->sig_key).  The
+		**  comparison is algorithm-specific: RSA publishes a DER
+		**  SubjectPublicKeyInfo, Ed25519 the raw 32-byte public key.
+		**
+		**  Ownership of "pkey" is handed to the DKIM_SIGINFO via
+		**  sig_signature/sig_keytype below, so dkim_free() reclaims it;
+		**  error paths after that point must not free it directly.
+		*/
+
+		switch (alg)
 		{
-			BIO_free(keybuf);
+		  case DKIM_SIGN_RSASHA1:
+		  case DKIM_SIGN_RSASHA256:
+		  {
+			struct dkim_rsa *rsa;
+			BIO *outkey;
+			void *ptr;
+
+			rsa = DKIM_MALLOC(dkim, sizeof(struct dkim_rsa));
+			if (rsa == NULL)
+			{
+				EVP_PKEY_free(pkey);
+				if (err != NULL)
+				{
+					snprintf(err, errlen,
+					         "unable to allocate %zu byte(s)",
+					         sizeof(struct dkim_rsa));
+				}
+				(void) dkim_free(dkim);
+				return -1;
+			}
+			memset(rsa, '\0', sizeof(struct dkim_rsa));
+
+			rsa->rsa_pkey = pkey;
+			rsa->rsa_keysize = EVP_PKEY_get_size(pkey);
+			sig->sig_signature = (void *) rsa;
+			sig->sig_keytype = DKIM_KEYTYPE_RSA;
+
+			outkey = BIO_new(BIO_s_mem());
+			if (outkey == NULL)
+			{
+				if (err != NULL)
+					strlcpy(err, "BIO_new() failed", errlen);
+				(void) dkim_free(dkim);
+				return -1;
+			}
+
+			status = i2d_PUBKEY_bio(outkey, rsa->rsa_pkey);
+			if (status == 0)
+			{
+				BIO_free(outkey);
+				if (err != NULL)
+				{
+					strlcpy(err, "i2d_PUBKEY_bio() failed",
+					        errlen);
+				}
+				(void) dkim_free(dkim);
+				return -1;
+			}
+
+			(void) BIO_get_mem_data(outkey, &ptr);
+
+			if (BIO_number_written(outkey) == sig->sig_keylen)
+				status = memcmp(ptr, sig->sig_key,
+				                sig->sig_keylen);
+			else
+				status = 1;
+
+			if (status != 0 && err != NULL)
+				strlcpy(err, "keys do not match", errlen);
+
 			BIO_free(outkey);
-			(void) dkim_free(dkim);
+
+			break;
+		  }
+
+		  case DKIM_SIGN_ED25519SHA256:
+		  {
+			struct dkim_ed25519 *ed;
+			/* an Ed25519 raw public key is 32 bytes */
+			u_char rawkey[32];
+			size_t rawkeylen = sizeof rawkey;
+
+			ed = DKIM_MALLOC(dkim, sizeof(struct dkim_ed25519));
+			if (ed == NULL)
+			{
+				EVP_PKEY_free(pkey);
+				if (err != NULL)
+				{
+					snprintf(err, errlen,
+					         "unable to allocate %zu byte(s)",
+					         sizeof(struct dkim_ed25519));
+				}
+				(void) dkim_free(dkim);
+				return -1;
+			}
+			memset(ed, '\0', sizeof(struct dkim_ed25519));
+
+			ed->ed_pkey = pkey;
+			sig->sig_signature = (void *) ed;
+			sig->sig_keytype = DKIM_KEYTYPE_ED25519;
+
+			if (EVP_PKEY_get_raw_public_key(pkey, rawkey,
+			                                &rawkeylen) != 1)
+			{
+				if (err != NULL)
+				{
+					strlcpy(err,
+					        "EVP_PKEY_get_raw_public_key() failed",
+					        errlen);
+				}
+				(void) dkim_free(dkim);
+				return -1;
+			}
+
+			if (rawkeylen == sig->sig_keylen)
+				status = memcmp(rawkey, sig->sig_key,
+				                sig->sig_keylen);
+			else
+				status = 1;
+
+			if (status != 0 && err != NULL)
+				strlcpy(err, "keys do not match", errlen);
+
+			break;
+		  }
+
+		  default:
+			EVP_PKEY_free(pkey);
 			if (err != NULL)
 			{
-				strlcpy(err, "i2d_PUBKEY_bio() failed",
-				           errlen);
+				strlcpy(err, "unsupported signature algorithm",
+				        errlen);
 			}
+			(void) dkim_free(dkim);
 			return -1;
 		}
-
-		(void) BIO_get_mem_data(outkey, &ptr);
-
-		if (BIO_number_written(outkey) == sig->sig_keylen)
-			status = memcmp(ptr, sig->sig_key, sig->sig_keylen);
-		else
-			status = 1;
-
-		if (status != 0)
-			strlcpy(err, "keys do not match", errlen);
-
-		BIO_free(keybuf);
-		BIO_free(outkey);
 	}
 
 	(void) dkim_free(dkim);
 
 	return (status == 0 ? 0 : 1);
+}
+
+/*
+**  DKIM_TEST_KEY -- retrieve a public key and verify it against a provided
+**                   private key (assumes an RSA key)
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	selector -- selector
+**  	domain -- domain name
+**  	key -- private key to verify (PEM format)
+**  	keylen -- size of private key
+**  	dnssec -- DNSSEC result (may be NULL)
+**  	err -- error buffer (may be NULL)
+**  	errlen -- size of error buffer
+**
+**  Return value:
+**  	1 -- keys don't match
+**  	0 -- keys match (or no key provided)
+**  	-1 -- error
+**
+**  Notes:
+**  	Thin wrapper around dkim_test_key2() preserved for callers that
+**  	predate algorithm selection; assumes DKIM_SIGN_RSASHA256.
+*/
+
+int
+dkim_test_key(DKIM_LIB *lib, char *selector, char *domain,
+              char *key, size_t keylen, int *dnssec, char *err, size_t errlen)
+{
+	return dkim_test_key2(lib, selector, domain, key, keylen,
+	                      DKIM_SIGN_RSASHA256, dnssec, err, errlen);
 }
