@@ -746,7 +746,13 @@ dkim_check_dns_reply(unsigned char *ansbuf, size_t anslen,
 	if (type != xtype || class != xclass)
 		return 0;
 
-	/* if NXDOMAIN, return DKIM_STAT_NOKEY */
+	/*
+	**  NXDOMAIN means the name does not exist: treat it as "no record".
+	**  The stub resolver (dkim_res_query() in dkim-dns.c) also synthesises
+	**  such a reply for HOST_NOT_FOUND/NO_DATA, echoing the question
+	**  section so the loop above sets type/class and we reach this test as
+	**  for a real response; keep this check after the question is parsed.
+	*/
 	if (hdr.rcode == NXDOMAIN)
 		return 0;
 
