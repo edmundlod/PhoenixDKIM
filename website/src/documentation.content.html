@@ -1,4 +1,9 @@
-<h1> PhoenixDKIM Documentation <h1>
+<h1>PhoenixDKIM Documentation</h1>
+
+<p class="page-index">
+<a href="#manpages">Man pages</a> |
+<a href="#config">Configuration examples</a>
+</p>
 
 <h2><a name="manpages" href="#manpages">Man pages</a></h2>
 
@@ -11,3 +16,167 @@
   <li><a href="/man/opendkim-testmsg.8.html">opendkim-testmsg(8)</a> — test a DKIM-signed message</li>
   <li><a href="/man/opendkim-lua.3.html">opendkim-lua(3)</a> — Lua scripts for OpenDKIM</li>
 </ul>
+
+<h2><a name="config" href="#config">Configuration examples</a></h2>
+
+<p>
+These examples cover common setups from the simplest to the more involved.
+They are not a substitute for the
+<a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page, which
+documents every option.
+</p>
+
+<p class="page-index">
+<a href="#verify-only">1. Verify only</a> |
+<a href="#verify-sign">2. Verify and sign</a> |
+<a href="#dual-signing">3. Dual signing: Ed25519 and RSA</a> |
+<a href="#hardening">4. Hardening</a>
+</p>
+
+<h3><a name="verify-only" href="#verify-only">1. Verify only</a></h3>
+
+<p>
+The minimum configuration to get started: check DKIM signatures on incoming
+mail without signing anything. Useful while you generate and publish your
+key, or if you simply do not send mail through this filter.
+</p>
+
+<pre>Syslog                  yes
+Socket                  local:/run/opendkim/opendkim.sock
+UserID                  opendkim:opendkim
+
+Mode                    v</pre>
+
+<h3><a name="verify-sign" href="#verify-sign">2. Verify and sign</a></h3>
+
+<p>
+Generate an RSA signing key with
+<a href="/man/opendkim-genkey.8.html">opendkim-genkey(8)</a>:
+</p>
+
+<pre>opendkim-genkey -b 2048 -d example.com -s mail</pre>
+
+<p>
+This creates two files: <tt>mail.private</tt> (the private key) and
+<tt>mail.txt</tt> (the DNS TXT record to publish). Copy
+<tt>mail.private</tt> to <tt>/etc/opendkim/keys/</tt> and publish the
+record from <tt>mail.txt</tt> as <tt>mail._domainkey.example.com</tt>
+in your domain's DNS.
+</p>
+
+<pre>Syslog                  yes
+Socket                  local:/run/opendkim/opendkim.sock
+UserID                  opendkim:opendkim
+
+Mode                    sv
+Canonicalization        relaxed/relaxed
+Domain                  example.com
+Selector                mail
+KeyFile                 /etc/opendkim/keys/mail.private</pre>
+
+<p>
+<tt>Mode sv</tt> enables both signing and verification. If you sign for
+more than one domain, use <tt>KeyTable</tt> and <tt>SigningTable</tt>
+instead of <tt>Domain</tt>, <tt>Selector</tt>, and <tt>KeyFile</tt>;
+see the <a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page.
+</p>
+
+<h3><a name="dual-signing" href="#dual-signing">3. Dual signing: Ed25519 and RSA</a></h3>
+
+<p>
+Ed25519 is a modern elliptic-curve signature algorithm standardised for DKIM
+in <a href="https://www.rfc-editor.org/rfc/rfc8463">RFC&nbsp;8463</a>.
+Compared to RSA, Ed25519 signatures are smaller, faster to generate, and
+harder to attack. The downside is that some older or poorly maintained mail
+infrastructure does not yet support verifying them, and a few milters are
+known to misbehave — or crash — when they encounter an Ed25519 signature.
+</p>
+
+<p>
+One way to handle this is to sign each message with <em>both</em> an Ed25519
+key and an RSA key. A verifier that supports Ed25519 uses that signature; one
+that does not falls back to the RSA signature.
+</p>
+
+<p>
+Do consider, though, that until Ed25519 signatures are supported by all major
+mail services, they are not more effecient because you have to dual-sign with
+an RSA key for backup. It is also possible that not all mail servers will
+handle Ed25519 gracefully, even if you have an RSA backup signature.
+</p>
+
+<p>
+If you do want to proceed, generate both keys:
+</p>
+
+<pre>opendkim-genkey -b 2048 -d example.com -s mail-rsa
+opendkim-genkey -t ed25519 -d example.com -s mail-ed25519</pre>
+
+<p>
+Copy both <tt>.private</tt> files to
+<tt>/etc/opendkim/keys/example.com/</tt> and publish both DNS records.
+It is good practice to keep each domain's keys in its own subdirectory
+under <tt>keys/</tt>.
+</p>
+
+<p>
+The format of <tt>KeyTable</tt> and <tt>SigningTable</tt> is described in the
+<a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page.
+</p>
+
+<p>Create <tt>/etc/opendkim/keytable</tt>:</p>
+
+<pre>mail-rsa      example.com:mail-rsa:/etc/opendkim/keys/example.com/mail-rsa.private
+mail-ed25519  example.com:mail-ed25519:/etc/opendkim/keys/example.com/mail-ed25519.private</pre>
+
+<p>Create <tt>/etc/opendkim/signingtable</tt>:</p>
+
+<pre>*@example.com  mail-rsa
+*@example.com  mail-ed25519</pre>
+
+<pre>Mode                    sv
+Canonicalization        relaxed/relaxed
+KeyTable                /etc/opendkim/keytable
+SigningTable            refile:/etc/opendkim/signingtable
+MultipleSignatures      yes</pre>
+
+<p>
+The <tt>refile:</tt> prefix on <tt>SigningTable</tt> enables regular
+expression matching. With <tt>MultipleSignatures yes</tt>, all matching
+entries are applied, so each message receives both signatures.
+</p>
+
+<h3><a name="hardening" href="#hardening">4. Hardening</a></h3>
+
+<p>
+By default, PhoenixDKIM signs only the minimum set of headers required by
+the DKIM specification. Extending this — and <em>oversigning</em> certain
+headers — significantly raises the bar for forgery and header injection.
+</p>
+
+<p>
+<strong>SignHeaders</strong> extends signing beyond the minimum. Any listed
+header that is present in a message will be covered by the signature; if it
+is later altered in transit, the signature will fail. The following covers
+the headers that matter most for a typical mail sender:
+</p>
+
+<pre>SignHeaders             From,Sender,Reply-To,Subject,Date,Message-Id,To,Cc,Mime-Version,Content-Type,Content-Transfer-Encoding,In-Reply-To,References,List-Id,List-Help,List-Owner,List-Unsubscribe,List-Unsubscribe-Post,List-Subscribe,List-Post,Resent-To,Resent-Cc,Resent-From,Resent-Sender,Resent-Message-Id,Openpgp,Autocrypt</pre>
+
+<p>
+<strong>OversignHeaders</strong> protects against header injection. When a
+header is oversigned, the signature includes a commitment to the
+<em>absence</em> of an extra instance of that header. If an attacker later
+prepends a new header of the same name — a classic technique for spoofing
+the apparent <tt>From</tt> — the signature is immediately invalidated:
+</p>
+
+<pre>OversignHeaders         From,Reply-To,Subject,To,Cc,Date,Message-Id,Mime-Version,Content-Type,Content-Transfer-Encoding,In-Reply-To,References,Sender,Openpgp,Autocrypt</pre>
+
+<p>
+Note that <tt>OversignHeaders</tt> does not need to mirror every entry in
+<tt>SignHeaders</tt>. Headers from the <tt>List-*</tt> and
+<tt>Resent-*</tt> families may legitimately appear multiple times (on
+mailing lists, for example), so oversigning them can break valid traffic.
+Focus oversigning on the headers that identify and address the message.
+</p>
