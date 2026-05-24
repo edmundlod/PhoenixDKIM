@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <resolv.h>
 #include <errno.h>
+#include <syslog.h>
 
 /* libopendkim includes */
 #include <dkim.h>
@@ -596,6 +597,27 @@ dkimf_ub_init(void **ub)
 
 	/* suppress debug output */
 	(void) ub_ctx_debugout(out->ub_ub, NULL);
+
+	/*
+	**  Adopt the system resolver configuration (/etc/resolv.conf, by
+	**  passing NULL) so libunbound forwards queries to the configured
+	**  nameservers instead of recursing from the root servers itself.
+	**  Without this it behaves as a full recursive resolver, which breaks
+	**  split-horizon and forwarding-only environments and trips up large
+	**  DKIM TXT records.  An explicit Nameservers setting, applied later
+	**  via ub_ctx_set_fwd(), still overrides this.  On failure we log and
+	**  carry on in full-recursive mode -- the previous behaviour.
+	*/
+	{
+		int status;
+
+		status = ub_ctx_resolvconf(out->ub_ub, NULL);
+		if (status != 0)
+		{
+			syslog(LOG_WARNING, "ub_ctx_resolvconf(): %s",
+			       ub_strerror(status));
+		}
+	}
 
 	/* set for asynchronous operation */
 	ub_ctx_async(out->ub_ub, TRUE);
