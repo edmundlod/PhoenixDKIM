@@ -13804,7 +13804,18 @@ main(int argc, char **argv)
 			/* make all the process changes */
 			if (getuid() != pw->pw_uid)
 			{
-				if (initgroups(pw->pw_name, gid) != 0)
+				/*
+				**  Seed the supplementary group list using the
+				**  user's primary group from the password
+				**  database (pw_gid), so it is always present.
+				**  Passing the configured group here instead
+				**  would only include the primary group if it
+				**  also appears as a named entry in /etc/group,
+				**  which is not guaranteed, and could silently
+				**  deny access to files owned by it.  setgid()
+				**  below still applies the configured gid.
+				*/
+				if (initgroups(pw->pw_name, pw->pw_gid) != 0)
 				{
 					if (curconf->conf_dolog)
 						syslog(LOG_ERR, "initgroups(): %s", strerror(errno));
@@ -14064,7 +14075,17 @@ main(int argc, char **argv)
 		/* make all the process changes */
 		if (getuid() != pw->pw_uid)
 		{
-			if (initgroups(pw->pw_name, gid) != 0)
+			/*
+			**  Seed the supplementary group list using the user's
+			**  primary group from the password database (pw_gid),
+			**  so it is always present.  Passing the configured
+			**  group here instead would only include the primary
+			**  group if it also appears as a named entry in
+			**  /etc/group, which is not guaranteed, and could
+			**  silently deny access to files owned by it.  setgid()
+			**  below still applies the configured gid.
+			*/
+			if (initgroups(pw->pw_name, pw->pw_gid) != 0)
 			{
 				if (curconf->conf_dolog)
 					syslog(LOG_ERR, "initgroups(): %s", strerror(errno));
