@@ -5379,6 +5379,9 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 			else
 			{
 				ed = sig->sig_signature;
+				/* defensive: release any key carried from a
+				   prior attempt before we zero the struct */
+				EVP_CLOBBER(ed->ed_pkey);
 			}
 			memset(ed, '\0', sizeof(struct dkim_ed25519));
 
