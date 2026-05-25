@@ -92,6 +92,7 @@ struct configdef dkimf_config[] =
 	{ "On-NoSignature",		CONFIG_TYPE_STRING,	FALSE },
 	{ "On-Security",		CONFIG_TYPE_STRING,	FALSE },
 	{ "On-SignatureError",		CONFIG_TYPE_STRING,	FALSE },
+	{ "On-WeakAlgorithm",		CONFIG_TYPE_STRING,	FALSE },
 	{ "OverSignHeaders",		CONFIG_TYPE_STRING,	FALSE },
 	{ "PeerList",			CONFIG_TYPE_STRING,	FALSE },
 	{ "PidFile",			CONFIG_TYPE_STRING,	FALSE },

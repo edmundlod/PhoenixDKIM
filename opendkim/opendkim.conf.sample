@@ -418,6 +418,7 @@ KeyFile			/var/db/dkim/example.private
 # On-NoSignature
 # On-Security
 # On-SignatureError
+# On-WeakAlgorithm
 
 ##  OversignHeaders dataset
 ##  	default (none)
