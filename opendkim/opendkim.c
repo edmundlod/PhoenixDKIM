@@ -65,6 +65,10 @@
 # include <curl/curl.h>
 #endif /* HAVE_LIBCURL */
 
+#ifdef HAVE_LIBSYSTEMD
+# include <systemd/sd-daemon.h>
+#endif /* HAVE_LIBSYSTEMD */
+
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif /* HAVE_PATHS_H */
@@ -124,6 +128,7 @@
 #define	DKIMF_MILTER_TEMPFAIL	2
 #define	DKIMF_MILTER_DISCARD	3
 #define	DKIMF_MILTER_QUARANTINE	4
+#define	DKIMF_MILTER_NEUTRAL	5
 
 /*
 **  ADDRLIST -- address list
@@ -148,6 +153,7 @@ struct handling
 	int		hndl_internal;		/* internal error */
 	int		hndl_security;		/* security concerns */
 	int		hndl_siggen;		/* sig generation errors */
+	int		hndl_weakalg;		/* deprecated signing algorithm */
 };
 
 struct handling defaults =
@@ -158,7 +164,8 @@ struct handling defaults =
 	DKIMF_MILTER_TEMPFAIL,			/* dnserr */
 	DKIMF_MILTER_TEMPFAIL,			/* internal */
 	DKIMF_MILTER_TEMPFAIL,			/* security */
-	DKIMF_MILTER_REJECT			/* siggen */
+	DKIMF_MILTER_REJECT,			/* siggen */
+	DKIMF_MILTER_NEUTRAL			/* weakalg */
 };
 
 /*
@@ -391,6 +398,7 @@ struct lookup
 #define	HNDL_NOKEY		6
 #define	HNDL_POLICYERROR	7
 #define	HNDL_SIGGEN		9
+#define	HNDL_WEAKALG		10
 
 #define	DKIMF_MODE_SIGNER	0x01
 #define	DKIMF_MODE_VERIFIER	0x02
@@ -406,6 +414,7 @@ struct lookup
 #define	DKIMF_STATUS_PARTIAL	7
 #define	DKIMF_STATUS_VERIFYERR	8
 #define	DKIMF_STATUS_UNKNOWN	9
+#define	DKIMF_STATUS_WEAKALG	10
 
 #define SIGMIN_BYTES		0
 #define SIGMIN_PERCENT		1
@@ -423,6 +432,7 @@ struct lookup dkimf_params[] =
 	{ "nosignature",	HNDL_NOSIGNATURE },
 	{ "security",		HNDL_SECURITY },
 	{ "signatureerror",	HNDL_SIGGEN },
+	{ "weakalgorithm",	HNDL_WEAKALG },
 	{ NULL,			-1 },
 };
 
@@ -432,6 +442,8 @@ struct lookup dkimf_values[] =
 	{ "accept",		DKIMF_MILTER_ACCEPT },
 	{ "d",			DKIMF_MILTER_DISCARD },
 	{ "discard",		DKIMF_MILTER_DISCARD },
+	{ "n",			DKIMF_MILTER_NEUTRAL },
+	{ "neutral",		DKIMF_MILTER_NEUTRAL },
 #ifdef SMFIF_QUARANTINE
 	{ "q",			DKIMF_MILTER_QUARANTINE },
 	{ "quarantine",		DKIMF_MILTER_QUARANTINE },
@@ -507,6 +519,7 @@ struct lookup dkimf_statusstrings[] =
 	{ "invalid partial signature",		DKIMF_STATUS_PARTIAL },
 	{ "verification error",			DKIMF_STATUS_VERIFYERR },
 	{ "unknown error",			DKIMF_STATUS_UNKNOWN },
+	{ "deprecated signature algorithm",	DKIMF_STATUS_WEAKALG },
 	{ NULL,					-1 }
 };
 
@@ -5311,6 +5324,59 @@ dkimf_reloader(/* UNUSED */ void *vp)
 	return NULL;
 }
 
+#ifdef HAVE_LIBSYSTEMD
+/*
+**  DKIMF_WATCHDOG -- systemd watchdog keep-alive thread
+**
+**  Runs in its own thread so that the watchdog is fed independently of the
+**  milter worker threads.  A request that blocks on slow DNS, an oversized
+**  header set, or anything else therefore cannot starve the keep-alive and
+**  trip a spurious restart; only an actual hang of the whole process (this
+**  thread included) lets the timer expire.
+**
+**  Parameters:
+**  	vp -- void pointer required by thread API but not used
+**
+**  Return value:
+**  	NULL.
+*/
+
+static void *
+dkimf_watchdog(/* UNUSED */ void *vp)
+{
+	uint64_t usec = 0;
+	unsigned int interval;
+
+	(void) vp;
+
+	(void) pthread_detach(pthread_self());
+
+	/*
+	**  Nothing to do unless the unit set WatchdogSec=; sd_watchdog_enabled()
+	**  returns <= 0 otherwise and the thread simply exits.
+	*/
+	if (sd_watchdog_enabled(0, &usec) <= 0)
+		return NULL;
+
+	/*
+	**  Feed the watchdog at half the configured interval, as systemd
+	**  recommends, with a one-second floor so a tiny WatchdogSec cannot
+	**  spin this thread.  usec is the full interval in microseconds.
+	*/
+	interval = (unsigned int) (usec / 2 / 1000000ULL);
+	if (interval < 1)
+		interval = 1;
+
+	while (!die)
+	{
+		(void) sd_notify(0, "WATCHDOG=1");
+		(void) sleep(interval);
+	}
+
+	return NULL;
+}
+#endif /* HAVE_LIBSYSTEMD */
+
 /*
 **  DKIMF_KILLCHILD -- kill child process
 **
@@ -5595,6 +5661,22 @@ dkimf_parsehandler(struct config *cfg, const char *name, struct handling *hndl,
 		hndl->hndl_siggen = action;
 		return TRUE;
 
+	  case HNDL_WEAKALG:
+		/*
+		**  RFC 8301: rsa-sha1 must never be treated as a valid result,
+		**  so "accept" (which would report dkim=pass) is not a legal
+		**  disposition here.  On-WeakAlgorithm selects only what to do
+		**  with the message; the signature is always refused.
+		*/
+		if (action == DKIMF_MILTER_ACCEPT)
+		{
+			(void) snprintf(err, errlen,
+			                "On-WeakAlgorithm does not allow \"accept\"; rsa-sha1 cannot be trusted (RFC 8301)");
+			return FALSE;
+		}
+		hndl->hndl_weakalg = action;
+		return TRUE;
+
 	  default:
 		(void) snprintf(err, errlen, "unknown handling key \"%s\"", name);
 		return FALSE;
@@ -5796,6 +5878,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		    !dkimf_parsehandler(data, "On-Security",
 		                        &conf->conf_handling, err, errlen) ||
 		    !dkimf_parsehandler(data, "On-SignatureError",
+		                        &conf->conf_handling, err, errlen) ||
+		    !dkimf_parsehandler(data, "On-WeakAlgorithm",
 		                        &conf->conf_handling, err, errlen))
 			return -1;
 
@@ -7354,6 +7438,13 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	opts |= (DKIM_LIBFLAGS_ACCEPTV05 | DKIM_LIBFLAGS_DROPSIGNER);
 	if (conf->conf_weaksyntax)
 		opts |= DKIM_LIBFLAGS_BADSIGHANDLES;
+	/*
+	**  RFC 8301: rsa-sha1 MUST NOT be used for verifying.  Tell the library
+	**  to short-circuit such signatures so they can never report "pass";
+	**  On-WeakAlgorithm then selects only the message disposition applied in
+	**  mlfi_eom().
+	*/
+	opts |= DKIM_LIBFLAGS_NOSHA1VERIFY;
 	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &opts, sizeof opts);
 
@@ -8147,6 +8238,13 @@ dkimf_miltercode(SMFICTX *ctx, int dmc, char *str)
 
 	  case DKIMF_MILTER_QUARANTINE:
 		(void) dkimf_quarantine(ctx, str == NULL ? progname : str);
+		return SMFIS_ACCEPT;
+
+	  case DKIMF_MILTER_NEUTRAL:
+		/*
+		**  "neutral" delivers the message; the downgraded result is
+		**  recorded separately in the Authentication-Results field.
+		*/
 		return SMFIS_ACCEPT;
 
 	  case DKIMF_MILTER_REJECT:
@@ -9468,6 +9566,27 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 				result = "policy";
 
 				err = dkim_sig_geterrorstr(dkim_sig_geterror(sigs[c]));
+				if (err != NULL)
+				{
+					snprintf(comment, sizeof comment,
+					         " reason=\"%s\"", err);
+				}
+			}
+			else if (sigerror == DKIM_SIGERROR_WEAKALG)
+			{
+				const char *err;
+
+				/*
+				**  RFC 8301: the library short-circuited this
+				**  rsa-sha1 signature, so it never verified.
+				**  Report it as "neutral" rather than "fail";
+				**  the On-WeakAlgorithm disposition is applied in
+				**  mlfi_eom().
+				*/
+
+				result = "neutral";
+
+				err = dkim_sig_geterrorstr(sigerror);
 				if (err != NULL)
 				{
 					snprintf(comment, sizeof comment,
@@ -12112,6 +12231,35 @@ mlfi_eom(SMFICTX *ctx)
 			}
 		}
 
+		/*
+		**  RFC 8301: if the determinative signature declares the
+		**  deprecated rsa-sha1 algorithm, the library short-circuited
+		**  its verification (DKIM_LIBFLAGS_NOSHA1VERIFY) and marked it
+		**  DKIM_SIGERROR_WEAKALG instead of producing a pass/fail.
+		**  Record this as its own status so the configured
+		**  On-WeakAlgorithm disposition is applied below, regardless of
+		**  the truncated DKIM_STAT_* the verification returned.
+		*/
+
+		if (dfc->mctx_dkimv != NULL)
+		{
+			sig = dkim_getsignature(dfc->mctx_dkimv);
+			if (sig != NULL &&
+			    dkim_sig_geterror(sig) == DKIM_SIGERROR_WEAKALG)
+			{
+				if (conf->conf_dolog)
+				{
+					syslog(LOG_NOTICE,
+					       "%s: signature uses deprecated algorithm rsa-sha1",
+					       dfc->mctx_jobid);
+				}
+
+				dfc->mctx_addheader = TRUE;
+				dfc->mctx_status = DKIMF_STATUS_WEAKALG;
+			}
+		}
+
+		if (dfc->mctx_status != DKIMF_STATUS_WEAKALG)
 		switch (status)
 		{
 		  case DKIM_STAT_OK:
@@ -12355,7 +12503,8 @@ mlfi_eom(SMFICTX *ctx)
 			    dfc->mctx_status == DKIMF_STATUS_PARTIAL ||
 			    dfc->mctx_status == DKIMF_STATUS_NOKEY ||
 			    dfc->mctx_status == DKIMF_STATUS_KEYFAIL ||
-			    dfc->mctx_status == DKIMF_STATUS_VERIFYERR)
+			    dfc->mctx_status == DKIMF_STATUS_VERIFYERR ||
+			    dfc->mctx_status == DKIMF_STATUS_WEAKALG)
 			{
 				dkimf_ar_all_sigs(header, sizeof header,
 				                  dfc->mctx_dkimv,
@@ -12747,6 +12896,23 @@ mlfi_eom(SMFICTX *ctx)
 
 	  case DKIMF_STATUS_BADFORMAT:
 		ret = SMFIS_ACCEPT;
+		break;
+
+	  case DKIMF_STATUS_WEAKALG:
+		/*
+		**  RFC 8301: apply the On-WeakAlgorithm disposition to a
+		**  deprecated (rsa-sha1) signature.  "neutral" (the default)
+		**  resolves to SMFIS_ACCEPT, so the message is delivered while
+		**  the Authentication-Results field already reports it as such.
+		**  The "t=y" testing key flag bypasses the hard dispositions,
+		**  mirroring On-BadSignature.
+		*/
+		ret = dkimf_miltercode(ctx, conf->conf_handling.hndl_weakalg,
+		                       NULL);
+		if ((ret == SMFIS_REJECT || ret == SMFIS_TEMPFAIL ||
+		     ret == SMFIS_DISCARD) &&
+		    testkey)
+			ret = SMFIS_ACCEPT;
 		break;
 
 	  case DKIMF_STATUS_UNKNOWN:
@@ -14422,6 +14588,59 @@ main(int argc, char **argv)
 
 		return EX_OSERR;
 	}
+
+#ifdef HAVE_LIBSYSTEMD
+	/*
+	**  Start the watchdog keep-alive thread, but only when the unit
+	**  actually set WatchdogSec=.  If it did and the thread cannot be
+	**  created, refuse to start: running unsupervised would let systemd
+	**  kill us at every interval in a silent restart loop, so failing
+	**  loudly here lets the start limiter surface the problem instead.
+	**  When no watchdog is configured the thread is simply not spawned.
+	*/
+	{
+		uint64_t wdog_usec = 0;
+
+		if (sd_watchdog_enabled(0, &wdog_usec) > 0)
+		{
+			pthread_t wt;
+
+			status = pthread_create(&wt, NULL, dkimf_watchdog,
+			                        NULL);
+			if (status != 0)
+			{
+				if (curconf->conf_dolog)
+				{
+					syslog(LOG_ERR,
+					       "pthread_create() for watchdog: %s",
+					       strerror(status));
+				}
+
+				fprintf(stderr,
+				        "%s: pthread_create() for watchdog: %s\n",
+				        progname, strerror(status));
+
+				if (!autorestart && pidfile != NULL)
+					(void) unlink(pidfile);
+
+				return EX_OSERR;
+			}
+		}
+	}
+
+	/*
+	**  smfi_opensocket() above already bound and listened on the milter
+	**  socket, and every fallible startup step (config, the rsa-sha256
+	**  capability check, the reloader thread) has now succeeded, so the
+	**  service is genuinely ready to accept connections from the MTA.
+	**  This is the last point before smfi_main() blocks, which is exactly
+	**  where readiness should be announced: signalling any earlier would
+	**  risk telling systemd READY=1 only to then exit non-zero.  Under
+	**  Type=notify this unblocks units ordered after us; it is a harmless
+	**  no-op when the daemon was not started by systemd.
+	*/
+	(void) sd_notify(0, "READY=1");
+#endif /* HAVE_LIBSYSTEMD */
 
 	/* call the milter mainline */
 	errno = 0;

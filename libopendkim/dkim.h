@@ -167,6 +167,7 @@ typedef int DKIM_SIGERROR;
 #define	DKIM_SIGERROR_MISSING_V		44	/* v= tag missing */
 #define	DKIM_SIGERROR_EMPTY_V		45	/* v= tag empty */
 #define	DKIM_SIGERROR_KEYTOOSMALL	46	/* too few key bits */
+#define	DKIM_SIGERROR_WEAKALG		47	/* deprecated algorithm (rsa-sha1) */
 
 /* generic DNS error codes */
 #define	DKIM_DNS_ERROR		(-1)		/* error in transit */
@@ -286,6 +287,7 @@ typedef int dkim_opts_t;
 #define DKIM_LIBFLAGS_DROPSIGNER	0x00004000
 #define DKIM_LIBFLAGS_STRICTRESIGN	0x00008000
 #define DKIM_LIBFLAGS_REQUESTREPORTS	0x00010000
+#define DKIM_LIBFLAGS_NOSHA1VERIFY	0x00020000
 
 #define	DKIM_LIBFLAGS_DEFAULT		DKIM_LIBFLAGS_NONE
 

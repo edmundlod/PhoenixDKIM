@@ -40,6 +40,9 @@
 /* libcurl SMTP report delivery (enabled with -DWITH_CURL=ON) */
 #cmakedefine HAVE_LIBCURL 1
 
+/* systemd sd_notify integration (enabled when libsystemd is found) */
+#cmakedefine HAVE_LIBSYSTEMD 1
+
 /* Platform type/header availability */
 #cmakedefine HAVE_ISO_LIMITS_ISO_H 1
 #cmakedefine HAVE_USECONDS_T 1

@@ -684,6 +684,51 @@ The default is
 .I reject.
 
 .TP
+.I On-WeakAlgorithm (string)
+Selects the disposition of a message carrying a signature generated with the
+deprecated
+.I rsa-sha1
+algorithm.  RFC 8301 (which updates RFC 6376, Internet Standard STD 76) states
+that
+.I rsa-sha1
+MUST NOT be used for signing or verifying and that such a signature has
+permanently failed evaluation.  Accordingly the signature is never verified and
+is always reported as "dkim=neutral" in the Authentication-Results field, with a
+"reason" comment naming the deprecated algorithm; it can never be reported as
+"dkim=pass".  This setting therefore controls only what the milter tells the MTA
+to do with the message, not whether the signature is trusted.  Possible values
+(with abbreviated forms in parentheses):
+.I neutral
+(n) deliver the message;
+.I discard
+(d) discard the message;
+.I quarantine
+(q) quarantine the message;
+.I reject
+(r) reject the message;
+.I tempfail
+(t) temp-fail the message.
+The default is
+.I neutral,
+which delivers the message and leaves any enforcement decision to a downstream
+consumer of the Authentication-Results field (for example a DMARC filter or
+local policy), consistent with treating a permanently-failed signature as
+unsigned.  The value
+.I accept
+is not permitted here, since it would imply trusting an
+.I rsa-sha1
+signature.  Unlike most other "On-" settings this value is not affected by
+.I On-Default.
+As with
+.I On-BadSignature,
+the "t" (testing) flag in a DKIM key bypasses the
+.IR reject ,
+.IR tempfail ,
+and
+.I discard
+dispositions.
+
+.TP
 .I OversignHeaders (dataset)
 Specifies a set of header fields that should be included in all signature
 header lists (the "h=" tag) once more than the number of times they were
@@ -891,10 +936,13 @@ and
 (RFC 8463).
 The default is
 .I rsa-sha256.
-Note that
+The deprecated
 .I rsa-sha1
-is still accepted during signature verification for compatibility, but must
-not be used for signing.
+algorithm is supported neither for signing nor for verifying (RFC 8301); a
+received
+.I rsa-sha1
+signature is handled according to
+.IR On-WeakAlgorithm .
 
 .TP
 .I SignatureTTL (integer)
