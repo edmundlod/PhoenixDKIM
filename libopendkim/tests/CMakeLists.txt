@@ -35,7 +35,7 @@ set(LIBOPENDKIM_NUMBERED_TESTS
     140 141 142 143 144 145 146 147 148 149
     150 151 152 153 154
     158 159
-    206 207
+    200 201 202 203 206 207
 )
 
 foreach(num IN LISTS LIBOPENDKIM_NUMBERED_TESTS)
@@ -97,6 +97,22 @@ endif()
 foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
     if(TARGET ${test_name} AND NOT "${test_name}" STREQUAL "t-setup" AND NOT "${test_name}" STREQUAL "t-cleanup")
         set_tests_properties(${test_name} PROPERTIES
+            FIXTURES_REQUIRED libopendkim_fixtures
+        )
+    endif()
+endforeach()
+
+# ── ed25519 perf wrapper scripts ──────────────────────────────────────────────
+# These are shell scripts (not compiled) that invoke the t-signperf / t-verifyperf
+# binaries with "-s ed25519-sha256".  Register them directly with CTest.
+foreach(script t-signperf-ed25519 t-verifyperf-ed25519)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${script}")
+        add_test(
+            NAME ${script}
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/${script}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        )
+        set_tests_properties(${script} PROPERTIES
             FIXTURES_REQUIRED libopendkim_fixtures
         )
     endif()

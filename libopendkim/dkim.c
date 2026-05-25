@@ -4294,6 +4294,7 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 #ifdef HAVE_SHA256
 	FEATURE_ADD(libhandle, DKIM_FEATURE_SHA256);
 #endif /* HAVE_SHA256 */
+	FEATURE_ADD(libhandle, DKIM_FEATURE_ED25519);
 #ifdef USE_UNBOUND
 	FEATURE_ADD(libhandle, DKIM_FEATURE_DNSSEC);
 #endif /* USE_UNBOUND */
