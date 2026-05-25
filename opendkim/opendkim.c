@@ -10170,7 +10170,12 @@ mlfi_header(SMFICTX *ctx, char *headerf, char *headerv)
 	    dfc->mctx_hdrbytes + strlen(headerf) + strlen(headerv) + 2 > conf->conf_maxhdrsz)
 	{
 		if (conf->conf_dolog)
-			syslog(LOG_NOTICE, "too much header data");
+			syslog(LOG_NOTICE,
+			       "%s: too much header data (header '%s' would exceed limit of %u bytes)",
+			       dfc->mctx_jobid, headerf, conf->conf_maxhdrsz);
+
+		(void) dkimf_setreply(ctx, "552", "5.3.4",
+		                      "header size exceeds maximum");
 
 		return dkimf_miltercode(ctx,
 		                        conf->conf_handling.hndl_security,
