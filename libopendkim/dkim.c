@@ -5340,6 +5340,26 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 	if (sig->sig_error != DKIM_SIGERROR_UNKNOWN)
 		return DKIM_STAT_OK;
 
+	/*
+	**  RFC 8301: the rsa-sha1 algorithm is deprecated.  If the caller set
+	**  DKIM_LIBFLAGS_NOSHA1VERIFY (opendkim does so unless On-WeakAlgorithm
+	**  is "accept"), reject any rsa-sha1 signature here without performing
+	**  a DNS lookup or any signature crypto.  The decision is based on the
+	**  declared algorithm (a=rsa-sha1), which is known from parse time, not
+	**  on a verification outcome.  Skipping the crypto is also necessary on
+	**  platforms whose system policy forbids RSA-over-SHA-1 verification
+	**  outright (e.g. the Fedora/RHEL DEFAULT crypto policy), where the EVP
+	**  calls below would otherwise fail with an opaque key-decode error
+	**  instead of a clear "deprecated algorithm" result.
+	*/
+	if ((dkim->dkim_libhandle->dkiml_flags & DKIM_LIBFLAGS_NOSHA1VERIFY) != 0 &&
+	    sig->sig_signalg == DKIM_SIGN_RSASHA1)
+	{
+		sig->sig_error = DKIM_SIGERROR_WEAKALG;
+		sig->sig_flags |= DKIM_SIGFLAG_PROCESSED;
+		return DKIM_STAT_OK;
+	}
+
 	/* skip the DNS part if we've already done it */
 	if ((sig->sig_flags & DKIM_SIGFLAG_PROCESSED) == 0)
 	{

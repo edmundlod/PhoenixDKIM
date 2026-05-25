@@ -685,21 +685,21 @@ The default is
 
 .TP
 .I On-WeakAlgorithm (string)
-Selects the action to be taken when a signature verifies successfully but was
-generated using a deprecated signing algorithm, namely
-.I rsa-sha1.
-RFC 8301 deprecated this algorithm and requires verifiers not to treat such a
-signature as a valid result.  Possible values (with abbreviated forms in
-parentheses):
-.I neutral
-(n) deliver the message but report the signature as "dkim=neutral" in the
-Authentication-Results field rather than "dkim=pass";
-.I accept
-(a) accept the message and report the signature as a normal "dkim=pass"
-(this is the historical behaviour \(em set this if you wish to continue
-trusting
+Selects the disposition of a message carrying a signature generated with the
+deprecated
 .I rsa-sha1
-signatures);
+algorithm.  RFC 8301 (which updates RFC 6376, Internet Standard STD 76) states
+that
+.I rsa-sha1
+MUST NOT be used for signing or verifying and that such a signature has
+permanently failed evaluation.  Accordingly the signature is never verified and
+is always reported as "dkim=neutral" in the Authentication-Results field, with a
+"reason" comment naming the deprecated algorithm; it can never be reported as
+"dkim=pass".  This setting therefore controls only what the milter tells the MTA
+to do with the message, not whether the signature is trusted.  Possible values
+(with abbreviated forms in parentheses):
+.I neutral
+(n) deliver the message;
 .I discard
 (d) discard the message;
 .I quarantine
@@ -710,17 +710,16 @@ signatures);
 (t) temp-fail the message.
 The default is
 .I neutral,
-which is the RFC 8301 compliant behaviour.  For the dispositions that still
-deliver the message
-.RI ( neutral
-and
-.IR quarantine ),
-the Authentication-Results field reports the signature as "dkim=neutral" with a
-"reason" comment naming the deprecated algorithm, so the cryptographic outcome
-and the algorithm used remain visible to downstream consumers.  Unlike the
-other "On-" settings this value is not affected by
-.I On-Default,
-since a passing signature is not an error condition.  As with
+which delivers the message and leaves any enforcement decision to a downstream
+consumer of the Authentication-Results field (for example a DMARC filter or
+local policy), consistent with treating a permanently-failed signature as
+unsigned.  The value
+.I accept
+is not permitted here, since it would imply trusting an
+.I rsa-sha1
+signature.  Unlike most other "On-" settings this value is not affected by
+.I On-Default.
+As with
 .I On-BadSignature,
 the "t" (testing) flag in a DKIM key bypasses the
 .IR reject ,
@@ -937,10 +936,13 @@ and
 (RFC 8463).
 The default is
 .I rsa-sha256.
-Note that
+The deprecated
 .I rsa-sha1
-is still accepted during signature verification for compatibility, but must
-not be used for signing.
+algorithm is supported neither for signing nor for verifying (RFC 8301); a
+received
+.I rsa-sha1
+signature is handled according to
+.IR On-WeakAlgorithm .
 
 .TP
 .I SignatureTTL (integer)
