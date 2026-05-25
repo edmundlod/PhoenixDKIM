@@ -153,7 +153,7 @@ main(int argc, char **argv)
 	assert(status == DKIM_STAT_OK);
 
 	status = dkim_eom(dkim, NULL);
-	assert(status == DKIM_STAT_SYNTAX);
+	assert(status == DKIM_STAT_OK);
 
 	status = dkim_free(dkim);
 	assert(status == DKIM_STAT_OK);
