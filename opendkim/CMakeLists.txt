@@ -95,6 +95,23 @@ if(WITH_CURL)
     set(HAVE_LIBCURL 1)
 endif()
 
+# ── systemd sd_notify (optional, auto-detected) ───────────────────────────────
+# Enables Type=notify readiness signalling and the watchdog keep-alive.  The
+# integration degrades gracefully: when libsystemd is absent the daemon simply
+# builds without it, so this defaults ON.
+
+option(WITH_SYSTEMD "Enable systemd sd_notify readiness/watchdog integration" ON)
+
+if(WITH_SYSTEMD)
+    pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
+    if(LIBSYSTEMD_FOUND)
+        set(HAVE_LIBSYSTEMD 1)
+        message(STATUS "systemd integration: enabled (libsystemd ${LIBSYSTEMD_VERSION})")
+    else()
+        message(STATUS "systemd integration: libsystemd not found, disabled")
+    endif()
+endif()
+
 # ── pthreads ──────────────────────────────────────────────────────────────────
 
 find_package(Threads REQUIRED)
@@ -218,6 +235,14 @@ apply_hardening(opendkim_daemon)
 apply_sanitizers(opendkim_daemon)
 
 target_link_libraries(opendkim_daemon PRIVATE ${MILTER_LIB})
+
+# systemd sd_notify is daemon-only; the helper binaries never talk to an init
+# manager, so the linkage is attached here rather than in configure_daemon_target().
+if(HAVE_LIBSYSTEMD)
+    target_compile_definitions(opendkim_daemon PRIVATE HAVE_LIBSYSTEMD=1)
+    target_include_directories(opendkim_daemon PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+    target_link_libraries(opendkim_daemon PRIVATE ${LIBSYSTEMD_LIBRARIES})
+endif()
 
 if(WITH_LUA)
     target_compile_definitions(opendkim_daemon PRIVATE DKIMF_LUA_CONTEXT_HOOKS=1)

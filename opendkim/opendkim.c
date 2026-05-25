@@ -65,6 +65,10 @@
 # include <curl/curl.h>
 #endif /* HAVE_LIBCURL */
 
+#ifdef HAVE_LIBSYSTEMD
+# include <systemd/sd-daemon.h>
+#endif /* HAVE_LIBSYSTEMD */
+
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif /* HAVE_PATHS_H */
@@ -14531,6 +14535,21 @@ main(int argc, char **argv)
 
 		return EX_OSERR;
 	}
+
+#ifdef HAVE_LIBSYSTEMD
+	/*
+	**  smfi_opensocket() above already bound and listened on the milter
+	**  socket, and every fallible startup step (config, the rsa-sha256
+	**  capability check, the reloader thread) has now succeeded, so the
+	**  service is genuinely ready to accept connections from the MTA.
+	**  This is the last point before smfi_main() blocks, which is exactly
+	**  where readiness should be announced: signalling any earlier would
+	**  risk telling systemd READY=1 only to then exit non-zero.  Under
+	**  Type=notify this unblocks units ordered after us; it is a harmless
+	**  no-op when the daemon was not started by systemd.
+	*/
+	(void) sd_notify(0, "READY=1");
+#endif /* HAVE_LIBSYSTEMD */
 
 	/* call the milter mainline */
 	errno = 0;
