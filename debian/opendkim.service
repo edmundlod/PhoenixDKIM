@@ -5,7 +5,7 @@ After=network-online.target nss-lookup.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
 RuntimeDirectory=opendkim
 RuntimeDirectoryMode=0750
 ExecStart=/usr/sbin/opendkim -f -x /etc/opendkim.conf
