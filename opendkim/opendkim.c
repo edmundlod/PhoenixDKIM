@@ -124,6 +124,7 @@
 #define	DKIMF_MILTER_TEMPFAIL	2
 #define	DKIMF_MILTER_DISCARD	3
 #define	DKIMF_MILTER_QUARANTINE	4
+#define	DKIMF_MILTER_NEUTRAL	5
 
 /*
 **  ADDRLIST -- address list
@@ -148,6 +149,7 @@ struct handling
 	int		hndl_internal;		/* internal error */
 	int		hndl_security;		/* security concerns */
 	int		hndl_siggen;		/* sig generation errors */
+	int		hndl_weakalg;		/* deprecated signing algorithm */
 };
 
 struct handling defaults =
@@ -158,7 +160,8 @@ struct handling defaults =
 	DKIMF_MILTER_TEMPFAIL,			/* dnserr */
 	DKIMF_MILTER_TEMPFAIL,			/* internal */
 	DKIMF_MILTER_TEMPFAIL,			/* security */
-	DKIMF_MILTER_REJECT			/* siggen */
+	DKIMF_MILTER_REJECT,			/* siggen */
+	DKIMF_MILTER_NEUTRAL			/* weakalg */
 };
 
 /*
@@ -391,6 +394,7 @@ struct lookup
 #define	HNDL_NOKEY		6
 #define	HNDL_POLICYERROR	7
 #define	HNDL_SIGGEN		9
+#define	HNDL_WEAKALG		10
 
 #define	DKIMF_MODE_SIGNER	0x01
 #define	DKIMF_MODE_VERIFIER	0x02
@@ -423,6 +427,7 @@ struct lookup dkimf_params[] =
 	{ "nosignature",	HNDL_NOSIGNATURE },
 	{ "security",		HNDL_SECURITY },
 	{ "signatureerror",	HNDL_SIGGEN },
+	{ "weakalgorithm",	HNDL_WEAKALG },
 	{ NULL,			-1 },
 };
 
@@ -432,6 +437,8 @@ struct lookup dkimf_values[] =
 	{ "accept",		DKIMF_MILTER_ACCEPT },
 	{ "d",			DKIMF_MILTER_DISCARD },
 	{ "discard",		DKIMF_MILTER_DISCARD },
+	{ "n",			DKIMF_MILTER_NEUTRAL },
+	{ "neutral",		DKIMF_MILTER_NEUTRAL },
 #ifdef SMFIF_QUARANTINE
 	{ "q",			DKIMF_MILTER_QUARANTINE },
 	{ "quarantine",		DKIMF_MILTER_QUARANTINE },
@@ -5595,6 +5602,10 @@ dkimf_parsehandler(struct config *cfg, const char *name, struct handling *hndl,
 		hndl->hndl_siggen = action;
 		return TRUE;
 
+	  case HNDL_WEAKALG:
+		hndl->hndl_weakalg = action;
+		return TRUE;
+
 	  default:
 		(void) snprintf(err, errlen, "unknown handling key \"%s\"", name);
 		return FALSE;
@@ -5796,6 +5807,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		    !dkimf_parsehandler(data, "On-Security",
 		                        &conf->conf_handling, err, errlen) ||
 		    !dkimf_parsehandler(data, "On-SignatureError",
+		                        &conf->conf_handling, err, errlen) ||
+		    !dkimf_parsehandler(data, "On-WeakAlgorithm",
 		                        &conf->conf_handling, err, errlen))
 			return -1;
 
@@ -8149,6 +8162,13 @@ dkimf_miltercode(SMFICTX *ctx, int dmc, char *str)
 		(void) dkimf_quarantine(ctx, str == NULL ? progname : str);
 		return SMFIS_ACCEPT;
 
+	  case DKIMF_MILTER_NEUTRAL:
+		/*
+		**  "neutral" delivers the message; the downgraded result is
+		**  recorded separately in the Authentication-Results field.
+		*/
+		return SMFIS_ACCEPT;
+
 	  case DKIMF_MILTER_REJECT:
 		return SMFIS_REJECT;
 
@@ -9546,6 +9566,31 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			  case DKIM_DNSSEC_SECURE:
 				dnssec = "secure";
 				break;
+			}
+
+			/*
+			**  RFC 8301: a signature that verifies but uses the
+			**  deprecated rsa-sha1 algorithm must not be reported
+			**  as a valid result.  Unless the operator opted to
+			**  accept such signatures (On-WeakAlgorithm accept),
+			**  downgrade an otherwise-passing rsa-sha1 signature to
+			**  "neutral".  The matching milter disposition (deliver,
+			**  reject, quarantine, ...) is applied in mlfi_eom().
+			*/
+
+			if (conf->conf_handling.hndl_weakalg != DKIMF_MILTER_ACCEPT &&
+			    strcmp(result, "pass") == 0)
+			{
+				dkim_alg_t alg = DKIM_SIGN_RSASHA256;
+
+				if (dkim_sig_getsignalg(sigs[c],
+				                        &alg) == DKIM_STAT_OK &&
+				    alg == DKIM_SIGN_RSASHA1)
+				{
+					result = "neutral";
+					snprintf(comment, sizeof comment,
+					         " reason=\"deprecated algorithm rsa-sha1\"");
+				}
 			}
 
 			size_t n = 0;
@@ -12117,6 +12162,43 @@ mlfi_eom(SMFICTX *ctx)
 		  case DKIM_STAT_OK:
 			if (dkimf_findheader(dfc, DKIM_SIGNHEADER, 0) != NULL)
 			{
+				/*
+				**  The signature verified, but if the reported
+				**  signature used a deprecated algorithm
+				**  (rsa-sha1, per RFC 8301) apply the
+				**  On-WeakAlgorithm policy.  The testing ("t=y")
+				**  key flag bypasses enforcement, as it does for
+				**  On-BadSignature.
+				*/
+
+				if (conf->conf_handling.hndl_weakalg != DKIMF_MILTER_ACCEPT)
+				{
+					dkim_alg_t alg = DKIM_SIGN_RSASHA256;
+
+					sig = dkim_getsignature(dfc->mctx_dkimv);
+					if (sig != NULL &&
+					    dkim_sig_getsignalg(sig, &alg) == DKIM_STAT_OK &&
+					    alg == DKIM_SIGN_RSASHA1)
+					{
+						if (conf->conf_dolog)
+						{
+							syslog(LOG_NOTICE,
+							       "%s: signature uses deprecated algorithm rsa-sha1",
+							       dfc->mctx_jobid);
+						}
+
+						ret = dkimf_miltercode(ctx,
+						                       conf->conf_handling.hndl_weakalg,
+						                       NULL);
+
+						if ((ret == SMFIS_REJECT ||
+						     ret == SMFIS_TEMPFAIL ||
+						     ret == SMFIS_DISCARD) &&
+						    testkey)
+							ret = SMFIS_ACCEPT;
+					}
+				}
+
 				if (conf->conf_dolog_success)
 				{
 					syslog(LOG_INFO,
