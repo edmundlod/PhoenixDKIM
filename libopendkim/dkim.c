@@ -5090,9 +5090,14 @@ dkim_sign(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 		new->dkim_selector = dkim_strdup(new, selector, 0);
 		new->dkim_domain = dkim_strdup(new, domain, 0);
 		if (length == (ssize_t) -1)
+		{
 			new->dkim_signlen = ULONG_MAX;
+		}
 		else
+		{
 			new->dkim_signlen = length;
+			new->dkim_partial = TRUE;
+		}
 	}
 
 	return new;
