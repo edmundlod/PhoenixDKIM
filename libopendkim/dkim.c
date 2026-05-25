@@ -4644,8 +4644,9 @@ dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt, void *ptr, size_t len)
 		else
 		{
 			int status;
+			size_t buflen;
 			const u_char *const *required_signhdrs;
-			char buf[BUFRSZ + 1];
+			char *buf;
 
 			if (lib->dkiml_signre)
 			{
@@ -4653,23 +4654,37 @@ dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt, void *ptr, size_t len)
 				lib->dkiml_signre = FALSE;
 			}
 
-			memset(buf, '\0', sizeof buf);
-
-			(void) strlcpy(buf, "^(", sizeof buf);
-
 			required_signhdrs = lib->dkiml_requiredhdrs;
-			if (!dkim_hdrlist((u_char *) buf, sizeof buf,
-			                  required_signhdrs, TRUE))
-				return DKIM_STAT_INVALID;
-			if (!dkim_hdrlist((u_char *) buf, sizeof buf,
-			                  (const u_char *const *) ptr, FALSE))
-				return DKIM_STAT_INVALID;
 
-			if (strlcat(buf, ")$", sizeof buf) >= sizeof buf)
+			buflen = 2				/* "^(" */
+			       + dkim_hdrlist_bufsize(required_signhdrs)
+			       + dkim_hdrlist_bufsize((const u_char *const *) ptr)
+			       + 2				/* ")$" */
+			       + 1;				/* '\0' */
+
+			buf = malloc(buflen);
+			if (buf == NULL)
+				return DKIM_STAT_NORESOURCE;
+
+			memset(buf, '\0', buflen);
+
+			(void) strlcpy(buf, "^(", buflen);
+
+			if (!dkim_hdrlist((u_char *) buf, buflen,
+			                  required_signhdrs, TRUE) ||
+			    !dkim_hdrlist((u_char *) buf, buflen,
+			                  (const u_char *const *) ptr, FALSE) ||
+			    strlcat(buf, ")$", buflen) >= buflen)
+			{
+				free(buf);
 				return DKIM_STAT_INVALID;
+			}
 
 			status = regcomp(&lib->dkiml_hdrre, buf,
 			                 (REG_EXTENDED|REG_ICASE));
+
+			free(buf);
+
 			if (status != 0)
 				return DKIM_STAT_INTERNAL;
 
@@ -4693,7 +4708,8 @@ dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt, void *ptr, size_t len)
 		else
 		{
 			int status;
-			char buf[BUFRSZ + 1];
+			size_t buflen;
+			char *buf;
 
 			if (lib->dkiml_skipre)
 			{
@@ -4701,19 +4717,32 @@ dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt, void *ptr, size_t len)
 				lib->dkiml_skipre = FALSE;
 			}
 
-			memset(buf, '\0', sizeof buf);
+			buflen = 2				/* "^(" */
+			       + dkim_hdrlist_bufsize((const u_char *const *) ptr)
+			       + 2				/* ")$" */
+			       + 1;				/* '\0' */
 
-			(void) strlcpy(buf, "^(", sizeof buf);
+			buf = malloc(buflen);
+			if (buf == NULL)
+				return DKIM_STAT_NORESOURCE;
 
-			if (!dkim_hdrlist((u_char *) buf, sizeof buf,
-			                  (const u_char *const *) ptr, TRUE))
+			memset(buf, '\0', buflen);
+
+			(void) strlcpy(buf, "^(", buflen);
+
+			if (!dkim_hdrlist((u_char *) buf, buflen,
+			                  (const u_char *const *) ptr, TRUE) ||
+			    strlcat(buf, ")$", buflen) >= buflen)
+			{
+				free(buf);
 				return DKIM_STAT_INVALID;
-
-			if (strlcat(buf, ")$", sizeof buf) >= sizeof buf)
-				return DKIM_STAT_INVALID;
+			}
 
 			status = regcomp(&lib->dkiml_skiphdrre, buf,
 			                 (REG_EXTENDED|REG_ICASE));
+
+			free(buf);
+
 			if (status != 0)
 				return DKIM_STAT_INTERNAL;
 
@@ -8975,7 +9004,9 @@ dkim_signhdrs(DKIM *dkim, const char **hdrlist)
 	if (hdrlist != NULL)
 	{
 		int status;
-		char buf[BUFRSZ + 1];
+		size_t buflen;
+		const u_char *const *required_signhdrs;
+		char *buf;
 
 		if (dkim->dkim_hdrre == NULL)
 		{
@@ -8989,23 +9020,39 @@ dkim_signhdrs(DKIM *dkim, const char **hdrlist)
 			}
 		}
 
-		memset(buf, '\0', sizeof buf);
+		required_signhdrs = dkim->dkim_libhandle->dkiml_requiredhdrs;
 
-		(void) strlcpy(buf, "^(", sizeof buf);
+		buflen = 2				/* "^(" */
+		       + dkim_hdrlist_bufsize(required_signhdrs)
+		       + dkim_hdrlist_bufsize((const u_char *const *) hdrlist)
+		       + 2				/* ")$" */
+		       + 1;				/* '\0' */
 
-		if (!dkim_hdrlist((u_char *) buf, sizeof buf,
-		                  dkim->dkim_libhandle->dkiml_requiredhdrs,
-		                  TRUE))
-			return DKIM_STAT_INVALID;
-		if (!dkim_hdrlist((u_char *) buf, sizeof buf,
-		                  (const u_char *const *) hdrlist, FALSE))
-			return DKIM_STAT_INVALID;
+		buf = malloc(buflen);
+		if (buf == NULL)
+		{
+			dkim_error(dkim, "could not allocate %d bytes", buflen);
+			return DKIM_STAT_INTERNAL;
+		}
 
-		if (strlcat(buf, ")$", sizeof buf) >= sizeof buf)
+		memset(buf, '\0', buflen);
+
+		(void) strlcpy(buf, "^(", buflen);
+
+		if (!dkim_hdrlist((u_char *) buf, buflen,
+		                  required_signhdrs, TRUE) ||
+		    !dkim_hdrlist((u_char *) buf, buflen,
+		                  (const u_char *const *) hdrlist, FALSE) ||
+		    strlcat(buf, ")$", buflen) >= buflen)
+		{
+			free(buf);
 			return DKIM_STAT_INVALID;
+		}
 
 		status = regcomp(dkim->dkim_hdrre, buf,
 		                 (REG_EXTENDED|REG_ICASE));
+
+		free(buf);
 
 		if (status != 0)
 			return DKIM_STAT_INTERNAL;

@@ -174,6 +174,36 @@ dkim_hdrlist(u_char *buf, size_t buflen, const u_char *const *hdrlist,
 }
 
 /*
+**  DKIM_HDRLIST_BUFSIZE -- compute a worst-case buffer size for the regexp
+**                          fragment dkim_hdrlist() builds from a header list
+**
+**  Parameters:
+**  	hdrlist -- array of header names (may be NULL)
+**
+**  Return value:
+**  	Maximum number of bytes dkim_hdrlist() could append for "hdrlist".
+**
+**  Notes:
+**  	dkim_hdrlist() expands each input character to at most two characters
+**  	(e.g. "." becomes "\." and "*" becomes ".*") and inserts one "|"
+**  	separator per entry, so 2*strlen(h)+1 per header is a safe bound.
+*/
+
+size_t
+dkim_hdrlist_bufsize(const u_char *const *hdrlist)
+{
+	size_t buflen = 0;
+
+	if (hdrlist == NULL)
+		return 0;
+
+	for (int c = 0; hdrlist[c] != NULL; c++)
+		buflen += 2 * strlen((const char *) hdrlist[c]) + 1;
+
+	return buflen;
+}
+
+/*
 **  DKIM_LOWERHDR -- convert a string (presumably a header) to all lowercase,
 **                   but only up to a colon
 **
