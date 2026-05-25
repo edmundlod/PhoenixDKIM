@@ -29,6 +29,7 @@ extern void dkim_collapse __P((u_char *));
 extern char **dkim_copy_array __P((char **));
 extern _Bool dkim_hdrlist __P((u_char *, size_t, const u_char *const *,
                                _Bool));
+extern size_t dkim_hdrlist_bufsize __P((const u_char *const *));
 extern int dkim_hexchar __P((int c));
 extern void dkim_lowerhdr __P((u_char *));
 extern void dkim_min_timeval __P((struct timeval *, struct timeval *,
