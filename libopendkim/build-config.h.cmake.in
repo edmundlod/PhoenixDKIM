@@ -65,7 +65,6 @@
 
 /* smfi_version availability */
 #cmakedefine HAVE_SMFI_VERSION 1
-#cmakedefine HAVE_SMFI_INSHEADER  1
 #cmakedefine HAVE_SMFI_OPENSOCKET 1
 #cmakedefine HAVE_SMFI_PROGRESS   1
 #cmakedefine HAVE_SMFI_SETSYMLIST 1

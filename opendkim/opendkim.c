@@ -600,32 +600,6 @@ pthread_mutex_t pwdb_lock;			/* passwd/group lock */
 **  BEGIN private section
 */
 
-#ifndef HAVE_SMFI_INSHEADER
-/*
-**  SMFI_INSHEADER -- stub for smfi_insheader() which didn't exist before
-**                    sendmail 8.13.0
-**
-**  Parameters:
-**  	ctx -- milter context
-**  	idx -- insertion index
-**  	hname -- header name
-**  	hvalue -- header value
-**
-**  Return value:
-**  	An sfsistat.
-*/
-
-sfsistat 
-smfi_insheader(SMFICTX *ctx, int idx, char *hname, char *hvalue)
-{
-	assert(ctx != NULL);
-	assert(hname != NULL);
-	assert(hvalue != NULL);
-
-	return smfi_addheader(ctx, hname, hvalue);
-}
-#endif /* ! HAVE_SMFI_INSHEADER */
-
 /*
 **  DKIMF_GETPRIV -- wrapper for smfi_getpriv()
 **
@@ -695,17 +669,13 @@ dkimf_insheader(SMFICTX *ctx, int idx, const char *hname, const char *hvalue)
 	else
 	{
 		/*
-		**  libmilter's smfi_insheader / smfi_addheader take the
-		**  header name and value as char *; libmilter never writes
-		**  through these pointers -- cast away const on our caller's
-		**  read-only strings.
+		**  libmilter's smfi_insheader takes the header name and
+		**  value as char *; libmilter never writes through these
+		**  pointers -- cast away const on our caller's read-only
+		**  strings.
 		*/
 
-#ifdef HAVE_SMFI_INSHEADER
 		return smfi_insheader(ctx, idx, (char *) hname, (char *) hvalue);
-#else /* HAVE_SMFI_INSHEADER */
-		return smfi_addheader(ctx, (char *) hname, (char *) hvalue);
-#endif /* HAVE_SMFI_INSHEADER */
 	}
 }
 

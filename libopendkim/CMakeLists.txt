@@ -243,7 +243,6 @@ if(MILTER_INCLUDE_DIR AND MILTER_LIBRARY)
 
     # Use a unique internal variable to avoid CMake's "sticky" cache issue
     check_symbol_exists(smfi_version "libmilter/mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
-    check_symbol_exists(smfi_insheader  "libmilter/mfapi.h" HAVE_SMFI_INSHEADER)
     check_symbol_exists(smfi_opensocket "libmilter/mfapi.h" HAVE_SMFI_OPENSOCKET)
     check_symbol_exists(smfi_progress   "libmilter/mfapi.h" HAVE_SMFI_PROGRESS)
     check_symbol_exists(smfi_setsymlist "libmilter/mfapi.h" HAVE_SMFI_SETSYMLIST)
@@ -251,7 +250,6 @@ if(MILTER_INCLUDE_DIR AND MILTER_LIBRARY)
     if(NOT HAVE_SMFI_VERSION_INTERNAL)
         # Fallback for systems where it's just <mfapi.h> without the libmilter/ prefix
         check_symbol_exists(smfi_version "mfapi.h" HAVE_SMFI_VERSION_INTERNAL)
-        check_symbol_exists(smfi_insheader  "mfapi.h" HAVE_SMFI_INSHEADER)
         check_symbol_exists(smfi_opensocket "mfapi.h" HAVE_SMFI_OPENSOCKET)
         check_symbol_exists(smfi_progress   "mfapi.h" HAVE_SMFI_PROGRESS)
         check_symbol_exists(smfi_setsymlist "mfapi.h" HAVE_SMFI_SETSYMLIST)
