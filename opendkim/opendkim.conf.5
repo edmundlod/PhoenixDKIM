@@ -399,7 +399,17 @@ If the third value starts with a slash ("/") character, or "./" or "../",
 then it is presumed to refer to a file from which the private key should
 be read, otherwise it is itself a PEM-encoded private key or a base64-encoded
 DER private key; a "%" in the third value in this case will be replaced by
-the apparent domain name of the sender.  The
+the apparent domain name of the sender.
+An optional fourth value naming a signing algorithm (see
+.I SignatureAlgorithm
+below) is accepted for compatibility with key tables written for other
+implementations, but it is advisory only:
+.I PhoenixDKIM
+always derives the signing algorithm from the key material itself (an
+Ed25519 key signs with ed25519-sha256, an RSA key with rsa-sha256), which is
+authoritative.  If the fourth value is present and contradicts the actual key,
+a warning is logged and signing proceeds with the key-derived algorithm.
+The
 .I SigningTable
 (see below) is used to select records from this table to be used to add
 signatures based on the message sender.
