@@ -410,6 +410,7 @@ struct lookup
 #define	DKIMF_STATUS_PARTIAL	7
 #define	DKIMF_STATUS_VERIFYERR	8
 #define	DKIMF_STATUS_UNKNOWN	9
+#define	DKIMF_STATUS_WEAKALG	10
 
 #define SIGMIN_BYTES		0
 #define SIGMIN_PERCENT		1
@@ -514,6 +515,7 @@ struct lookup dkimf_statusstrings[] =
 	{ "invalid partial signature",		DKIMF_STATUS_PARTIAL },
 	{ "verification error",			DKIMF_STATUS_VERIFYERR },
 	{ "unknown error",			DKIMF_STATUS_UNKNOWN },
+	{ "deprecated signature algorithm",	DKIMF_STATUS_WEAKALG },
 	{ NULL,					-1 }
 };
 
@@ -5603,6 +5605,18 @@ dkimf_parsehandler(struct config *cfg, const char *name, struct handling *hndl,
 		return TRUE;
 
 	  case HNDL_WEAKALG:
+		/*
+		**  RFC 8301: rsa-sha1 must never be treated as a valid result,
+		**  so "accept" (which would report dkim=pass) is not a legal
+		**  disposition here.  On-WeakAlgorithm selects only what to do
+		**  with the message; the signature is always refused.
+		*/
+		if (action == DKIMF_MILTER_ACCEPT)
+		{
+			(void) snprintf(err, errlen,
+			                "On-WeakAlgorithm does not allow \"accept\"; rsa-sha1 cannot be trusted (RFC 8301)");
+			return FALSE;
+		}
 		hndl->hndl_weakalg = action;
 		return TRUE;
 
@@ -7367,6 +7381,13 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 	opts |= (DKIM_LIBFLAGS_ACCEPTV05 | DKIM_LIBFLAGS_DROPSIGNER);
 	if (conf->conf_weaksyntax)
 		opts |= DKIM_LIBFLAGS_BADSIGHANDLES;
+	/*
+	**  RFC 8301: rsa-sha1 MUST NOT be used for verifying.  Tell the library
+	**  to short-circuit such signatures so they can never report "pass";
+	**  On-WeakAlgorithm then selects only the message disposition applied in
+	**  mlfi_eom().
+	*/
+	opts |= DKIM_LIBFLAGS_NOSHA1VERIFY;
 	(void) dkim_setopt(lib, DKIM_OPTS_FLAGS,
 	                    &opts, sizeof opts);
 
@@ -9494,6 +9515,27 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 					         " reason=\"%s\"", err);
 				}
 			}
+			else if (sigerror == DKIM_SIGERROR_WEAKALG)
+			{
+				const char *err;
+
+				/*
+				**  RFC 8301: the library short-circuited this
+				**  rsa-sha1 signature, so it never verified.
+				**  Report it as "neutral" rather than "fail";
+				**  the On-WeakAlgorithm disposition is applied in
+				**  mlfi_eom().
+				*/
+
+				result = "neutral";
+
+				err = dkim_sig_geterrorstr(sigerror);
+				if (err != NULL)
+				{
+					snprintf(comment, sizeof comment,
+					         " reason=\"%s\"", err);
+				}
+			}
 			else if ((sigflag & DKIM_SIGFLAG_PROCESSED) != 0 &&
 			         ((sigflag & DKIM_SIGFLAG_PASSED) == 0 ||
 			          dkim_sig_getbh(sigs[c]) != DKIM_SIGBH_MATCH))
@@ -9566,31 +9608,6 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			  case DKIM_DNSSEC_SECURE:
 				dnssec = "secure";
 				break;
-			}
-
-			/*
-			**  RFC 8301: a signature that verifies but uses the
-			**  deprecated rsa-sha1 algorithm must not be reported
-			**  as a valid result.  Unless the operator opted to
-			**  accept such signatures (On-WeakAlgorithm accept),
-			**  downgrade an otherwise-passing rsa-sha1 signature to
-			**  "neutral".  The matching milter disposition (deliver,
-			**  reject, quarantine, ...) is applied in mlfi_eom().
-			*/
-
-			if (conf->conf_handling.hndl_weakalg != DKIMF_MILTER_ACCEPT &&
-			    strcmp(result, "pass") == 0)
-			{
-				dkim_alg_t alg = DKIM_SIGN_RSASHA256;
-
-				if (dkim_sig_getsignalg(sigs[c],
-				                        &alg) == DKIM_STAT_OK &&
-				    alg == DKIM_SIGN_RSASHA1)
-				{
-					result = "neutral";
-					snprintf(comment, sizeof comment,
-					         " reason=\"deprecated algorithm rsa-sha1\"");
-				}
 			}
 
 			size_t n = 0;
@@ -12157,48 +12174,40 @@ mlfi_eom(SMFICTX *ctx)
 			}
 		}
 
+		/*
+		**  RFC 8301: if the determinative signature declares the
+		**  deprecated rsa-sha1 algorithm, the library short-circuited
+		**  its verification (DKIM_LIBFLAGS_NOSHA1VERIFY) and marked it
+		**  DKIM_SIGERROR_WEAKALG instead of producing a pass/fail.
+		**  Record this as its own status so the configured
+		**  On-WeakAlgorithm disposition is applied below, regardless of
+		**  the truncated DKIM_STAT_* the verification returned.
+		*/
+
+		if (dfc->mctx_dkimv != NULL)
+		{
+			sig = dkim_getsignature(dfc->mctx_dkimv);
+			if (sig != NULL &&
+			    dkim_sig_geterror(sig) == DKIM_SIGERROR_WEAKALG)
+			{
+				if (conf->conf_dolog)
+				{
+					syslog(LOG_NOTICE,
+					       "%s: signature uses deprecated algorithm rsa-sha1",
+					       dfc->mctx_jobid);
+				}
+
+				dfc->mctx_addheader = TRUE;
+				dfc->mctx_status = DKIMF_STATUS_WEAKALG;
+			}
+		}
+
+		if (dfc->mctx_status != DKIMF_STATUS_WEAKALG)
 		switch (status)
 		{
 		  case DKIM_STAT_OK:
 			if (dkimf_findheader(dfc, DKIM_SIGNHEADER, 0) != NULL)
 			{
-				/*
-				**  The signature verified, but if the reported
-				**  signature used a deprecated algorithm
-				**  (rsa-sha1, per RFC 8301) apply the
-				**  On-WeakAlgorithm policy.  The testing ("t=y")
-				**  key flag bypasses enforcement, as it does for
-				**  On-BadSignature.
-				*/
-
-				if (conf->conf_handling.hndl_weakalg != DKIMF_MILTER_ACCEPT)
-				{
-					dkim_alg_t alg = DKIM_SIGN_RSASHA256;
-
-					sig = dkim_getsignature(dfc->mctx_dkimv);
-					if (sig != NULL &&
-					    dkim_sig_getsignalg(sig, &alg) == DKIM_STAT_OK &&
-					    alg == DKIM_SIGN_RSASHA1)
-					{
-						if (conf->conf_dolog)
-						{
-							syslog(LOG_NOTICE,
-							       "%s: signature uses deprecated algorithm rsa-sha1",
-							       dfc->mctx_jobid);
-						}
-
-						ret = dkimf_miltercode(ctx,
-						                       conf->conf_handling.hndl_weakalg,
-						                       NULL);
-
-						if ((ret == SMFIS_REJECT ||
-						     ret == SMFIS_TEMPFAIL ||
-						     ret == SMFIS_DISCARD) &&
-						    testkey)
-							ret = SMFIS_ACCEPT;
-					}
-				}
-
 				if (conf->conf_dolog_success)
 				{
 					syslog(LOG_INFO,
@@ -12437,7 +12446,8 @@ mlfi_eom(SMFICTX *ctx)
 			    dfc->mctx_status == DKIMF_STATUS_PARTIAL ||
 			    dfc->mctx_status == DKIMF_STATUS_NOKEY ||
 			    dfc->mctx_status == DKIMF_STATUS_KEYFAIL ||
-			    dfc->mctx_status == DKIMF_STATUS_VERIFYERR)
+			    dfc->mctx_status == DKIMF_STATUS_VERIFYERR ||
+			    dfc->mctx_status == DKIMF_STATUS_WEAKALG)
 			{
 				dkimf_ar_all_sigs(header, sizeof header,
 				                  dfc->mctx_dkimv,
@@ -12829,6 +12839,23 @@ mlfi_eom(SMFICTX *ctx)
 
 	  case DKIMF_STATUS_BADFORMAT:
 		ret = SMFIS_ACCEPT;
+		break;
+
+	  case DKIMF_STATUS_WEAKALG:
+		/*
+		**  RFC 8301: apply the On-WeakAlgorithm disposition to a
+		**  deprecated (rsa-sha1) signature.  "neutral" (the default)
+		**  resolves to SMFIS_ACCEPT, so the message is delivered while
+		**  the Authentication-Results field already reports it as such.
+		**  The "t=y" testing key flag bypasses the hard dispositions,
+		**  mirroring On-BadSignature.
+		*/
+		ret = dkimf_miltercode(ctx, conf->conf_handling.hndl_weakalg,
+		                       NULL);
+		if ((ret == SMFIS_REJECT || ret == SMFIS_TEMPFAIL ||
+		     ret == SMFIS_DISCARD) &&
+		    testkey)
+			ret = SMFIS_ACCEPT;
 		break;
 
 	  case DKIMF_STATUS_UNKNOWN:
