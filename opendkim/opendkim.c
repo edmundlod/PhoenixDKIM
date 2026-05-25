@@ -58,6 +58,8 @@
 #include <regex.h>
 
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 
 #ifdef HAVE_LIBCURL
 # include <curl/curl.h>
@@ -547,6 +549,7 @@ static void dkimf_cleanup __P((SMFICTX *));
 static void dkimf_config_reload __P((void));
 sfsistat dkimf_delrcpt __P((SMFICTX *, char *));
 static Header dkimf_findheader __P((msgctx, const char *, int));
+static int dkimf_lookup_strtoint __P((const char *, struct lookup *));
 void *dkimf_getpriv __P((SMFICTX *));
 char *dkimf_getsymval __P((SMFICTX *, const char *));
 sfsistat dkimf_insheader __P((SMFICTX *, int, const char *, const char *));
@@ -4344,6 +4347,74 @@ dkimf_loadkey(char *buf, size_t *buflen, _Bool *insecure, char *error,
 }
 
 /*
+**  DKIMF_KEYTYPE -- determine the crypto type of a loaded private key
+**
+**  Parameters:
+**  	keydata -- key material (PEM text or DER)
+**  	keylen -- length of the key material
+**
+**  Return value:
+**  	0 -- RSA
+**  	1 -- Ed25519
+**  	-1 -- unknown or unparseable
+**
+**  Notes:
+**  	Used only to validate an optional KeyTable signing-algorithm field
+**  	against the actual key.  libopendkim independently derives the signing
+**  	algorithm from the key material at signing time, and that remains
+**  	authoritative; this is a configuration sanity check, not key loading.
+*/
+
+static int
+dkimf_keytype(const char *keydata, size_t keylen)
+{
+	int id;
+	BIO *bio;
+	EVP_PKEY *pkey;
+
+	assert(keydata != NULL);
+
+	/* PEM is NUL-terminated text; use its real length, not the buffer's */
+	if (strncmp(keydata, "-----", 5) == 0)
+	{
+		keylen = strlen(keydata);
+		bio = BIO_new_mem_buf(keydata, keylen);
+		if (bio == NULL)
+			return -1;
+		pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+	}
+	else
+	{
+		bio = BIO_new_mem_buf(keydata, keylen);
+		if (bio == NULL)
+			return -1;
+		pkey = d2i_PrivateKey_bio(bio, NULL);
+	}
+
+	BIO_free(bio);
+
+	if (pkey == NULL)
+		return -1;
+
+	id = EVP_PKEY_id(pkey);
+	EVP_PKEY_free(pkey);
+
+	switch (id)
+	{
+	  case EVP_PKEY_RSA:
+		return 0;
+
+#ifdef EVP_PKEY_ED25519
+	  case EVP_PKEY_ED25519:
+		return 1;
+#endif /* EVP_PKEY_ED25519 */
+
+	  default:
+		return -1;
+	}
+}
+
+/*
 **  DKIMF_ADD_SIGNREQUEST -- add a signing request
 **
 **  Parameters:
@@ -4369,10 +4440,11 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 	_Bool found = FALSE;
 	size_t keydatasz = 0;
 	struct signreq *new;
-	struct dkimf_db_data dbd[3];
+	struct dkimf_db_data dbd[4];
 	char keydata[MAXBUFRSZ + 1];
 	char domain[DKIM_MAXHOSTNAMELEN + 1];
 	char selector[BUFRSZ + 1];
+	char algorithm[BUFRSZ + 1];
 	char err[BUFRSZ + 1];
 
 	assert(conf != NULL);
@@ -4399,6 +4471,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		memset(domain, '\0', sizeof domain);
 		memset(selector, '\0', sizeof selector);
 		memset(keydata, '\0', sizeof keydata);
+		memset(algorithm, '\0', sizeof algorithm);
 
 		dbd[0].dbdata_buffer = domain;
 		dbd[0].dbdata_buflen = sizeof domain - 1;
@@ -4409,9 +4482,12 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		dbd[2].dbdata_buffer = keydata;
 		dbd[2].dbdata_buflen = sizeof keydata - 1;
 		dbd[2].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
+		dbd[3].dbdata_buffer = algorithm;
+		dbd[3].dbdata_buflen = sizeof algorithm - 1;
+		dbd[3].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
 
 		if (dkimf_db_get(keytable, keyname, strlen(keyname),
-		                 dbd, 3, &found) != 0)
+		                 dbd, 4, &found) != 0)
 		{
 			memset(err, '\0', sizeof err);
 			(void) dkimf_db_strerror(keytable, err, sizeof err);
@@ -4515,6 +4591,53 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 
 			if (conf->conf_safekeys)
 				return 2;
+		}
+
+		/*
+		**  An optional fourth KeyTable field may name a signing
+		**  algorithm (for compatibility with configs written for
+		**  upstream OpenDKIM).  We do not use it to select the
+		**  algorithm -- libopendkim derives that from the key material
+		**  itself, which is authoritative -- but if it is present and
+		**  contradicts the actual key, warn so the admin can fix the
+		**  table.  Signing still proceeds with the key-derived
+		**  algorithm.
+		*/
+
+		if (algorithm[0] != '\0' &&
+		    dbd[3].dbdata_buflen != 0 &&
+		    dbd[3].dbdata_buflen != (size_t) -1)
+		{
+			int declared;
+			int keytype;
+			_Bool declared_ed25519 = FALSE;
+
+			declared = dkimf_lookup_strtoint(algorithm, dkimf_sign);
+			keytype = dkimf_keytype(dbd[2].dbdata_buffer, keydatasz);
+
+#ifdef DKIM_SIGN_ED25519SHA256
+			declared_ed25519 = (declared == DKIM_SIGN_ED25519SHA256);
+#endif /* DKIM_SIGN_ED25519SHA256 */
+
+			if (declared == -1)
+			{
+				if (dolog)
+				{
+					syslog(LOG_WARNING,
+					       "key '%s': unrecognized signing algorithm '%s' in KeyTable; signing with key-derived algorithm",
+					       keyname, algorithm);
+				}
+			}
+			else if (keytype != -1 &&
+			         declared_ed25519 != (keytype == 1))
+			{
+				if (dolog)
+				{
+					syslog(LOG_WARNING,
+					       "key '%s': KeyTable algorithm '%s' does not match the key type; signing with key-derived algorithm",
+					       keyname, algorithm);
+				}
+			}
 		}
 	}
 
