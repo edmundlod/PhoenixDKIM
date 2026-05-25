@@ -11,6 +11,11 @@ RuntimeDirectoryMode=0750
 ExecStart=/usr/sbin/opendkim -f -x /etc/opendkim.conf
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
+
+# opendkim feeds this watchdog from a dedicated thread at half the interval
+# below (i.e. every 15s).  systemd restarts the service if no keep-alive
+# arrives within WatchdogSec, catching a wholly hung process.
+WatchdogSec=30
 User=opendkim
 Group=opendkim
 
