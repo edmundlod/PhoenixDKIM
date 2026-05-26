@@ -327,8 +327,8 @@ dkim_res_nslist(void *srv, const char *nslist)
 # ifdef AF_INET6
 	struct sockaddr_in6 in6;
 # endif /* AF_INET6 */
-	struct state *res;
-	res_sockaddr_union nses[MAXNS];
+	struct __res_state *res;
+	union res_sockaddr_union nses[MAXNS];
 
 	assert(srv != NULL);
 	assert(nslist != NULL);
@@ -341,7 +341,7 @@ dkim_res_nslist(void *srv, const char *nslist)
 
 	for (ns = strtok_r(tmp, ",", &last);
 	     ns != NULL && nscount < MAXNS;
-	     ns = strtok_r(NULL, ",", &last)
+	     ns = strtok_r(NULL, ",", &last))
 	{
 		memset(&in, '\0', sizeof in);
 # ifdef AF_INET6
