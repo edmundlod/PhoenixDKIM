@@ -66,7 +66,7 @@ extern "C" {
 					/* reserved DNS sub-zone */
 
 /* macros */
-#define	DKIM_SIG_CHECK(x)	((dkim_sig_getflags((x)) & DKIM_SIGFLAG_PASSED != 0) && (dkim_sig_getbh((x)) == DKIM_SIGBH_MATCH))
+#define	DKIM_SIG_CHECK(x)	(((dkim_sig_getflags((x)) & DKIM_SIGFLAG_PASSED) != 0) && (dkim_sig_getbh((x)) == DKIM_SIGBH_MATCH))
 
 /*
 **  DKIM_STAT -- status code type
