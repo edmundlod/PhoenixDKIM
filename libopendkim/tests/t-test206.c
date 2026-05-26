@@ -94,7 +94,7 @@ main(int argc, char **argv)
 	status = dkim_eoh(dkim);
 	assert(status == DKIM_STAT_OK);
 
-	status = dkim_body(dkim, (u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
+	status = dkim_body(dkim, (const u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
 	assert(status == DKIM_STAT_OK);
 
 	/* sign eom must not fail with DKIM_STAT_SYNTAX */
@@ -136,7 +136,7 @@ main(int argc, char **argv)
 	status = dkim_eoh(dkim);
 	assert(status == DKIM_STAT_OK);
 
-	status = dkim_body(dkim, (u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
+	status = dkim_body(dkim, (const u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
 	assert(status == DKIM_STAT_OK);
 
 	/* verify eom must not fail with DKIM_STAT_SYNTAX */

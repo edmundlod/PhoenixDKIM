@@ -48,7 +48,7 @@ const char rfc8463_domain[] = "football.example.com";
 int kl;
 
 
-DKIM_STAT
+static DKIM_STAT
 key_lookup(DKIM *dkim, DKIM_SIGINFO *sig, unsigned char *buf, size_t buflen)
 {
 	const char *selector;
