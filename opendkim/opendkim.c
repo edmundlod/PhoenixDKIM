@@ -4653,6 +4653,9 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		new->srq_keydata = (void *) malloc(keydatasz + 1);
 		if (new->srq_keydata == NULL)
 		{
+			TRYFREE(new->srq_signer);
+			TRYFREE(new->srq_domain);
+			TRYFREE(new->srq_selector);
 			free(new);
 			return -1;
 		}
@@ -4663,11 +4666,11 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 
 	if (dfc->mctx_srtail != NULL)
 		dfc->mctx_srtail->srq_next = new;
-	else
-		dfc->mctx_srtail = new;
 
 	if (dfc->mctx_srhead == NULL)
 		dfc->mctx_srhead = new;
+
+	dfc->mctx_srtail = new;
 
 	return 0;
 }
@@ -5526,6 +5529,9 @@ dkimf_config_free(struct dkimf_config *conf)
 
 	if (conf->conf_dontsigntodb != NULL)
 		dkimf_db_close(conf->conf_dontsigntodb);
+
+	if (conf->conf_remardb != NULL)
+		dkimf_db_close(conf->conf_remardb);
 
 	if (conf->conf_authservid != NULL)
 		free(conf->conf_authservid);
@@ -7794,6 +7800,7 @@ dkimf_config_reload(void)
 
 			if (!allowdeprecated)
 			{
+				config_free(cfg);
 				dkimf_config_free(new);
 				err = TRUE;
 			}
@@ -8209,6 +8216,7 @@ dkimf_cleanup(SMFICTX *ctx)
 				    cur->lg_type == LUA_TSTRING)
 					free(cur->lg_value);
 
+				free(cur->lg_name);
 				free(cur);
 
 				cur = next;
