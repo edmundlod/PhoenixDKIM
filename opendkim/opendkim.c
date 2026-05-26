@@ -9540,8 +9540,16 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			                        &keybits) != DKIM_STAT_OK)
 				keybits = 0;
 
-			ssl = sizeof ss - 1;
-			ts = dkim_get_sigsubstring(dkim, sigs[c], ss, &ssl);
+			if (conf->conf_noheaderb)
+			{
+				ts = -1;
+			}
+			else
+			{
+				ssl = sizeof ss - 1;
+				ts = dkim_get_sigsubstring(dkim, sigs[c], ss,
+				                           &ssl);
+			}
 
 			sigflag = dkim_sig_getflags(sigs[c]);
 			if (sigflag & DKIM_SIGFLAG_IGNORE)
