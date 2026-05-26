@@ -8,6 +8,7 @@
 */
 
 #include "build-config.h"
+#include "build-version.h"
 
 #ifndef _POSIX_PTHREAD_SEMANTICS
 # define _POSIX_PTHREAD_SEMANTICS
@@ -9359,7 +9360,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 	fprintf(out, "--dkimreport/%s/%s\n", hostname, dfc->mctx_jobid);
 	fprintf(out, "Content-Type: message/feedback-report\n");
 	fprintf(out, "\n");
-	fprintf(out, "User-Agent: %s/%s\n", DKIMF_PRODUCTNS, VERSION);
+	fprintf(out, "User-Agent: %s/%s\n", DKIMF_PRODUCTNS, DKIMF_VERSION);
 	fprintf(out, "Version: %s\n", ARF_VERSION);
 	fprintf(out, "Original-Envelope-Id: %s\n", dfc->mctx_jobid);
 	fprintf(out, "Original-Mail-From: %s\n", dfc->mctx_envfrom);
@@ -12905,7 +12906,7 @@ mlfi_eom(SMFICTX *ctx)
 		{
 			snprintf(xfhdr, DKIM_MAXHEADER, "%s%s v%s %s %s",
 			         cc->cctx_noleadspc ? " " : "",
-			         DKIMF_PRODUCT, VERSION, hostname,
+			         DKIMF_PRODUCT, DKIMF_VERSION, hostname,
 			         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
 			                                 : (const u_char *) JOBIDUNKNOWN);
 		}
@@ -12913,7 +12914,7 @@ mlfi_eom(SMFICTX *ctx)
 		{
 			snprintf(xfhdr, DKIM_MAXHEADER, "%s%s v%s %s via %s %s",
 			         cc->cctx_noleadspc ? " " : "",
-			         DKIMF_PRODUCT, VERSION, hostname,
+			         DKIMF_PRODUCT, DKIMF_VERSION, hostname,
 			         myhostname,
 			         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
 			                                 : (const u_char *) JOBIDUNKNOWN);
@@ -13423,7 +13424,7 @@ main(int argc, char **argv)
 			}
 
 			printf("%s: %s v%s\n", progname, DKIMF_PRODUCT,
-			       VERSION);
+			       DKIMF_VERSION);
 			printf("\tCompiled with %s\n",
 			       OpenSSL_version(OPENSSL_VERSION));
 			printf("\tSMFI_VERSION 0x%x\n", SMFI_VERSION);
@@ -14678,7 +14679,7 @@ main(int argc, char **argv)
 	if (curconf->conf_dolog)
 	{
 		syslog(LOG_INFO, "%s v%s starting%s%s%s", DKIMF_PRODUCT,
-		       VERSION,
+		       DKIMF_VERSION,
 		       argstr[0] == '\0' ? "" : " (",
 		       argstr,
 		       argstr[0] == '\0' ? "" : ")");
@@ -14761,7 +14762,7 @@ main(int argc, char **argv)
 	{
 		syslog(LOG_INFO,
 		       "%s v%s terminating with status %d, errno = %d",
-		       DKIMF_PRODUCT, VERSION, status, errno);
+		       DKIMF_PRODUCT, DKIMF_VERSION, status, errno);
 	}
 
 	dkimf_zapkey(curconf);

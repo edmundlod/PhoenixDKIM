@@ -112,6 +112,51 @@ if(WITH_SYSTEMD)
     endif()
 endif()
 
+# ── Version string + build configuration for -V / -v diagnostics ─────────────
+# DKIMF_VERSION reports the project version, plus the git commit on untagged
+# development builds (issue #350).
+
+set(DKIMF_VERSION "${PROJECT_VERSION}")
+
+find_program(GIT_EXECUTABLE git)
+if(GIT_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short=12 HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE _git_hash
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE _git_rc
+    )
+    if(_git_rc EQUAL 0 AND _git_hash)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} status --porcelain --untracked-files=no
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE _git_dirty
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(_git_dirty)
+            set(_git_hash "${_git_hash}-dirty")
+        endif()
+        set(DKIMF_VERSION "${PROJECT_VERSION}-g${_git_hash}")
+    endif()
+    # Refresh the version header automatically when HEAD or the index moves,
+    # so a rebuild after a commit reports the new hash without reconfiguring.
+    foreach(_gitfile HEAD index)
+        if(EXISTS "${CMAKE_SOURCE_DIR}/.git/${_gitfile}")
+            set_property(DIRECTORY APPEND PROPERTY
+                         CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/.git/${_gitfile}")
+        endif()
+    endforeach()
+endif()
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/build-version.h.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/build-version.h
+    @ONLY
+)
+
 # ── pthreads ──────────────────────────────────────────────────────────────────
 
 find_package(Threads REQUIRED)
@@ -146,6 +191,7 @@ endif()
 function(configure_daemon_target tgt)
     target_include_directories(${tgt} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}        # build-version.h
         ${CMAKE_BINARY_DIR}/libopendkim
     )
 
