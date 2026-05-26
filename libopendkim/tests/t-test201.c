@@ -48,7 +48,7 @@ struct malloc_track *mtstack;
 **  	None.
 */
 
-void
+static void
 debug_init(void)
 {
 	mtstack = NULL;
@@ -67,7 +67,7 @@ debug_init(void)
 **  	Pointer to allocated memory.
 */
 
-void *
+static void *
 debug_malloc(void *closure, size_t nbytes)
 {
 	struct malloc_track *new;
@@ -104,7 +104,7 @@ debug_malloc(void *closure, size_t nbytes)
 **  	None.
 */
 
-void
+static void
 debug_free(void *closure, void *ptr)
 {
 	struct malloc_track *mt;
@@ -147,7 +147,7 @@ debug_free(void *closure, void *ptr)
 **  	None.
 */
 
-void
+static void
 debug_dump(FILE *out)
 {
 	struct malloc_track *mt;
@@ -190,6 +190,7 @@ main(int argc, char **argv)
 	DKIM *dkim;
 	DKIM_LIB *lib;
 	dkim_query_t qtype = DKIM_QUERY_FILE;
+	char keyfile[] = KEYFILE;
 	unsigned char hdr[MAXHEADER + 1];
 
 	debug_init();
@@ -222,7 +223,7 @@ main(int argc, char **argv)
 	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYMETHOD,
 	                    &qtype, sizeof qtype);
 	(void) dkim_options(lib, DKIM_OP_SETOPT, DKIM_OPTS_QUERYINFO,
-	                    KEYFILE, strlen(KEYFILE));
+	                    keyfile, strlen(keyfile));
 
 	dkim = dkim_verify(lib, JOBID, NULL, &status);
 	assert(dkim != NULL);

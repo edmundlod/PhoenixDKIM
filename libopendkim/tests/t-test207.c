@@ -129,7 +129,7 @@ main(int argc, char **argv)
 	assert(status == DKIM_STAT_OK);
 
 	/* feed body WITHOUT trailing CRLF */
-	status = dkim_body(dkim, (u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
+	status = dkim_body(dkim, (const u_char *) TBODY_NOCRLF, TBODY_NOCRLF_LEN);
 	assert(status == DKIM_STAT_OK);
 
 	/* without l=, missing CRLF must still be a syntax error */
