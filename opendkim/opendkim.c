@@ -13444,7 +13444,7 @@ main(int argc, char **argv)
 	if (optind != argc)
 		return usage();
 
-	if (dkim_ssl_version() != OPENSSL_VERSION_NUMBER)
+	if ((dkim_ssl_version() >> 8) != (OPENSSL_VERSION_NUMBER >> 8))
 	{
 		fprintf(stderr,
 		        "%s: incompatible SSL versions (library = 0x%09lx, filter = %09lx)\n",
