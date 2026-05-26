@@ -3279,7 +3279,7 @@ dkimf_xs_delheader(lua_State *l)
 
 	if (ctx == NULL)
 		lua_pushnil(l);
-	else if (dkimf_chgheader(ctx, name, idx, NULL) == MI_SUCCESS)
+	else if (dkimf_chgheader(ctx, name, idx + 1, NULL) == MI_SUCCESS)
 		lua_pushnumber(l, 1);
 	else
 		lua_pushnil(l);
