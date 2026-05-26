@@ -217,7 +217,6 @@ struct dkimf_config
 	_Bool		conf_multisig;		/* multiple signatures */
 	_Bool		conf_enablecores;	/* enable coredumps */
 	_Bool		conf_noheaderb;		/* suppress "header.b" */
-	_Bool		conf_singleauthres;	/* single Auth-Results */
 	_Bool		conf_safekeys;		/* check key permissions */
 	_Bool		conf_checksigningtable; /* check keys on dkimf_config_load */
 	_Bool		conf_resignall;		/* resign unverified mail */
