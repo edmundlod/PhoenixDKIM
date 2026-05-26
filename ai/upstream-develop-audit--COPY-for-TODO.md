@@ -35,7 +35,7 @@ merged PRs, many of which had been waiting for years. ~200 commits over 4 days.
 `2fd7dae6` 2026-05-25 — REVIEW — opendkim: print configure arguments in -v output (issue #357); depends on configure.ac string; need CMake equivalent
 `d8082e5a` 2026-05-25 — ADOPTED — opendkim: fix overlapping buffer in SubDomains domain walk (#356)
 `6e0e7f4e` 2026-05-25 — REVIEW — Mis-used string pointers in opendkim.c and vbr.c (#244); vbr.c NOT NEEDED; inspect if the opendkim.c portion has a real fix independent of vbr
-`d5ec946f` 2026-05-25 — TODO — opendkim: distinguish 'no From/Date field' from 'multiple From/Date fields' in RequiredHeaders
+`d5ec946f` 2026-05-25 — ADOPTED — opendkim: distinguish 'no From/Date field' from 'multiple From/Date fields' in RequiredHeaders
 `79014c9f` 2026-05-26 — TODO — opendkim-ar: accept AR header with no-result as valid syntax; parser robustness
 `f3d0e4e1` 2026-05-25 — DONE — opendkim: add sd_notify() readiness signal for systemd Type=notify; we have systemd hardening but not sd_notify; autoconf parts SKIPPED, libsystemd detection needs CMake equivalent
 `2b09998d` 2026-05-26 — NOT NEEDED: reputation subsystem removed — contrib/repute: replace defer.returnValue() with plain return for Python 3
