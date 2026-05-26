@@ -1982,8 +1982,9 @@ dkim_siglist_setup(DKIM *dkim)
 		}
 		else
 		{
-			signalg = dkim_name_to_code(algorithms,
-			                            (const char *) param);
+			dkim->dkim_siglist[c]->sig_signalg = signalg =
+				dkim_name_to_code(algorithms,
+				                  (const char *) param);
 
 			if (signalg == -1)
 			{
@@ -2015,7 +2016,6 @@ dkim_siglist_setup(DKIM *dkim)
 				/* NOTREACHED */
 			}
 
-			dkim->dkim_siglist[c]->sig_signalg = signalg;
 			dkim->dkim_siglist[c]->sig_hashtype = hashtype;
 		}
 
