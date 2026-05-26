@@ -12830,11 +12830,23 @@ mlfi_eom(SMFICTX *ctx)
 
 		memset(xfhdr, '\0', sizeof xfhdr);
 
-		snprintf(xfhdr, DKIM_MAXHEADER, "%s%s v%s %s %s",
-		         cc->cctx_noleadspc ? " " : "",
-		         DKIMF_PRODUCT, VERSION, hostname,
-		         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
-		                                 : (const u_char *) JOBIDUNKNOWN);
+		if (strcasecmp(hostname, myhostname) == 0)
+		{
+			snprintf(xfhdr, DKIM_MAXHEADER, "%s%s v%s %s %s",
+			         cc->cctx_noleadspc ? " " : "",
+			         DKIMF_PRODUCT, VERSION, hostname,
+			         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
+			                                 : (const u_char *) JOBIDUNKNOWN);
+		}
+		else
+		{
+			snprintf(xfhdr, DKIM_MAXHEADER, "%s%s v%s %s via %s %s",
+			         cc->cctx_noleadspc ? " " : "",
+			         DKIMF_PRODUCT, VERSION, hostname,
+			         myhostname,
+			         dfc->mctx_jobid != NULL ? dfc->mctx_jobid
+			                                 : (const u_char *) JOBIDUNKNOWN);
+		}
 
 		if (dkimf_insheader(ctx, 0, SWHEADERNAME, xfhdr) != MI_SUCCESS)
 		{
