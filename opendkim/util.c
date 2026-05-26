@@ -87,6 +87,14 @@ static const char *optlist[] =
 	"USE_UNBOUND",
 #endif /* USE_UNBOUND */
 
+#ifdef HAVE_LIBCURL
+	"HAVE_LIBCURL",
+#endif /* HAVE_LIBCURL */
+
+#ifdef HAVE_LIBSYSTEMD
+	"HAVE_LIBSYSTEMD",
+#endif /* HAVE_LIBSYSTEMD */
+
 #ifdef OPENSSL_VERSION_STR
 	"OpenSSL-" OPENSSL_VERSION_STR,
 #endif

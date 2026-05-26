@@ -5,11 +5,15 @@
 **                   untagged development build it carries the git commit so
 **                   the running daemon identifies exactly what it was built
 **                   from (issue #350).
+** CONFIGURE_ARGS -- the build options needed to reproduce this build, the
+**                   CMake analogue of autoconf's $ac_configure_args
+**                   (issue #357).
 */
 
 #ifndef _BUILD_VERSION_H_
 #define _BUILD_VERSION_H_
 
 #define DKIMF_VERSION   "@DKIMF_VERSION@"
+#define CONFIGURE_ARGS  "@CONFIGURE_ARGS@"
 
 #endif /* _BUILD_VERSION_H_ */
