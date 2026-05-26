@@ -408,23 +408,22 @@ mt_eom_request(struct mt_context *ctx, char cmd, size_t len, char *data)
 }
 
 /*
-**  MT_MILTER_READ -- read from a connected filter
+**  MT_MILTER_READ_HDR -- read the milter protocol header (cmd byte plus
+**                        payload length) from a connected filter
 **
 **  Parameters:
-**  	fd -- descriptor to which to write
+**  	fd -- descriptor to read from
 **  	cmd -- milter command received (returned)
-** 	buf -- where to write data
-**  	buflen -- bytes available at "buf" (updated)
-** 
+**  	paylen -- payload byte count, not including the cmd byte (returned)
+**
 **  Return value:
 **  	TRUE iff successful.
 */
 
 static _Bool
-mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
+mt_milter_read_hdr(int fd, char *cmd, size_t *paylen)
 {
 	int i;
-	int expl;
 	size_t rlen;
 	fd_set fds;
 	struct timeval timeout;
@@ -466,19 +465,54 @@ mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
 	*cmd = data[MILTER_LEN_BYTES];
 	data[MILTER_LEN_BYTES] = '\0';
 	(void) memcpy(&i, data, MILTER_LEN_BYTES);
-	expl = ntohl(i) - 1;
+	*paylen = (size_t) (ntohl(i) - 1);
+
+	return TRUE;
+}
+
+/*
+**  MT_MILTER_READ -- read from a connected filter
+**
+**  Parameters:
+**  	fd -- descriptor to read from
+**  	cmd -- milter command received (returned)
+** 	buf -- where to write data
+**  	len -- bytes available at "buf" (updated with bytes written)
+**
+**  Return value:
+**  	TRUE iff successful.
+*/
+
+static _Bool
+mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
+{
+	size_t paylen;
+	size_t rlen;
+
+	assert(fd >= 0);
+
+	if (!mt_milter_read_hdr(fd, cmd, &paylen))
+		return FALSE;
 
 	rlen = 0;
 
-	if (expl > 0)
+	if (paylen > 0)
 	{
-		rlen = read(fd, buf, expl);
-		/* expl > 0 guards the cast; rlen is size_t, expl is int */
-		if (rlen != (size_t) expl)
+		if (paylen > *len)
+		{
+			fprintf(stderr,
+			        "%s: mt_milter_read(%d): response size %zu exceeds buffer %zu\n",
+			        progname, fd, paylen, *len);
+
+			return FALSE;
+		}
+
+		rlen = read(fd, buf, paylen);
+		if (rlen != paylen)
 		{
 			fprintf(stderr,
 			        "%s: read(%d): returned %ld, expected %ld\n",
-			        progname, fd, (long) rlen, (long) expl);
+			        progname, fd, (long) rlen, (long) paylen);
 
 			return FALSE;
 		}
@@ -492,11 +526,7 @@ mt_milter_read(int fd, char *cmd, char *buf, size_t *len)
 
 	*len = rlen;
 
-	/*
-	**  At this point either expl was 0 (rlen left at 0) or expl > 0
-	**  and the read matched.  Cast to a common type for the return.
-	*/
-	return ((size_t) expl == rlen);
+	return TRUE;
 }
 
 /*
@@ -3234,6 +3264,9 @@ mt_eom(lua_State *l)
 {
 	char rcmd;
 	size_t buflen;
+	size_t paylen;
+	char *dynbuf;
+	char *rbuf;
 	struct mt_context *ctx;
 	char buf[BUFRSZ];
 
@@ -3262,12 +3295,54 @@ mt_eom(lua_State *l)
 
 	for (;;)
 	{
-		buflen = sizeof buf;
+		dynbuf = NULL;
+		rbuf = buf;
+		buflen = 0;
 
-		if (!mt_milter_read(ctx->ctx_fd, &rcmd, buf, &buflen))
+		if (!mt_milter_read_hdr(ctx->ctx_fd, &rcmd, &paylen))
 		{
 			lua_pushstring(l, "mt.milter_read() failed");
 			return 1;
+		}
+
+		if (paylen > 0)
+		{
+			/*
+			**  A milter may replace the body with content larger
+			**  than the stack buffer (e.g. SMFIR_REPLBODY); read
+			**  oversized payloads onto the heap instead of
+			**  overrunning buf.
+			*/
+			if (paylen > sizeof buf)
+			{
+				dynbuf = (char *) malloc(paylen);
+				if (dynbuf == NULL)
+				{
+					lua_pushstring(l,
+					               "mt.eom(): malloc() failed");
+					return 1;
+				}
+				rbuf = dynbuf;
+			}
+
+			buflen = read(ctx->ctx_fd, rbuf, paylen);
+			if (buflen != paylen)
+			{
+				fprintf(stderr,
+				        "%s: read(%d): returned %ld, expected %ld\n",
+				        progname, ctx->ctx_fd,
+				        (long) buflen, (long) paylen);
+				free(dynbuf);
+				lua_pushstring(l, "mt.milter_read() failed");
+				return 1;
+			}
+		}
+
+		if (verbose > 1)
+		{
+			fprintf(stdout,
+			        "%s: mt_milter_read(%d): cmd %c, len %ld\n",
+			        progname, ctx->ctx_fd, rcmd, (long) buflen);
 		}
 
 		if (rcmd == SMFIR_CONTINUE ||
@@ -3275,14 +3350,20 @@ mt_eom(lua_State *l)
 		    rcmd == SMFIR_REJECT ||
 		    rcmd == SMFIR_TEMPFAIL ||
 		    rcmd == SMFIR_DISCARD)
+		{
+			free(dynbuf);
 			break;
+		}
 
 		if (!mt_eom_request(ctx, rcmd, buflen,
-		                    buflen == 0 ? NULL : buf))
+		                    buflen == 0 ? NULL : rbuf))
 		{
+			free(dynbuf);
 			lua_pushstring(l, "mt.eom_request() failed");
 			return 1;
 		}
+
+		free(dynbuf);
 
 		if (rcmd == SMFIR_REPLYCODE)
 			break;
