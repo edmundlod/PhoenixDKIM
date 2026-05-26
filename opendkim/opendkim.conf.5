@@ -276,7 +276,6 @@ is defined.
 .I DomainKeysCompat (boolean)
 If set, backward compatibility with DomainKeys (RFC4870) key records is
 enabled.  When not set, such keys are considered to be syntactically invalid.
-The default is "false".
 
 .TP
 .I DontSignMailTo (dataset)
@@ -493,8 +492,8 @@ for all addresses.
 
 .TP
 .I MilterDebug (integer)
-Sets the debug level to be requested from the milter library.  The
-default is 0.
+Sets the debug level to be requested from the milter library.  Currently,
+the highest meaningful value is 6.
 
 .TP
 .I Minimum (string)
@@ -520,8 +519,7 @@ valid.
 .I MinimumKeyBits (integer)
 Establishes a minimum key size for acceptable signatures.  Signatures with
 smaller key sizes, even if they otherwise pass DKIM validation, will me marked
-as invalid.  The default is 1024, which accepts all signatures.  A value of
-0 causes the default to be used.
+as invalid.  The default is 1024.  A value of 0 accepts all keys.
 
 .TP
 .I Mode (string)
@@ -833,7 +831,6 @@ Where
 .I ResignMailTo
 triggers a re-signing action, this flag indicates whether or not all mail
 should be signed (if set) versus only verified mail being signed (if not set).
-The default is "false".
 
 .TP
 .I ResignMailTo (dataset)
@@ -866,7 +863,7 @@ Gives the name of a Lua script that should be run after all of the header
 fields have been processed for a message; in particular, this is useful
 after all DKIM signatures have been detected and initial evaluation has
 been done.  The script has access to all of the header fields and connection
-information and can that certain signatures be ignored based on that
+information and can direct that certain signatures be ignored based on that
 information.  See
 .I opendkim-lua(3)
 for details. (Requires Lua 5.4; enabled with -DWITH_LUA=ON.)
@@ -1098,7 +1095,7 @@ messages.
 .I TemporaryDirectory (string)
 Specifies the directory in which temporary canonicalization files should
 be written.  The default is to use the
-.I libdkim
+.I libopendkim
 default location, currently
 .I /tmp.
 
