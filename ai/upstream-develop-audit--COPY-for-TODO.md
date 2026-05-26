@@ -33,7 +33,7 @@ merged PRs, many of which had been waiting for years. ~200 commits over 4 days.
 `e1729bac` 2026-05-25 — REVIEW — opendkim: print configure arguments in -V output (issue #357); useful diagnostics; CMake equivalent needed (see also 2fd7dae6)
 `29bfcd2f` 2026-05-25 — DONE — Fix compiler warnings: -Wincompatible-pointer-types, -Wformat-truncation (#360); touches libopendkim/dkim-util.c, opendkim.c, opendkim-genzone.c
 `2fd7dae6` 2026-05-25 — REVIEW — opendkim: print configure arguments in -v output (issue #357); depends on configure.ac string; need CMake equivalent
-`d8082e5a` 2026-05-25 — TODO — opendkim: fix overlapping buffer in SubDomains domain walk (#356)
+`d8082e5a` 2026-05-25 — ADOPTED — opendkim: fix overlapping buffer in SubDomains domain walk (#356)
 `6e0e7f4e` 2026-05-25 — REVIEW — Mis-used string pointers in opendkim.c and vbr.c (#244); vbr.c NOT NEEDED; inspect if the opendkim.c portion has a real fix independent of vbr
 `d5ec946f` 2026-05-25 — TODO — opendkim: distinguish 'no From/Date field' from 'multiple From/Date fields' in RequiredHeaders
 `79014c9f` 2026-05-26 — TODO — opendkim-ar: accept AR header with no-result as valid syntax; parser robustness
