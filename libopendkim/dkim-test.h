@@ -12,8 +12,8 @@
 #include "dkim.h"
 
 /* prototypes */
-extern size_t dkim_test_dns_get __P((DKIM *, u_char *, size_t));
-extern int dkim_test_dns_put __P((DKIM *, int, int, int, const u_char *,
-                                  const u_char *));
+extern size_t dkim_test_dns_get(DKIM *, u_char *, size_t);
+extern int dkim_test_dns_put(DKIM *, int, int, int, const u_char *,
+                                  const u_char *);
 
 #endif /* ! _DKIM_TEST_H_ */
