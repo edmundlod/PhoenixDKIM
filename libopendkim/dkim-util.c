@@ -31,7 +31,7 @@
 #include "dkim-util.h"
 
 /* prototypes */
-extern void dkim_error __P((DKIM *, const char *, ...));
+extern void dkim_error(DKIM *, const char *, ...);
 
 /*
 **  DKIM_MALLOC -- allocate memory

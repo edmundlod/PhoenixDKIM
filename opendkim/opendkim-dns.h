@@ -26,14 +26,14 @@ struct dkimf_filedns;
 # include <unbound.h>
 
 /* prototypes */
-extern int dkimf_unbound_setup __P((DKIM_LIB *));
+extern int dkimf_unbound_setup(DKIM_LIB *);
 #endif /* USE_UNBOUND */
 
-extern int dkimf_filedns_free __P((struct dkimf_filedns *));
-extern int dkimf_filedns_setup __P((DKIM_LIB *, DKIMF_DB));
+extern int dkimf_filedns_free(struct dkimf_filedns *);
+extern int dkimf_filedns_setup(DKIM_LIB *, DKIMF_DB);
 
-extern int dkimf_dns_config __P((DKIM_LIB *, const char *));
-extern int dkimf_dns_setnameservers __P((DKIM_LIB *, const char *));
-extern int dkimf_dns_trustanchor __P((DKIM_LIB *, const char *));
+extern int dkimf_dns_config(DKIM_LIB *, const char *);
+extern int dkimf_dns_setnameservers(DKIM_LIB *, const char *);
+extern int dkimf_dns_trustanchor(DKIM_LIB *, const char *);
 
 #endif /* _OPENDKIM_DNS_H_ */

@@ -40,15 +40,6 @@ extern "C" {
 **      Now injected via libopendkim/CMakeLists.txt
 */
 
-#ifdef __STDC__
-# ifndef __P
-#  define __P(x)  x
-# endif /* ! __P */
-#else /* __STDC__ */
-# ifndef __P
-#  define __P(x)  ()
-# endif /* ! __P */
-#endif /* __STDC__ */
 
 /* definitions */
 #define	DKIM_ATPSTAG		"atps"	/* ATPS tag name */
@@ -386,8 +377,8 @@ struct dkim_hdrdiff
 **  	A new DKIM library instance handle, or NULL on failure.
 */
 
-extern DKIM_LIB *dkim_init __P((void *(*mallocf)(void *closure, size_t nbytes),
-                                void (*freef)(void *closure, void *p)));
+extern DKIM_LIB *dkim_init(void *(*mallocf)(void *closure, size_t nbytes),
+                                void (*freef)(void *closure, void *p));
 
 /*
 **  DKIM_CLOSE -- shut down the DKIM package
@@ -399,7 +390,7 @@ extern DKIM_LIB *dkim_init __P((void *(*mallocf)(void *closure, size_t nbytes),
 **  	None.
 */
 
-extern void dkim_close __P((DKIM_LIB *lib));
+extern void dkim_close(DKIM_LIB *lib);
 
 /*
 **  DKIM_SIGN -- make a new DKIM context for signing
@@ -427,14 +418,14 @@ extern void dkim_close __P((DKIM_LIB *lib));
 **  	updated.
 */
 
-extern DKIM *dkim_sign __P((DKIM_LIB *libhandle, const unsigned char *id,
+extern DKIM *dkim_sign(DKIM_LIB *libhandle, const unsigned char *id,
                             void *memclosure, const dkim_sigkey_t secretkey,
                             const unsigned char *selector,
                             const unsigned char *domain,
                             dkim_canon_t hdr_canon_alg,
                             dkim_canon_t body_canon_alg,
                             dkim_alg_t sign_alg,
-                            ssize_t length, DKIM_STAT *statp));
+                            ssize_t length, DKIM_STAT *statp);
 
 /*
 **  DKIM_VERIFY -- make a new DKIM context for verifying
@@ -451,8 +442,8 @@ extern DKIM *dkim_sign __P((DKIM_LIB *libhandle, const unsigned char *id,
 **  	updated.
 */
 
-extern DKIM *dkim_verify __P((DKIM_LIB *libhandle, const unsigned char *id,
-                              void *memclosure, DKIM_STAT *statp));
+extern DKIM *dkim_verify(DKIM_LIB *libhandle, const unsigned char *id,
+                              void *memclosure, DKIM_STAT *statp);
 
 /*
 **  DKIM_RESIGN -- bind a new signing handle to a verifying handle
@@ -473,7 +464,7 @@ extern DKIM *dkim_verify __P((DKIM_LIB *libhandle, const unsigned char *id,
 **  	its reference count reaches zero.  See documentation for details.
 */
 
-extern DKIM_STAT dkim_resign __P((DKIM *news, DKIM *olds, _Bool hdrbind));
+extern DKIM_STAT dkim_resign(DKIM *news, DKIM *olds, _Bool hdrbind);
 
 /*
 **  DKIM_HEADER -- process a header
@@ -488,7 +479,7 @@ extern DKIM_STAT dkim_resign __P((DKIM *news, DKIM *olds, _Bool hdrbind));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_header __P((DKIM *dkim, const u_char *hdr, size_t len));
+extern DKIM_STAT dkim_header(DKIM *dkim, const u_char *hdr, size_t len);
 
 /*
 **  DKIM_EOH -- identify end of headers
@@ -502,7 +493,7 @@ extern DKIM_STAT dkim_header __P((DKIM *dkim, const u_char *hdr, size_t len));
 **  	validating a signature but no DKIM signature was found in the headers.
 */
 
-extern DKIM_STAT dkim_eoh __P((DKIM *dkim));
+extern DKIM_STAT dkim_eoh(DKIM *dkim);
 
 /*
 **  DKIM_BODY -- process a body chunk
@@ -517,7 +508,7 @@ extern DKIM_STAT dkim_eoh __P((DKIM *dkim));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_body __P((DKIM *dkim, const u_char *buf, size_t len));
+extern DKIM_STAT dkim_body(DKIM *dkim, const u_char *buf, size_t len);
 
 /*
 **  DKIM_CHUNK -- process a message chunk
@@ -531,7 +522,7 @@ extern DKIM_STAT dkim_body __P((DKIM *dkim, const u_char *buf, size_t len));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_chunk __P((DKIM *dkim, const u_char *buf, size_t buflen));
+extern DKIM_STAT dkim_chunk(DKIM *dkim, const u_char *buf, size_t buflen);
 
 /*
 **  DKIM_EOM -- identify end of body
@@ -546,7 +537,7 @@ extern DKIM_STAT dkim_chunk __P((DKIM *dkim, const u_char *buf, size_t buflen));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_eom __P((DKIM *dkim, _Bool *testkey));
+extern DKIM_STAT dkim_eom(DKIM *dkim, _Bool *testkey);
 
 /*
 **  DKIM_KEY_SYNTAX -- process a key record parameter set for valid syntax
@@ -560,8 +551,8 @@ extern DKIM_STAT dkim_eom __P((DKIM *dkim, _Bool *testkey));
 **  	A DKIM_STAT constant.
 */
 
-extern DKIM_STAT dkim_key_syntax __P((DKIM *dkim, const u_char *str,
-                                      size_t len));
+extern DKIM_STAT dkim_key_syntax(DKIM *dkim, const u_char *str,
+                                      size_t len);
 
 /*
 **  DKIM_SIG_SYNTAX -- process a signature parameter set for valid syntax
@@ -575,8 +566,8 @@ extern DKIM_STAT dkim_key_syntax __P((DKIM *dkim, const u_char *str,
 **  	A DKIM_STAT constant.
 */
 
-extern DKIM_STAT dkim_sig_syntax __P((DKIM *dkim, const u_char *str,
-                                      size_t len));
+extern DKIM_STAT dkim_sig_syntax(DKIM *dkim, const u_char *str,
+                                      size_t len);
 
 /*
 **  DKIM_GETID -- retrieve "id" pointer from a handle
@@ -588,7 +579,7 @@ extern DKIM_STAT dkim_sig_syntax __P((DKIM *dkim, const u_char *str,
 **  	The "id" pointer from inside the handle, stored when it was created.
 */
 
-extern const char *dkim_getid __P((DKIM *dkim));
+extern const char *dkim_getid(DKIM *dkim);
 
 /*
 **  DKIM_MINBODY -- return number of bytes still expected
@@ -602,7 +593,7 @@ extern const char *dkim_getid __P((DKIM *dkim));
 **  	other -- bytes required to satisfy all canonicalizations
 */
 
-extern u_long dkim_minbody __P((DKIM *dkim));
+extern u_long dkim_minbody(DKIM *dkim);
 
 /*
 **  DKIM_GETSIGLIST -- retrieve the list of signatures
@@ -616,8 +607,8 @@ extern u_long dkim_minbody __P((DKIM *dkim));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_getsiglist __P((DKIM *dkim, DKIM_SIGINFO ***sigs,
-                                      int *nsigs));
+extern DKIM_STAT dkim_getsiglist(DKIM *dkim, DKIM_SIGINFO ***sigs,
+                                      int *nsigs);
 
 /*
 **  DKIM_GETSIGNATURE -- retrieve the "final" signature
@@ -630,7 +621,7 @@ extern DKIM_STAT dkim_getsiglist __P((DKIM *dkim, DKIM_SIGINFO ***sigs,
 **  	use to return a "final" result; NULL if none could be determined.
 */
 
-extern DKIM_SIGINFO *dkim_getsignature __P((DKIM *dkim));
+extern DKIM_SIGINFO *dkim_getsignature(DKIM *dkim);
 
 /*
 **  DKIM_GETSIGHDR -- compute and return a signature header for a message
@@ -645,8 +636,8 @@ extern DKIM_SIGINFO *dkim_getsignature __P((DKIM *dkim));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_getsighdr __P((DKIM *dkim, u_char *buf, size_t len,
-                                     size_t initial));
+extern DKIM_STAT dkim_getsighdr(DKIM *dkim, u_char *buf, size_t len,
+                                     size_t initial);
 
 /*
 **  DKIM_GETSIGHDR_D -- compute and return a signature header for a message,
@@ -662,8 +653,8 @@ extern DKIM_STAT dkim_getsighdr __P((DKIM *dkim, u_char *buf, size_t len,
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_getsighdr_d __P((DKIM *dkim, size_t initial,
-                                       u_char **buf, size_t *len));
+extern DKIM_STAT dkim_getsighdr_d(DKIM *dkim, size_t initial,
+                                       u_char **buf, size_t *len);
 
 /*
 **  DKIM_SIG_HDRSIGNED -- retrieve the header list from a signature
@@ -677,7 +668,7 @@ extern DKIM_STAT dkim_getsighdr_d __P((DKIM *dkim, size_t initial,
 **  	appeared in that list.
 */
 
-extern _Bool dkim_sig_hdrsigned __P((DKIM_SIGINFO *sig, const u_char *hdr));
+extern _Bool dkim_sig_hdrsigned(DKIM_SIGINFO *sig, const u_char *hdr);
 
 /*
 **  DKIM_SIG_GETQUERIES -- retrieve the queries needed to validate a signature
@@ -692,9 +683,9 @@ extern _Bool dkim_sig_hdrsigned __P((DKIM_SIGINFO *sig, const u_char *hdr));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_getqueries __P((DKIM *dkim, DKIM_SIGINFO *sig,
+extern DKIM_STAT dkim_sig_getqueries(DKIM *dkim, DKIM_SIGINFO *sig,
                                           DKIM_QUERYINFO ***qi,
-                                          unsigned int *nqi));
+                                          unsigned int *nqi);
 
 /*
 **  DKIM_SIG_GETDNSSEC -- retrieve DNSSEC results for a signature
@@ -706,7 +697,7 @@ extern DKIM_STAT dkim_sig_getqueries __P((DKIM *dkim, DKIM_SIGINFO *sig,
 **  	A DKIM_DNSSEC_* constant.
 */
 
-extern int dkim_sig_getdnssec __P((DKIM_SIGINFO *sig));
+extern int dkim_sig_getdnssec(DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_SIG_SETDNSSEC -- set DNSSEC results for a signature
@@ -716,7 +707,7 @@ extern int dkim_sig_getdnssec __P((DKIM_SIGINFO *sig));
 **      dnssec_status -- A DKIM_DNSSEC_* constant
 */
 
-extern void dkim_sig_setdnssec __P((DKIM_SIGINFO *sig, int dnssec_status));
+extern void dkim_sig_setdnssec(DKIM_SIGINFO *sig, int dnssec_status);
 
 /*
 **  DKIM_SIG_GETREPORTINFO -- retrieve reporting information from a key
@@ -738,12 +729,12 @@ extern void dkim_sig_setdnssec __P((DKIM_SIGINFO *sig, int dnssec_status));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_getreportinfo __P((DKIM *dkim, DKIM_SIGINFO *sig,
+extern DKIM_STAT dkim_sig_getreportinfo(DKIM *dkim, DKIM_SIGINFO *sig,
                                              int *hfd, int *bfd,
                                              u_char *addr, size_t addrlen,
                                              u_char *opts, size_t optslen,
                                              u_char *smtp, size_t smtplen,
-                                             u_int *interval));
+                                             u_int *interval);
 
 /*
 **  DKIM_SIG_GETIDENTITY -- retrieve identity of the signer
@@ -758,8 +749,8 @@ extern DKIM_STAT dkim_sig_getreportinfo __P((DKIM *dkim, DKIM_SIGINFO *sig,
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_getidentity __P((DKIM *dkim, DKIM_SIGINFO *sig,
-                                           u_char *val, size_t vallen));
+extern DKIM_STAT dkim_sig_getidentity(DKIM *dkim, DKIM_SIGINFO *sig,
+                                           u_char *val, size_t vallen);
 
 /*
 **  DKIM_SIG_GETCANONLEN -- report number of (canonicalized) body bytes that
@@ -781,9 +772,9 @@ extern DKIM_STAT dkim_sig_getidentity __P((DKIM *dkim, DKIM_SIGINFO *sig,
 **  	to the caller.
 */
 
-extern DKIM_STAT dkim_sig_getcanonlen __P((DKIM *dkim, DKIM_SIGINFO *sig,
+extern DKIM_STAT dkim_sig_getcanonlen(DKIM *dkim, DKIM_SIGINFO *sig,
                                            ssize_t *msglen, ssize_t *canonlen,
-                                           ssize_t *signlen));
+                                           ssize_t *signlen);
 
 /*
 **  DKIM_SETOPT -- set a library option
@@ -835,8 +826,8 @@ extern DKIM_STAT dkim_getopt(DKIM_LIB *lib, dkim_opts_t opt,
 **  	this dual-purpose call into two const-correct paths.
 */
 
-extern DKIM_STAT dkim_options __P((DKIM_LIB *lib, int op, dkim_opts_t opt,
-                                   void *ptr, size_t len));
+extern DKIM_STAT dkim_options(DKIM_LIB *lib, int op, dkim_opts_t opt,
+                                   void *ptr, size_t len);
 
 /*
 **  DKIM_SIG_GETFLAGS -- retrieve signature handle flags
@@ -849,7 +840,7 @@ extern DKIM_STAT dkim_options __P((DKIM_LIB *lib, int op, dkim_opts_t opt,
 **  	constants currently set in the provided handle.
 */
 
-extern unsigned int dkim_sig_getflags __P((DKIM_SIGINFO *sig));
+extern unsigned int dkim_sig_getflags(DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_SIG_GETBH -- retrieve signature handle "bh" test state
@@ -862,7 +853,7 @@ extern unsigned int dkim_sig_getflags __P((DKIM_SIGINFO *sig));
 **  	indicating the current state of "bh" evaluation of the signature.
 */
 
-extern int dkim_sig_getbh __P((DKIM_SIGINFO *sig));
+extern int dkim_sig_getbh(DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_SIG_GETKEYSIZE -- retrieve key size after verifying
@@ -875,8 +866,8 @@ extern int dkim_sig_getbh __P((DKIM_SIGINFO *sig));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_sig_getkeysize __P((DKIM_SIGINFO *sig,
-                                          unsigned int *bits));
+extern DKIM_STAT dkim_sig_getkeysize(DKIM_SIGINFO *sig,
+                                          unsigned int *bits);
 
 /*
 **  DKIM_SIG_GETSIGNALG -- retrieve signature algorithm after verifying
@@ -889,7 +880,7 @@ extern DKIM_STAT dkim_sig_getkeysize __P((DKIM_SIGINFO *sig,
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_sig_getsignalg __P((DKIM_SIGINFO *sig, dkim_alg_t *alg));
+extern DKIM_STAT dkim_sig_getsignalg(DKIM_SIGINFO *sig, dkim_alg_t *alg);
 
 /*
 **  DKIM_SIG_GETSIGNTIME -- retrieve signature timestamp after verifying
@@ -902,7 +893,7 @@ extern DKIM_STAT dkim_sig_getsignalg __P((DKIM_SIGINFO *sig, dkim_alg_t *alg));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_sig_getsigntime __P((DKIM_SIGINFO *sig, uint64_t *when));
+extern DKIM_STAT dkim_sig_getsigntime(DKIM_SIGINFO *sig, uint64_t *when);
 
 /*
 **  DKIM_SIG_GETSELECTOR -- retrieve selector used to generate the signature
@@ -914,7 +905,7 @@ extern DKIM_STAT dkim_sig_getsigntime __P((DKIM_SIGINFO *sig, uint64_t *when));
 **  	Selector found in the signature.
 */
 
-extern unsigned char *dkim_sig_getselector __P((DKIM_SIGINFO *sig));
+extern unsigned char *dkim_sig_getselector(DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_SIG_GETDOMAIN -- retrieve signing domain after verifying
@@ -926,9 +917,9 @@ extern unsigned char *dkim_sig_getselector __P((DKIM_SIGINFO *sig));
 **  	Pointer to the signing domain.
 */
 
-extern unsigned char *dkim_sig_getdomain __P((DKIM_SIGINFO *sig));
+extern unsigned char *dkim_sig_getdomain(DKIM_SIGINFO *sig);
 
-extern unsigned char *dkim_sig_getalgorithm __P((DKIM_SIGINFO *sig));
+extern unsigned char *dkim_sig_getalgorithm(DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_SIG_GETCANONS -- retrieve canonicaliztions after verifying
@@ -940,8 +931,8 @@ extern unsigned char *dkim_sig_getalgorithm __P((DKIM_SIGINFO *sig));
 **  	DKIM_STAT_OK -- success
 */
 
-extern DKIM_STAT dkim_sig_getcanons __P((DKIM_SIGINFO *sig, dkim_canon_t *hdr,
-                                         dkim_canon_t *body));
+extern DKIM_STAT dkim_sig_getcanons(DKIM_SIGINFO *sig, dkim_canon_t *hdr,
+                                         dkim_canon_t *body);
 
 /*
 **  DKIM_SET_USER_CONTEXT -- set DKIM handle user context
@@ -954,7 +945,7 @@ extern DKIM_STAT dkim_sig_getcanons __P((DKIM_SIGINFO *sig, dkim_canon_t *hdr,
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_set_user_context __P((DKIM *dkim, void *ctx));
+extern DKIM_STAT dkim_set_user_context(DKIM *dkim, void *ctx);
 
 /*
 **  DKIM_GET_USER_CONTEXT -- retrieve DKIM handle user context
@@ -966,7 +957,7 @@ extern DKIM_STAT dkim_set_user_context __P((DKIM *dkim, void *ctx));
 **  	User context pointer.
 */
 
-extern void *dkim_get_user_context __P((DKIM *dkim));
+extern void *dkim_get_user_context(DKIM *dkim);
 
 /*
 **  DKIM_GETMODE -- return the mode (signing, verifying, etc.) of a handle
@@ -978,7 +969,7 @@ extern void *dkim_get_user_context __P((DKIM *dkim));
 **  	A DKIM_MODE_* constant.
 */
 
-extern int dkim_getmode __P((DKIM *dkim));
+extern int dkim_getmode(DKIM *dkim);
 
 /*
 **  DKIM_GETDOMAIN -- retrieve policy domain from a DKIM context
@@ -991,7 +982,7 @@ extern int dkim_getmode __P((DKIM *dkim));
 **  	no domain could be determined.
 */
 
-extern u_char *dkim_getdomain __P((DKIM *dkim));
+extern u_char *dkim_getdomain(DKIM *dkim);
 
 /*
 **  DKIM_GETUSER -- retrieve sending user (local-part) from a DKIM context
@@ -1003,7 +994,7 @@ extern u_char *dkim_getdomain __P((DKIM *dkim));
 **  	Pointer to the apparent sending user (local-part) or NULL if not known.
 */
 
-extern u_char *dkim_getuser __P((DKIM *dkim));
+extern u_char *dkim_getuser(DKIM *dkim);
 
 /*
 **  DKIM_GET_SIGNER -- get DKIM signature's signer
@@ -1016,7 +1007,7 @@ extern u_char *dkim_getuser __P((DKIM *dkim));
 **  	or NULL if none.
 */
 
-extern const unsigned char *dkim_get_signer __P((DKIM *dkim));
+extern const unsigned char *dkim_get_signer(DKIM *dkim);
 
 /*
 **  DKIM_SET_SIGNER -- set DKIM signature's signer
@@ -1029,7 +1020,7 @@ extern const unsigned char *dkim_get_signer __P((DKIM *dkim));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_set_signer __P((DKIM *dkim, const u_char *signer));
+extern DKIM_STAT dkim_set_signer(DKIM *dkim, const u_char *signer);
 
 /*
 **  DKIM_SET_DNS_CALLBACK -- set the DNS wait callback
@@ -1045,9 +1036,9 @@ extern DKIM_STAT dkim_set_signer __P((DKIM *dkim, const u_char *signer));
 **  	DKIM_STAT_NOTIMPLEMENT -- underlying resolver doesn't support callbacks
 */
 
-extern DKIM_STAT dkim_set_dns_callback __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_dns_callback(DKIM_LIB *libopendkim,
                                             void (*func)(const void *context),
-                                            unsigned int interval));
+                                            unsigned int interval);
 
 /*
 **  DKIM_SET_KEY_LOOKUP -- set the key lookup function
@@ -1060,11 +1051,11 @@ extern DKIM_STAT dkim_set_dns_callback __P((DKIM_LIB *libopendkim,
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_key_lookup __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_key_lookup(DKIM_LIB *libopendkim,
                                           DKIM_CBSTAT (*func)(DKIM *dkim,
                                                               DKIM_SIGINFO *sig,
                                                               u_char *buf,
-                                                              size_t buflen)));
+                                                              size_t buflen));
 
 /*
 **  DKIM_SET_SIGNATURE_HANDLE -- set the signature handle creator function
@@ -1077,8 +1068,8 @@ extern DKIM_STAT dkim_set_key_lookup __P((DKIM_LIB *libopendkim,
 **  	Pointer to the user-side handle thus created, or NULL.
 */
 
-extern DKIM_STAT dkim_set_signature_handle __P((DKIM_LIB *libopendkim,
-                                                void * (*func)(void *closure)));
+extern DKIM_STAT dkim_set_signature_handle(DKIM_LIB *libopendkim,
+                                                void * (*func)(void *closure));
 
 /*
 **  DKIM_SET_SIGNATURE_HANDLE_FREE -- set the signature handle destroyer
@@ -1092,9 +1083,9 @@ extern DKIM_STAT dkim_set_signature_handle __P((DKIM_LIB *libopendkim,
 **  	None.
 */
 
-extern DKIM_STAT dkim_set_signature_handle_free __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
                                                      void (*func)(void *closure,
-                                                                  void *user)));
+                                                                  void *user));
 
 /*
 **  DKIM_SET_SIGNATURE_TAGVALUES -- set the signature handle populator function
@@ -1107,11 +1098,11 @@ extern DKIM_STAT dkim_set_signature_handle_free __P((DKIM_LIB *libopendkim,
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_signature_tagvalues __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_signature_tagvalues(DKIM_LIB *libopendkim,
                                                    void (*func)(void *user,
                                                                 dkim_param_t pcode,
                                                                 const u_char *param,
-                                                                const u_char *value)));
+                                                                const u_char *value));
 
 /*
 **  DKIM_SET_PRESCREEN -- set the prescreen function
@@ -1124,10 +1115,10 @@ extern DKIM_STAT dkim_set_signature_tagvalues __P((DKIM_LIB *libopendkim,
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_prescreen __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_prescreen(DKIM_LIB *libopendkim,
                                          DKIM_CBSTAT (*func)(DKIM *dkim,
                                                              DKIM_SIGINFO **sigs,
-                                                             int nsigs)));
+                                                             int nsigs));
 
 /*
 **  DKIM_SET_FINAL -- set the final processing function
@@ -1140,10 +1131,10 @@ extern DKIM_STAT dkim_set_prescreen __P((DKIM_LIB *libopendkim,
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_final __P((DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_final(DKIM_LIB *libopendkim,
                                      DKIM_CBSTAT (*func)(DKIM *dkim,
                                                          DKIM_SIGINFO **sigs,
-                                                         int nsigs)));
+                                                         int nsigs));
 
 /*
 **  DKIM_SIG_GETCONTEXT -- get user-specific context from a DKIM_SIGINFO
@@ -1156,7 +1147,7 @@ extern DKIM_STAT dkim_set_final __P((DKIM_LIB *libopendkim,
 **  	if none was ever set.
 */
 
-extern void *dkim_sig_getcontext __P((DKIM_SIGINFO *siginfo));
+extern void *dkim_sig_getcontext(DKIM_SIGINFO *siginfo);
 
 /*
 **  DKIM_SIG_GETERROR -- get error code from a DKIM_SIGINFO
@@ -1168,7 +1159,7 @@ extern void *dkim_sig_getcontext __P((DKIM_SIGINFO *siginfo));
 **  	A DKIM_SIGERROR_* constant.
 */
 
-extern int dkim_sig_geterror __P((DKIM_SIGINFO *siginfo));
+extern int dkim_sig_geterror(DKIM_SIGINFO *siginfo);
 
 /*
 **  DKIM_SIG_SETERROR -- set error code in a DKIM_SIGINFO
@@ -1181,7 +1172,7 @@ extern int dkim_sig_geterror __P((DKIM_SIGINFO *siginfo));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_seterror __P((DKIM_SIGINFO *siginfo, int err));
+extern DKIM_STAT dkim_sig_seterror(DKIM_SIGINFO *siginfo, int err);
 
 /*
 **  DKIM_SIG_GETERRORSTR -- translate a DKIM_SIGERROR into a string
@@ -1194,7 +1185,7 @@ extern DKIM_STAT dkim_sig_seterror __P((DKIM_SIGINFO *siginfo, int err));
 **  	if no such translation exists.
 */
 
-extern const char *dkim_sig_geterrorstr __P((DKIM_SIGERROR sigerr));
+extern const char *dkim_sig_geterrorstr(DKIM_SIGERROR sigerr);
 
 /*
 **  DKIM_SIG_IGNORE -- mark a signature referenced by a DKIM_SIGINFO with
@@ -1207,7 +1198,7 @@ extern const char *dkim_sig_geterrorstr __P((DKIM_SIGERROR sigerr));
 **  	None.
 */
 
-extern void dkim_sig_ignore __P((DKIM_SIGINFO *siginfo));
+extern void dkim_sig_ignore(DKIM_SIGINFO *siginfo);
 
 /*
 **  DKIM_SIG_PROCESS -- process a signature
@@ -1220,7 +1211,7 @@ extern void dkim_sig_ignore __P((DKIM_SIGINFO *siginfo));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_process __P((DKIM *dkim, DKIM_SIGINFO *sig));
+extern DKIM_STAT dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig);
 
 /*
 **  DKIM_FREE -- release resources associated with a DKIM handle
@@ -1233,7 +1224,7 @@ extern DKIM_STAT dkim_sig_process __P((DKIM *dkim, DKIM_SIGINFO *sig));
 **  	A DKIM_STAT value.
 */
 
-extern DKIM_STAT dkim_free __P((DKIM *dkim));
+extern DKIM_STAT dkim_free(DKIM *dkim);
 
 /*
 **  DKIM_GETERROR -- return any stored error string from within the DKIM
@@ -1246,7 +1237,7 @@ extern DKIM_STAT dkim_free __P((DKIM *dkim));
 **  	A pointer to the stored string, or NULL if none was stored.
 */
 
-extern const char *dkim_geterror __P((DKIM *dkim));
+extern const char *dkim_geterror(DKIM *dkim);
 
 /*
 **  DKIM_GETRESULTSTR -- translate a DKIM_STAT_* constant to a string
@@ -1258,7 +1249,7 @@ extern const char *dkim_geterror __P((DKIM *dkim));
 **      Pointer to a text describing "result", or NULL if none exists
 */
 
-extern const char *dkim_getresultstr __P((DKIM_STAT result));
+extern const char *dkim_getresultstr(DKIM_STAT result);
 
 /*
 **  DKIM_OHDRS -- extract and decode original headers
@@ -1273,8 +1264,8 @@ extern const char *dkim_getresultstr __P((DKIM_STAT result));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_ohdrs __P((DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs,
-                                 int *pcnt));
+extern DKIM_STAT dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs,
+                                 int *pcnt);
 
 /*
 **  DKIM_DIFFHEADERS -- compare original headers with received headers
@@ -1296,10 +1287,10 @@ extern DKIM_STAT dkim_ohdrs __P((DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs,
 **  	destroyed.
 */
 
-extern DKIM_STAT dkim_diffheaders __P((DKIM *dkim, dkim_canon_t canon,
+extern DKIM_STAT dkim_diffheaders(DKIM *dkim, dkim_canon_t canon,
                                        int maxcost,
                                        char **ohdrs, int nohdrs,
-                                       struct dkim_hdrdiff **out, int *nout));
+                                       struct dkim_hdrdiff **out, int *nout);
 
 /*
 **  DKIM_GETPARTIAL -- return a DKIM handle's "body length tag" flag
@@ -1311,7 +1302,7 @@ extern DKIM_STAT dkim_diffheaders __P((DKIM *dkim, dkim_canon_t canon,
 **  	True iff the signature is to include a body length tag
 */
 
-extern _Bool dkim_getpartial __P((DKIM *dkim));
+extern _Bool dkim_getpartial(DKIM *dkim);
 
 /*
 **  DKIM_SETPARTIAL -- set the DKIM handle to sign using the DKIM body length
@@ -1325,7 +1316,7 @@ extern _Bool dkim_getpartial __P((DKIM *dkim));
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_setpartial __P((DKIM *dkim, _Bool value));
+extern DKIM_STAT dkim_setpartial(DKIM *dkim, _Bool value);
 
 /*
 **  DKIM_SET_MARGIN -- set the margin to use when generating signatures
@@ -1340,7 +1331,7 @@ extern DKIM_STAT dkim_setpartial __P((DKIM *dkim, _Bool value));
 **      DKIM_STAT_OK -- otherwise
 */
 
-extern DKIM_STAT dkim_set_margin __P((DKIM *dkim, int value));
+extern DKIM_STAT dkim_set_margin(DKIM *dkim, int value);
 
 /*
 **  DKIM_MAIL_PARSE -- extract the local-part and domain-name from a structured
@@ -1355,7 +1346,7 @@ extern DKIM_STAT dkim_set_margin __P((DKIM *dkim, int value));
 **  	0 on success; other on error (see source)
 */
 
-extern int dkim_mail_parse __P((u_char *addr, u_char **user, u_char **domain));
+extern int dkim_mail_parse(u_char *addr, u_char **user, u_char **domain);
 
 /*
 **  DKIM_SSL_VERSION -- return the version of the OpenSSL library against
@@ -1368,7 +1359,7 @@ extern int dkim_mail_parse __P((u_char *addr, u_char **user, u_char **domain));
 **  	The OPENSSL_VERSION_NUMBER constant as defined by OpenSSL.
 */
 
-extern unsigned long dkim_ssl_version __P((void));
+extern unsigned long dkim_ssl_version(void);
 
 /*
 **  DKIM_LIBFEATURE -- check for a library feature
@@ -1394,7 +1385,7 @@ extern unsigned long dkim_ssl_version __P((void));
 
 #define	DKIM_FEATURE_MAX		10
 
-extern _Bool dkim_libfeature __P((DKIM_LIB *lib, u_int fc));
+extern _Bool dkim_libfeature(DKIM_LIB *lib, u_int fc);
 
 
 /*
@@ -1407,7 +1398,7 @@ extern _Bool dkim_libfeature __P((DKIM_LIB *lib, u_int fc));
 **  	Library version, i.e. value of the OPENDKIM_LIB_VERSION macro.
 */
 
-extern uint32_t dkim_libversion __P((void));
+extern uint32_t dkim_libversion(void);
 
 /*
 **  DKIM_GET_SIGSUBSTRING -- retrieve a minimal signature substring for
@@ -1423,8 +1414,8 @@ extern uint32_t dkim_libversion __P((void));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_get_sigsubstring __P((DKIM *, DKIM_SIGINFO *,
-                                            char *, size_t *));
+extern DKIM_STAT dkim_get_sigsubstring(DKIM *, DKIM_SIGINFO *,
+                                            char *, size_t *);
 
 /*
 **  DKIM_TEST_KEY -- retrieve a public key and verify it against a provided
@@ -1446,8 +1437,8 @@ extern DKIM_STAT dkim_get_sigsubstring __P((DKIM *, DKIM_SIGINFO *,
 **  	-1 -- error
 */
 
-extern int dkim_test_key __P((DKIM_LIB *, char *, char *, char *, size_t,
-                              int *, char *, size_t));
+extern int dkim_test_key(DKIM_LIB *, char *, char *, char *, size_t,
+                              int *, char *, size_t);
 
 /*
 **  DKIM_TEST_KEY2 -- retrieve a public key and verify it against a provided
@@ -1470,8 +1461,8 @@ extern int dkim_test_key __P((DKIM_LIB *, char *, char *, char *, size_t,
 **  	-1 -- error
 */
 
-extern int dkim_test_key2 __P((DKIM_LIB *, char *, char *, char *, size_t,
-                               dkim_alg_t, int *, char *, size_t));
+extern int dkim_test_key2(DKIM_LIB *, char *, char *, char *, size_t,
+                               dkim_alg_t, int *, char *, size_t);
 
 /*
 **  DKIM_SIG_GETTAGVALUE -- retrieve a tag's value from a signature or its key
@@ -1493,7 +1484,7 @@ extern int dkim_test_key2 __P((DKIM_LIB *, char *, char *, char *, size_t,
 **  	necessarily been vetted in any way.  Caveat emptor.
 */
 
-extern u_char *dkim_sig_gettagvalue __P((DKIM_SIGINFO *, _Bool, u_char *));
+extern u_char *dkim_sig_gettagvalue(DKIM_SIGINFO *, _Bool, u_char *);
 
 /*
 **  DKIM_SIG_GETSIGNEDHDRS -- retrieve the signed header fields covered by
@@ -1510,8 +1501,8 @@ extern u_char *dkim_sig_gettagvalue __P((DKIM_SIGINFO *, _Bool, u_char *));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_sig_getsignedhdrs __P((DKIM *, DKIM_SIGINFO *,
-                                             u_char *, size_t, u_int *));
+extern DKIM_STAT dkim_sig_getsignedhdrs(DKIM *, DKIM_SIGINFO *,
+                                             u_char *, size_t, u_int *);
 
 /*
 **  DKIM_QP_DECODE -- decode a quoted-printable string
@@ -1526,7 +1517,7 @@ extern DKIM_STAT dkim_sig_getsignedhdrs __P((DKIM *, DKIM_SIGINFO *,
 **  	-1 -- parse error
 */
 
-extern int dkim_qp_decode __P((const unsigned char *, unsigned char *, int));
+extern int dkim_qp_decode(const unsigned char *, unsigned char *, int);
 
 /*
 **  DKIM_DNS_SET_QUERY_SERVICE -- stores a handle representing the DNS
@@ -1541,7 +1532,7 @@ extern int dkim_qp_decode __P((const unsigned char *, unsigned char *, int));
 **  	Previously stored handle, or NULL if none.
 */
 
-extern void *dkim_dns_set_query_service __P((DKIM_LIB *, void *));
+extern void *dkim_dns_set_query_service(DKIM_LIB *, void *);
 
 /*
 **  DKIM_DNS_SET_QUERY_START -- stores a pointer to a query start function
@@ -1565,11 +1556,11 @@ extern void *dkim_dns_set_query_service __P((DKIM_LIB *, void *));
 **  		void **qh -- returned query handle
 */
 
-extern void dkim_dns_set_query_start __P((DKIM_LIB *,
+extern void dkim_dns_set_query_start(DKIM_LIB *,
                                           int (*)(void *, int,
                                                   unsigned char *,
                                                   unsigned char *,
-                                                  size_t, void **)));
+                                                  size_t, void **));
 
 /*
 **  DKIM_DNS_SET_QUERY_CANCEL -- stores a pointer to a query cancel function
@@ -1588,8 +1579,8 @@ extern void dkim_dns_set_query_start __P((DKIM_LIB *,
 **  		void *qh -- query handle to be canceled
 */
 
-extern void dkim_dns_set_query_cancel __P((DKIM_LIB *,
-                                           int (*)(void *, void *)));
+extern void dkim_dns_set_query_cancel(DKIM_LIB *,
+                                           int (*)(void *, void *));
 
 /*
 **  DKIM_DNS_SET_QUERY_WAITREPLY -- stores a pointer to wait for a DNS reply
@@ -1612,11 +1603,11 @@ extern void dkim_dns_set_query_cancel __P((DKIM_LIB *,
 **  		int *dnssec -- DNSSEC status returned
 */
 
-extern void dkim_dns_set_query_waitreply __P((DKIM_LIB *,
+extern void dkim_dns_set_query_waitreply(DKIM_LIB *,
                                               int (*)(void *, void *,
                                                       struct timeval *,
                                                       size_t *, int *,
-                                                      int *)));
+                                                      int *));
 
 /*
 **  DKIM_DNS_SET_INIT -- initializes the resolver
@@ -1634,8 +1625,8 @@ extern void dkim_dns_set_query_waitreply __P((DKIM_LIB *,
 **  		void **srv -- DNS service handle (updated)
 */
 
-extern void dkim_dns_set_init __P((DKIM_LIB *,
-                                   int (*)(void **)));
+extern void dkim_dns_set_init(DKIM_LIB *,
+                                   int (*)(void **));
 
 /*
 **  DKIM_DNS_SET_CLOSE -- shuts down the resolver
@@ -1653,8 +1644,8 @@ extern void dkim_dns_set_init __P((DKIM_LIB *,
 **  		void *srv -- DNS service handle
 */
 
-extern void dkim_dns_set_close __P((DKIM_LIB *,
-                                    void (*)(void *)));
+extern void dkim_dns_set_close(DKIM_LIB *,
+                                    void (*)(void *));
 
 /*
 **  DKIM_DNS_SET_NSLIST -- set function that updates resolver nameserver list
@@ -1674,8 +1665,8 @@ extern void dkim_dns_set_close __P((DKIM_LIB *,
 **  			string
 */
 
-extern void dkim_dns_set_nslist __P((DKIM_LIB *,
-                                     int (*)(void *, const char *)));
+extern void dkim_dns_set_nslist(DKIM_LIB *,
+                                     int (*)(void *, const char *));
 
 /*
 **  DKIM_DNS_SET_CONFIG -- set function that passes configuration data to
@@ -1695,8 +1686,8 @@ extern void dkim_dns_set_nslist __P((DKIM_LIB *,
 **  		const char *config -- arbitrary configuration data
 */
 
-extern void dkim_dns_set_config __P((DKIM_LIB *,
-                                     int (*)(void *, const char *)));
+extern void dkim_dns_set_config(DKIM_LIB *,
+                                     int (*)(void *, const char *));
 
 /*
 **  DKIM_DNS_SET_TRUSTANCHOR -- set function that passes trust anchor data to
@@ -1716,8 +1707,8 @@ extern void dkim_dns_set_config __P((DKIM_LIB *,
 **  		const char *trustanchor -- arbitrary trust anchor data
 */
 
-extern void dkim_dns_set_trustanchor __P((DKIM_LIB *,
-                                          int (*)(void *, const char *)));
+extern void dkim_dns_set_trustanchor(DKIM_LIB *,
+                                          int (*)(void *, const char *));
 
 /*
 **  DKIM_DNS_NSLIST -- update resolver nameserver list
@@ -1735,7 +1726,7 @@ extern void dkim_dns_set_trustanchor __P((DKIM_LIB *,
 **  	not use all of the nameservers provided.
 */
 
-extern int dkim_dns_nslist __P((DKIM_LIB *, const char *));
+extern int dkim_dns_nslist(DKIM_LIB *, const char *);
 
 /*
 **  DKIM_DNS_INIT -- force resolver (re)initialization
@@ -1747,7 +1738,7 @@ extern int dkim_dns_nslist __P((DKIM_LIB *, const char *));
 **  	A DKIM_DNS_* constant.
 */
 
-extern int dkim_dns_init __P((DKIM_LIB *));
+extern int dkim_dns_init(DKIM_LIB *);
 
 /*
 **  DKIM_DNS_CLOSE -- force resolver shutdown
@@ -1759,7 +1750,7 @@ extern int dkim_dns_init __P((DKIM_LIB *));
 **  	A DKIM_DNS_* constant.
 */
 
-extern int dkim_dns_close __P((DKIM_LIB *));
+extern int dkim_dns_close(DKIM_LIB *);
 
 /*
 **  DKIM_DNS_CONFIG -- requests a change to resolver configuration
@@ -1772,7 +1763,7 @@ extern int dkim_dns_close __P((DKIM_LIB *));
 **  	A DKIM_DNS_* constant.
 */
 
-extern int dkim_dns_config __P((DKIM_LIB *, const char *));
+extern int dkim_dns_config(DKIM_LIB *, const char *);
 
 /*
 **  DKIM_DNS_TRUSTANCHOR -- requests a change to trust anchor configuration
@@ -1785,7 +1776,7 @@ extern int dkim_dns_config __P((DKIM_LIB *, const char *));
 **  	A DKIM_DNS_* constant.
 */
 
-extern int dkim_dns_trustanchor __P((DKIM_LIB *, const char *));
+extern int dkim_dns_trustanchor(DKIM_LIB *, const char *);
 
 /*
 **  DKIM_ADD_QUERYMETHOD -- add a query method
@@ -1799,8 +1790,8 @@ extern int dkim_dns_trustanchor __P((DKIM_LIB *, const char *));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_add_querymethod __P((DKIM *, const char *,
-                                           const char *));
+extern DKIM_STAT dkim_add_querymethod(DKIM *, const char *,
+                                           const char *);
 
 /*
 **  DKIM_ADD_XTAG -- add an extension tag/value
@@ -1814,7 +1805,7 @@ extern DKIM_STAT dkim_add_querymethod __P((DKIM *, const char *,
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_add_xtag __P((DKIM *, const char *, const char *));
+extern DKIM_STAT dkim_add_xtag(DKIM *, const char *, const char *);
 
 /*
 **  DKIM_PRIVKEY_LOAD -- explicitly try to load the private key
@@ -1826,7 +1817,7 @@ extern DKIM_STAT dkim_add_xtag __P((DKIM *, const char *, const char *));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_privkey_load __P((DKIM *));
+extern DKIM_STAT dkim_privkey_load(DKIM *);
 
 /*
 **  DKIM_ATPS_CHECK -- check for Authorized Third Party Signing
@@ -1841,8 +1832,8 @@ extern DKIM_STAT dkim_privkey_load __P((DKIM *));
 **  	A DKIM_STAT_* constant.
 */
 
-extern DKIM_STAT dkim_atps_check __P((DKIM *, DKIM_SIGINFO *,
-                                      struct timeval *, dkim_atps_t *res));
+extern DKIM_STAT dkim_atps_check(DKIM *, DKIM_SIGINFO *,
+                                      struct timeval *, dkim_atps_t *res);
 
 /*
 **  DKIM_QI_GETNAME -- retrieve the DNS name from a DKIM_QUERYINFO object
@@ -1855,7 +1846,7 @@ extern DKIM_STAT dkim_atps_check __P((DKIM *, DKIM_SIGINFO *,
 **  	queried, or NULL on error.
 */
 
-extern const char *dkim_qi_getname __P((DKIM_QUERYINFO *));
+extern const char *dkim_qi_getname(DKIM_QUERYINFO *);
 
 /*
 **  DKIM_QI_GETTYPE -- retrieve the DNS RR type from a DKIM_QUERYINFO object
@@ -1867,7 +1858,7 @@ extern const char *dkim_qi_getname __P((DKIM_QUERYINFO *));
 **  	The DNS RR type to be queried, or -1 on error.
 */
 
-extern int dkim_qi_gettype __P((DKIM_QUERYINFO *));
+extern int dkim_qi_gettype(DKIM_QUERYINFO *);
 
 /*
 **  DKIM_SIG_GETHASHES -- retrieve hashes
@@ -1884,8 +1875,8 @@ extern int dkim_qi_gettype __P((DKIM_QUERYINFO *));
 **  	DKIM_STAT_INVALID -- hashing hasn't been completed
 */
 
-extern DKIM_STAT dkim_sig_gethashes __P((DKIM_SIGINFO *, void **, size_t *,
-                                         void **, size_t *));
+extern DKIM_STAT dkim_sig_gethashes(DKIM_SIGINFO *, void **, size_t *,
+                                         void **, size_t *);
 
 /*
 **  DKIM_SIGNHDRS -- set the list of header fields to sign for a signature,
@@ -1902,7 +1893,7 @@ extern DKIM_STAT dkim_sig_gethashes __P((DKIM_SIGINFO *, void **, size_t *,
 **  	"hdrlist" can be NULL if the library's default is to be used.
 */
 
-extern DKIM_STAT dkim_signhdrs __P((DKIM *, const char **));
+extern DKIM_STAT dkim_signhdrs(DKIM *, const char **);
 
 /*
 **  DKIM_GETSSLBUF -- get the SSL error buffer, if any, from a DKIM handle
@@ -1914,7 +1905,7 @@ extern DKIM_STAT dkim_signhdrs __P((DKIM *, const char **));
 **  	Pointer to the string, if defined, or NULL otherwise.
 */
 
-extern const char *dkim_getsslbuf __P((DKIM *dkim));
+extern const char *dkim_getsslbuf(DKIM *dkim);
 
 /*
 **  DKIM_SIG_GETSSLBUF -- get the SSL error buffer, if any, from a signature
@@ -1926,7 +1917,7 @@ extern const char *dkim_getsslbuf __P((DKIM *dkim));
 **  	Pointer to the string, if defined, or NULL otherwise.
 */
 
-extern const char *dkim_sig_getsslbuf __P((DKIM_SIGINFO *sig));
+extern const char *dkim_sig_getsslbuf(DKIM_SIGINFO *sig);
 
 /* list of headers that should be signed, per RFC6376 Section 5.4 */
 extern const u_char *dkim_should_signhdrs[]; 

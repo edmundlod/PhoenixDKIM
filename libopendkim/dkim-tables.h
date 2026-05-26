@@ -9,15 +9,6 @@
 #ifndef _DKIM_TABLES_H_
 #define _DKIM_TABLES_H_
 
-#ifdef __STDC__
-# ifndef __P
-#  define __P(x)  x
-# endif /* ! __P */
-#else /* __STDC__ */
-# ifndef __P
-#  define __P(x)  ()
-# endif /* ! __P */
-#endif /* __STDC__ */
 
 /* structures */
 struct nametable
@@ -40,9 +31,9 @@ extern struct nametable *sigerrors;
 extern struct nametable *sigparams;
 
 /* prototypes */
-extern const char *dkim_code_to_name __P((struct nametable *tbl,
-                                          const int code));
-extern int dkim_name_to_code __P((struct nametable *tbl,
-                                  const char *name));
+extern const char *dkim_code_to_name(struct nametable *tbl,
+                                          const int code);
+extern int dkim_name_to_code(struct nametable *tbl,
+                                  const char *name);
 
 #endif /* _DKIM_TABLES_H_ */
