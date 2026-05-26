@@ -10971,8 +10971,9 @@ mlfi_eoh(SMFICTX *ctx)
 
 				if (domainok)
 				{
-					strlcpy((char *) dfc->mctx_domain, p,
-					        sizeof dfc->mctx_domain);
+					/* p points into mctx_domain; use memmove */
+					memmove(dfc->mctx_domain, p,
+					        strlen(p) + 1);
 					break;
 				}
 			}
