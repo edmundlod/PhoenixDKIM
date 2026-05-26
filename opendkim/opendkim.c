@@ -13444,6 +13444,7 @@ main(int argc, char **argv)
 			printf("\tSupported canonicalization algorithms:\n");
 			for (c = 0; dkimf_canon[c].str != NULL; c++)
 				printf("\t\t%s\n", dkimf_canon[c].str);
+			printf("\tConfigured with: %s\n", CONFIGURE_ARGS);
 			dkimf_optlist(stdout);
 			return EX_OK;
 

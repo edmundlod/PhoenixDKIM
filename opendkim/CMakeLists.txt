@@ -151,6 +151,22 @@ if(GIT_EXECUTABLE AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     endforeach()
 endif()
 
+# CONFIGURE_ARGS records the build options needed to reproduce this build
+# (issue #357).  CMake has no literal equivalent of autoconf's
+# $ac_configure_args, so reconstruct the meaningful -D flags from the resolved
+# option values.  Normalise each toggle to ON/OFF: a value passed as
+# -DWITH_X=1 is stored verbatim as "1", while an option left at its default
+# carries "ON"/"OFF", so emit a consistent boolean rather than the raw value.
+set(CONFIGURE_ARGS
+    "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
+foreach(_opt WITH_LUA WITH_REDIS WITH_CURL WITH_SYSTEMD WITH_UNBOUND)
+    if(${_opt})
+        string(APPEND CONFIGURE_ARGS " -D${_opt}=ON")
+    else()
+        string(APPEND CONFIGURE_ARGS " -D${_opt}=OFF")
+    endif()
+endforeach()
+
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/build-version.h.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/build-version.h
