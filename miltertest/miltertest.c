@@ -167,6 +167,7 @@ struct mt_eom_request
 struct mt_context
 {
 	char		ctx_response;		/* milter response code */
+	char		ctx_smtp_reply[BUFRSZ];	/* last SMFIR_REPLYCODE data */
 	int		ctx_fd;			/* descriptor */
 	int		ctx_state;		/* current state */
 	unsigned long	ctx_mactions;		/* requested actions */
@@ -686,6 +687,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -729,6 +735,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -772,6 +783,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -815,6 +831,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -855,6 +876,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -901,6 +927,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -940,6 +971,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -980,6 +1016,11 @@ mt_assert_state(struct mt_context *ctx, int state)
 					return FALSE;
 
 				ctx->ctx_response = rcmd;
+				if (rcmd == SMFIR_REPLYCODE)
+					strlcpy(ctx->ctx_smtp_reply, buf,
+					        sizeof ctx->ctx_smtp_reply);
+				else
+					ctx->ctx_smtp_reply[0] = '\0';
 			}
 
 			if (rcmd != SMFIR_CONTINUE)
@@ -1623,6 +1664,7 @@ mt_connect(lua_State *l)
 	new->ctx_state = STATE_INIT;
 	new->ctx_fd = fd;
 	new->ctx_response = '\0';
+	new->ctx_smtp_reply[0] = '\0';
 	new->ctx_eomreqs = NULL;
 	new->ctx_mactions = 0;
 	new->ctx_mpopts = 0;
@@ -1903,6 +1945,10 @@ mt_negotiate(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_NEGOTIATED;
 
 	/* decode and store requested protocol steps and actions */
@@ -2216,6 +2262,10 @@ mt_conninfo(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_CONNINFO;
 
 	if (verbose > 0)
@@ -2307,6 +2357,10 @@ mt_unknown(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 
 	if (verbose > 0)
 	{
@@ -2392,6 +2446,10 @@ mt_helo(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_HELO;
 
 	if (verbose > 0)
@@ -2486,6 +2544,10 @@ mt_mailfrom(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_ENVFROM;
 	mt_flush_eomreqs(ctx);
 
@@ -2588,6 +2650,10 @@ mt_rcptto(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_ENVRCPT;
 
 	if (verbose > 0)
@@ -2667,6 +2733,10 @@ mt_data(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_DATA;
 
 	if (verbose > 0)
@@ -2764,6 +2834,10 @@ mt_header(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_HEADER;
 
 	if (verbose > 0)
@@ -2837,6 +2911,10 @@ mt_eoh(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_EOH;
 
 	if (verbose > 0)
@@ -2913,6 +2991,10 @@ mt_bodystring(lua_State *l)
 	}
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_BODY;
 
 	if (verbose > 0)
@@ -3004,6 +3086,10 @@ mt_bodyrandom(lua_State *l)
 		}
 
 		ctx->ctx_response = rcmd;
+		if (rcmd == SMFIR_REPLYCODE)
+			strlcpy(ctx->ctx_smtp_reply, buf, sizeof ctx->ctx_smtp_reply);
+		else
+			ctx->ctx_smtp_reply[0] = '\0';
 		ctx->ctx_state = STATE_BODY;
 
 		if (verbose > 0)
@@ -3122,6 +3208,10 @@ mt_bodyfile(lua_State *l)
 	fclose(f);
 
 	ctx->ctx_response = rcmd;
+	if (rcmd == SMFIR_REPLYCODE)
+		strlcpy(ctx->ctx_smtp_reply, chunk, sizeof ctx->ctx_smtp_reply);
+	else
+		ctx->ctx_smtp_reply[0] = '\0';
 	ctx->ctx_state = STATE_BODY;
 
 	lua_pushnil(l);
@@ -3709,22 +3799,29 @@ mt_eom_check(lua_State *l)
 
 		lua_pop(l, lua_gettop(l));
 
-		for (r = ctx->ctx_eomreqs; r != NULL; r = r->eom_next)
 		{
-			if (r->eom_request == SMFIR_REPLYCODE)
+			char rbuf[BUFRSZ];
+
+			snprintf(rbuf, sizeof rbuf, "%s%s%s%s%s",
+			         smtp,
+			         esc == NULL ? "" : " ", esc == NULL ? "" : esc,
+			         text == NULL ? "" : " ", text == NULL ? "" : text);
+
+			for (r = ctx->ctx_eomreqs; r != NULL; r = r->eom_next)
 			{
-				char rbuf[BUFRSZ];
-
-				snprintf(rbuf, sizeof rbuf, "%s%s%s%s%s",
-				         smtp,
-				         esc == NULL ? "" : " ", esc == NULL ? "" : esc,
-				         text == NULL ? "" : " ", text == NULL ? "" : text);
-
-				if (strcmp(rbuf, (char *) r->eom_rdata) == 0)
+				if (r->eom_request == SMFIR_REPLYCODE &&
+				    strcmp(rbuf, (char *) r->eom_rdata) == 0)
 				{
 					lua_pushboolean(l, 1);
 					return 1;
 				}
+			}
+
+			if (ctx->ctx_smtp_reply[0] != '\0' &&
+			    strcmp(rbuf, ctx->ctx_smtp_reply) == 0)
+			{
+				lua_pushboolean(l, 1);
+				return 1;
 			}
 		}
 
