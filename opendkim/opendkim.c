@@ -3947,6 +3947,7 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 						         path, s.st_gid,
 						         pw->pw_name);
 					}
+					endpwent();
 					pthread_mutex_unlock(&pwdb_lock);
 					return 0;
 				}
@@ -4032,10 +4033,12 @@ dkimf_checkfsnode(const char *path, uid_t myuid, char *myname, ino_t *ino,
 						         pw->pw_name);
 					}
 
+					endpwent();
 					pthread_mutex_unlock(&pwdb_lock);
 					return 0;
 				}
 			}
+			endpwent();
 
 			/* check if this group contains anyone else */
 			gr = getgrgid(s.st_gid);
@@ -4234,6 +4237,7 @@ dkimf_securefile(const char *path, ino_t *ino, uid_t myuid, char *err,
 		{
 			if (pw->pw_uid != myuid && pw->pw_gid == s.st_gid)
 			{
+				endpwent();
 				pthread_mutex_unlock(&pwdb_lock);
 				return 0;
 			}
