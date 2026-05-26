@@ -1,8 +1,8 @@
 # PhoenixDKIM
 
-PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and
-verification daemon, focused on security, correctness, and modern
-platform support. It originated as a fork of
+PhoenixDKIM is a modernised, somehwat OpenDKIM-compatible (see Removed section
+below) DKIM signing and verification daemon, focused on security, correctness,
+and modern platform support. It originated as a fork of
 [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM)
 and is a drop-in replacement for existing OpenDKIM deployments.
 
@@ -13,17 +13,19 @@ and is a drop-in replacement for existing OpenDKIM deployments.
 - **LMDB** — replaces unmaintained BerkeleyDB for key storage
 - **CMake** — replaces autoconf/automake
 - **Lua 5.4** — updated from Lua 5.1
-- Removed: VBR, ATPS, RBL, reputation subsystems, LDAP, SQL/OpenDBX,
+- RSA-SHA1 signing and verifying dropped per RFC 8301 sub 3.1
+- Minimum RSA signing key size: 2048 bits (this is deliberately chosen in
+  PhoenixDKIM - RFC 8301 allows 1024 bits)
+
+## Removed from pre-fork OpenDKIM 2.11.0-beta2 (d.d. 15-NOV-2018)
+
+Removed: VBR, ATPS, RBL, reputation subsystems, LDAP, SQL/OpenDBX,
   GnuTLS, BerkeleyDB (and its `QUERY_CACHE` DNS-result cache),
-  `diffheaders` (tre dependency).  See
-  [docs/removed-features.md](docs/removed-features.md) for the rationale
-  behind each.
-- RSA-SHA1 signing dropped; RSA-SHA1 verification retained for
-  interoperability with legacy signed mail
-- Minimum RSA signing key size: 2048 bits
+  `diffheaders` (tre dependency).
+See [docs/removed-features.md](docs/removed-features.md) for the
+rationale behind each.
 
 ## Dependencies
-
 To build the library and filter you will need:
 
 - A C17-capable compiler (GCC 8+ or Clang 5+)
@@ -35,7 +37,7 @@ To build the library and filter you will need:
 
 Optional:
 
-- Lua 5.4 — policy scripting hooks (`-DWITH_LUA=ON`)
+- Lua 5.4+ — policy scripting hooks (`-DWITH_LUA=ON`)
 - libunbound — DNSSEC-aware DNS resolution (`-DWITH_UNBOUND=ON`)
 - libcurl >= 7.20.0 — SMTP report delivery via the `SMTPURI` config option (`-DWITH_CURL=ON`)
 - hiredis or libvalkey — Redis/Valkey signing-table backend (`-DWITH_REDIS=ON`)
@@ -74,14 +76,6 @@ cmake -B build
 cmake --build build
 ctest --test-dir build
 ```
-
-> **RHEL / Fedora / AlmaLinux / Rocky Linux:** the DEFAULT system crypto
-> policy disables SHA1 for signature operations.  CMake will warn during
-> configuration, and approximately 26 libopendkim tests that verify
-> legacy RSA-SHA1-signed mail will fail.  This is not a build defect.
-> See [docs/crypto-policy.md](docs/crypto-policy.md) for an explanation
-> and instructions for enabling SHA1 if needed.
-
 Common build options:
 
 | Option | Default | Description |
@@ -113,7 +107,7 @@ For Postfix, add to `main.cf`:
 ```
 smtpd_milters = unix:/run/opendkim/opendkim.sock
 non_smtpd_milters = unix:/run/opendkim/opendkim.sock
-milter_default_action = accept
+milter_default_action = accept (or: tempfail)
 ```
 
 A systemd service unit is in `contrib/systemd`, and for Debian in `debian/`.
@@ -161,16 +155,6 @@ DNS queries for key records may exceed the default MTA milter timeout.
 Increase `milter_timeout` in Postfix, or the milter timeout in Sendmail
 if you encounter this.
 
-### SHA1 RSA signatures reported as key-decode errors
-
-On RHEL 9+, Fedora 38+, and derivatives running the DEFAULT crypto
-policy, OpenSSL disables SHA1 for signature verification.  Incoming
-mail signed with RSA-SHA1 will be reported with a key-decode error
-instead of a signature-mismatch error, and will appear unsigned.
-This is a system policy decision, not a bug.  See
-[docs/crypto-policy.md](docs/crypto-policy.md) for details and
-options.
-
 ### EVP key decode failures
 
 A public key record was retrieved but could not be decoded. Possible
@@ -188,6 +172,9 @@ the signing MTA does no rewriting, or use multiple `DaemonPortOptions`
 entries to separate rewriting from signing.
 
 ## Origin
+
+> Note that as per May 2026 it seems that OpenDKIM is getting updates again,
+> currently in the 'develop' branch. Perhaps a new release is in the making!
 
 OpenDKIM had seen no meaningful upstream development for years, yet remained
 widely deployed. Rather than abandon it or switch to an alternative, I decided
@@ -220,7 +207,9 @@ Source Licence, found in `LICENSE.Sendmail`. See the copyright notice
 in each source file for which licence(s) apply.
 
 ## Legal notice
-A number of legal regimes restrict the use or export of cryptography. If you are potentially subject to such restrictions you should seek legal advice before using, developing, or distributing cryptographic code.
+A number of legal regimes restrict the use or export of cryptography.
+If you are potentially subject to such restrictions you should seek legal
+advice before using, developing, or distributing cryptographic code.
 
 ## Bugs and Contributions
 
