@@ -5710,7 +5710,7 @@ dkimf_parsehandler(struct config *cfg, const char *name, struct handling *hndl,
 /*
 **  DKIMF_CONFIG_LOAD -- load a configuration handle based on file content
 **
-**  Paramters:
+**  Parameters:
 **  	data -- configuration data loaded from config file
 **  	conf -- configuration structure to load
 **  	err -- where to write errors
