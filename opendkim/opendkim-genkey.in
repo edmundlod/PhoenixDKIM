@@ -150,7 +150,7 @@ if (lc($keytype) eq "rsa" && $bits < 2048)
 if (lc($keytype) eq "ed25519")
 {
 	$status = system("openssl genpkey -algorithm ed25519 -out "
-	                 . $selector . ".private > /dev/null 2>&1");
+	                 . $selector . ".private > /dev/null");
 	if ($status != 0)
 	{
 		if ($? & 127)
@@ -180,7 +180,7 @@ if (lc($keytype) eq "ed25519")
 
 	$status = system("openssl pkey -in " . $selector
 	                 . ".private -pubout -out "
-	                 . $selector . ".public -outform PEM > /dev/null 2>&1");
+	                 . $selector . ".public -outform PEM > /dev/null");
 	if ($status != 0)
 	{
 		if ($? & 127)
@@ -199,7 +199,7 @@ if (lc($keytype) eq "ed25519")
 }
 else
 {
-	$status = system("openssl genrsa -out " . $selector . ".private " . $bits . " > /dev/null 2>&1");
+	$status = system("openssl genrsa -out " . $selector . ".private " . $bits . " > /dev/null");
 	if ($status != 0)
 	{
 		if ($? & 127)
@@ -227,7 +227,7 @@ else
 		print STDERR "$progname: extracting public key\n";
 	}
 
-	$status = system("openssl rsa -in " . $selector . ".private -pubout -out " . $selector . ".public -outform PEM > /dev/null 2>&1");
+	$status = system("openssl rsa -in " . $selector . ".private -pubout -out " . $selector . ".public -outform PEM > /dev/null");
 	if ($status != 0)
 	{
 		if ($? & 127)
