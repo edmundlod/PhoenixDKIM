@@ -42,6 +42,7 @@ struct configdef dkimf_config[] =
 	{ "Canonicalization",		CONFIG_TYPE_STRING,	FALSE },
 	{ "CaptureUnknownErrors",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "ChangeRootDirectory",	CONFIG_TYPE_STRING,	FALSE },
+	{ "CheckSigningTable",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "ClockDrift",			CONFIG_TYPE_INTEGER,	FALSE },
 	{ "Diagnostics",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DiagnosticDirectory",	CONFIG_TYPE_STRING,	FALSE },

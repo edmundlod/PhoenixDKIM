@@ -223,6 +223,21 @@ requires superuser access. A warning will be generated if
 is not also set.
 
 .TP
+.I CheckSigningTable (Boolean)
+If set to "yes", walks the
+.I SigningTable
+when loading the configuration file to verify that every key it references
+exists in the
+.I KeyTable;
+loading aborts if a referenced key is missing.  Setting it to "no" skips
+this check, which can take a noticeable amount of time with very large
+tables.  The default is "yes".  The
+.I \-g
+and
+.I \-G
+command line options override this setting.
+
+.TP
 .I ClockDrift (integer)
 Sets the tolerance in seconds to be applied when determining whether a
 signature was either expired or generated in the future.  The default
