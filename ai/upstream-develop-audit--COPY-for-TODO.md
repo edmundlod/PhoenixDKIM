@@ -24,7 +24,7 @@ Upstream went quiet after 2026-05-06 and restarted on 2026-05-22 with a large ba
 merged PRs, many of which had been waiting for years. ~200 commits over 4 days.
 
 `4961ef96` 2026-05-25 — ADOPTED — opendkim-db: treat leading '[' as bracketed IPv6 address, not a type prefix (closes #319)
-`30bc6c11` 2026-05-25 — TODO — SoftwareHeader: include milter hostname when different from MTA hostname (closes #349)
+`30bc6c11` 2026-05-25 — ADOPTED — SoftwareHeader: include milter hostname when different from MTA hostname (closes #349)
 `fe5b8216` 2026-05-25 — REVIEW — Embed git hash in version string for development builds (closes #350); uses configure.ac; CMake equivalent feasible but needs separate implementation
 `7b5ccd7d` 2026-05-25 — REVIEW — Runtime detection of SHA1 signing availability via dkim_init() probe; we already disable SHA1 signing at build/runtime — compare approach
 `28524911` 2026-05-25 — REVIEW — libopendkim: handle SHA1 unavailability gracefully in sign and verify paths; overlaps with our SHA1 stance; check if runtime probe logic differs meaningfully
