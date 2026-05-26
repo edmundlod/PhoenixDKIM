@@ -199,8 +199,13 @@ dkimf_lua_writer(lua_State *l, const void *buf, size_t sz, void *data)
 
 	(void) l;
 	assert(l != NULL);
-	assert(buf != NULL);
 	assert(data != NULL);
+
+	/* Lua 5.5 calls the writer once with buf=NULL to signal end of dump. */
+	if (buf == NULL)
+		return 0;
+
+	assert(buf != NULL);
 
 	io = (struct dkimf_lua_io *) data;
 
