@@ -8476,8 +8476,13 @@ dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 		if (conf->conf_dolog)
 		{
 			const char *err = NULL;
+			const char *keymsg;
 			u_char *selector = NULL;
 			u_char *domain = NULL;
+
+			keymsg = (status == DKIM_STAT_KEYFAIL)
+			         ? "key retrieval timeout"
+			         : "key retrieval failed";
 
 			err = dkim_geterror(dkim);
 
@@ -8491,16 +8496,16 @@ dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 			if (selector != NULL && domain != NULL)
 			{
 				syslog(LOG_ERR,
-				       "%s: key retrieval failed (s=%s, d=%s)%s%s",
-				       JOBID(dfc->mctx_jobid), selector,
+				       "%s: %s (s=%s, d=%s)%s%s",
+				       JOBID(dfc->mctx_jobid), keymsg, selector,
 				       domain,
 				       err == NULL ? "" : ": ",
 				       err == NULL ? "" : err);
 			}
 			else
 			{
-				syslog(LOG_ERR, "%s: key retrieval failed%s%s",
-				       JOBID(dfc->mctx_jobid),
+				syslog(LOG_ERR, "%s: %s%s%s",
+				       JOBID(dfc->mctx_jobid), keymsg,
 				       err == NULL ? "" : ": ",
 				       err == NULL ? "" : err);
 			}
