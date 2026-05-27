@@ -6760,7 +6760,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 				         strcmp(which, "z") == 0)
 				{			/* break at margins */
 					int offset;
-					int n;
+					size_t n;
 					char *x;
 					char *y;
 
@@ -6792,7 +6792,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 						}
 
 						n = MIN(dkim->dkim_margin - len,
-						        y - x);
+						        (size_t)(y - x));
 						dkim_dstring_catn(dkim->dkim_hdrbuf,
 						                  (u_char *) x,
 						                  n);
@@ -8111,7 +8111,8 @@ dkim_get_sigsubstring(DKIM *dkim, DKIM_SIGINFO *sig, char *buf, size_t *buflen)
 	if (b1 == NULL)
 		return DKIM_STAT_SYNTAX;
 
-	minlen = MIN(*buflen > 0 ? *buflen - 1 : 0, dkim->dkim_minsiglen);
+	minlen = (int) MIN(*buflen > 0 ? *buflen - 1 : 0,
+	                   (size_t) dkim->dkim_minsiglen);
 	strncpy(buf, b1, minlen);
 	buf[minlen] = '\0';
 	*buflen = minlen;

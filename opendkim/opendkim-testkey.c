@@ -150,7 +150,7 @@ loadkey(char *buf, size_t *buflen)
 			return FALSE;
 		}
 
-		*buflen = MIN(s.st_size, *buflen);
+		*buflen = MIN((size_t) s.st_size, *buflen);
 		rlen = read(fd, buf, *buflen);
 		close(fd);
 

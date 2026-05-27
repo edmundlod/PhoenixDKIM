@@ -153,7 +153,7 @@ dkim_canon_write(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 	assert(canon != NULL);
 
 	if (canon->canon_remain != (ssize_t) -1)
-		buflen = MIN(buflen, canon->canon_remain);
+		buflen = MIN(buflen, (size_t) canon->canon_remain);
 
 	canon->canon_wrote += buflen;
 
