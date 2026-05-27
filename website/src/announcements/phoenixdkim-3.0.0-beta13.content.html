@@ -5,9 +5,13 @@
 <p> A large release. The headline is RFC 8301 enforcement: RSA-SHA1 is now
 completely disabled for both signing and verification, with a new
 <tt>On-WeakAlgorithm</tt> option to control what happens to messages that
-carry such a signature. Alongside that are new features, systemd integration,
-a completed pass of <tt>-Wconversion</tt> / <tt>-Wsign-conversion</tt>
-remediation across the entire codebase, and a substantial number of bug fixes.
+carry such a signature (check the man-page). </p>
+
+<p> Alongside that are new features; better systemd integration; and a
+substantial number of bug fixes that surfaced through an audit of OpenDKIM
+changes (PhoenixDKIM was forked from OpenDKIM); a completed pass of
+<tt>-Wconversion</tt> / <tt>-Wsign-conversion</tt> remediation; and systematic
+testing under Clang, its sanitisers, and the extended CMake hardening flag set.
 </p>
 
 <h2> Incompatible changes </h2>
@@ -146,6 +150,50 @@ remediation across the entire codebase, and a substantial number of bug fixes.
        the Lua hook interface. See the
        <a href="/release_notes/PhoenixDKIM-3.0.0-beta13.RELEASE_NOTES">full
        release notes</a> for the complete list. </p> </li>
+</ul>
+
+<h2> OpenDKIM upstream audit </h2>
+
+<p> PhoenixDKIM shares its lineage with
+<a href="https://github.com/trusteddomainproject/OpenDKIM">OpenDKIM</a>, which
+has recently started to receive maintenance again! We periodically review fixes
+made there and assess each one against our codebase. A number of those fixes
+were applicable here — some landed as-is, others were adapted to account for
+code paths that have since diverged — and are reflected in the bug fixes
+above. </p>
+
+<p> As the two code bases continue to diverge, not every OpenDKIM fix
+translates directly; in those cases the underlying issue was assessed
+independently and addressed in a manner suited to our code. The audit
+nonetheless remains a valuable source of known issues and we intend to keep
+conducting it on a regular basis. </p>
+
+<h2> Build-time analysis </h2>
+
+<p> A substantial portion of the fixes in this release were surfaced by
+building and testing under a wider set of compilers and analysis tools: </p>
+
+<ul>
+  <li> <p> <b>Clang build.</b> Compiling with Clang in addition to GCC
+       exposes a distinct set of diagnostics. Several correctness issues —
+       including sign-compare warnings, implicit-conversion warnings unique to
+       Clang, and const-qualification problems — were found and fixed this
+       way. </p> </li>
+
+  <li> <p> <b>Clang sanitisers.</b> Builds with AddressSanitizer (ASan) and
+       UndefinedBehaviorSanitizer (UBSan) caught errors, undefined behaviour,
+       and reads from uninitialised memory that are invisible to a normal
+       build. Several of the bug fixes above were discovered through sanitiser
+       runs. </p> </li>
+
+  <li> <p> <b>CMake hardening and warning flags.</b> The build system carries
+       an extended set of optional warning and hardening flags
+       (<tt>-Wconversion</tt>, <tt>-Wsign-conversion</tt>,
+       <tt>-Wcast-align</tt>, stack protectors, <tt>_FORTIFY_SOURCE</tt>,
+       and others) that are off by default in most projects. Enabling these
+       systematically revealed the conversion and sign-compare issues
+       addressed in earlier betas, as well as several of the correctness fixes
+       in this one. </p> </li>
 </ul>
 
 <h2> Compiler warning remediation </h2>
