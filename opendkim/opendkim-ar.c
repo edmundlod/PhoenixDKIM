@@ -496,6 +496,7 @@ ares_parse(u_char *hdr, struct authres *ar)
 			}
 
 			/* FALLTHROUGH */
+			__attribute__((fallthrough));
 
 		  case 3:				/* method */
 			if (n == 0 || !ares_dedup(ar, n))
@@ -577,6 +578,7 @@ ares_parse(u_char *hdr, struct authres *ar)
 			}
 
 			/* FALLTHROUGH */
+			__attribute__((fallthrough));
 
 		  case 9:				/* ptype */
 			if (prevstate == 13 &&

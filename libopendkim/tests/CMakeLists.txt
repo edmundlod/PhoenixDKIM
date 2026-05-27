@@ -71,10 +71,16 @@ foreach(test_name IN LISTS LIBOPENDKIM_TEST_PROGRAMS)
         target_link_libraries(${test_name} PRIVATE ${STRL_LIBRARY})
     endif()
 
-    target_compile_options(${test_name} PRIVATE -Wno-pointer-sign -Wno-unused-parameter -UNDEBUG)
-
     apply_hardening(${test_name})
     apply_sanitizers(${test_name})
+
+    # These suppressions must come AFTER apply_hardening() because -Wextra
+    # (added by apply_hardening) re-enables -Wunused-parameter on Clang,
+    # overriding any earlier -Wno-unused-parameter on the command line.
+    target_compile_options(${test_name} PRIVATE
+        -Wno-pointer-sign
+        -Wno-unused-parameter
+        -UNDEBUG)
 
     add_test(
         NAME ${test_name}
