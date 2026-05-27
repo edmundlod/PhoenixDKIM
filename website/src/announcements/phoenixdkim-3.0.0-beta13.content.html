@@ -1,0 +1,161 @@
+<h1>PhoenixDKIM 3.0.0-beta13</h1>
+
+<p> <b>27 May 2026</b> </p>
+
+<p> A large release. The headline is RFC 8301 enforcement: RSA-SHA1 is now
+completely disabled for both signing and verification, with a new
+<tt>On-WeakAlgorithm</tt> option to control what happens to messages that
+carry such a signature. Alongside that are new features, systemd integration,
+a completed pass of <tt>-Wconversion</tt> / <tt>-Wsign-conversion</tt>
+remediation across the entire codebase, and a substantial number of bug fixes.
+</p>
+
+<h2> Incompatible changes </h2>
+
+<ul>
+  <li> <p> RSA-SHA1 verification is now refused unconditionally, in line with
+       RFC 8301 (<em>Cryptographic Algorithm and Key Usage Update to DomainKeys
+       Identified Mail (DKIM)</em>). The daemon sets
+       <tt>DKIM_LIBFLAGS_NOSHA1VERIFY</tt> on every startup; any rsa-sha1
+       signature is permanently marked as a weak-algorithm failure before any
+       DNS lookup or cryptographic work takes place. RSA-SHA1 signing is also
+       disabled. </p>
+
+       <p> A new <tt>On-WeakAlgorithm</tt> configuration option controls the
+       milter disposition for messages carrying an rsa-sha1 signature:
+       <tt>neutral</tt> (default — deliver with a neutral result),
+       <tt>reject</tt>, <tt>quarantine</tt>, <tt>tempfail</tt>, or
+       <tt>discard</tt>. The value <tt>accept</tt> is rejected at
+       configuration load time. </p> </li>
+</ul>
+
+<h2> New features </h2>
+
+<ul>
+  <li> <p> New <tt>CheckSigningTable</tt> configuration option and
+       <tt>-g</tt> / <tt>-G</tt> command-line flags. When enabled, the daemon
+       verifies that the sender address appears in the signing table before
+       applying a signature, so a misconfigured table produces a logged
+       diagnostic rather than a silently unsigned message. </p> </li>
+
+  <li> <p> <tt>opendkim-genzone</tt> gains a <tt>-s</tt> flag that extends DNS
+       zone output to cover subdomains when used with <tt>-d</tt>. Zone output
+       is now reproducible: records are sorted and contain no
+       timestamp-dependent content. </p> </li>
+
+  <li> <p> The <tt>KeyTable</tt> now accepts an optional fourth field
+       specifying the signing algorithm (e.g. <tt>ed25519</tt>). Different
+       keys in the same table may use different algorithms. </p> </li>
+
+  <li> <p> systemd integration: </p>
+       <ul>
+         <li> <p> <tt>Type=notify</tt> readiness signalling — the daemon calls
+              <tt>sd_notify(3)</tt> after binding its socket, so service
+              dependencies activate only once PhoenixDKIM is ready to accept
+              connections. </p> </li>
+         <li> <p> Watchdog keep-alive — a background thread sends
+              <tt>WATCHDOG=1</tt> pings on the configured
+              <tt>WatchdogSec</tt> interval. </p> </li>
+         <li> <p> Service hardening directives added to the systemd unit
+              (<tt>PrivateTmp</tt>, <tt>ProtectSystem</tt>,
+              <tt>CapabilityBoundingSet</tt>, and others). </p> </li>
+       </ul> </li>
+
+  <li> <p> <tt>opendkim -V</tt> now prints the full build configuration:
+       enabled optional features, library versions, and compile-time flags.
+       Development builds embed the git commit hash in the version
+       string. </p> </li>
+
+  <li> <p> A <tt>DKIM_FEATURE_ED25519</tt> capability flag has been added so
+       callers can test for Ed25519 support at run time. New unit tests
+       <tt>t-test204</tt> and <tt>t-test205</tt> provide multi-key signing
+       coverage. </p> </li>
+</ul>
+
+<h2> Removals </h2>
+
+<ul>
+  <li> <p> Removed K&amp;R <tt>__P()</tt> portability wrappers throughout
+       the codebase. A C89 prototype-aware compiler is now assumed. </p> </li>
+
+  <li> <p> Removed the <tt>smfi_insheader()</tt> compatibility shim for
+       sendmail &lt; 8.13.0. </p> </li>
+
+  <li> <p> Removed the dead <tt>conf_singleauthres</tt> configuration
+       field. </p> </li>
+</ul>
+
+<h2> Bug fixes </h2>
+
+<ul>
+  <li> <p> <tt>dkim_sign()</tt> now correctly emits the <tt>l=</tt>
+       body-length tag when a length is supplied. A missing final CRLF is no
+       longer rejected when the <tt>l=</tt> tag is in use. </p> </li>
+
+  <li> <p> The header field-body character validation always returned
+       &ldquo;valid&rdquo; due to a tautology in the comparison; it now
+       correctly rejects out-of-range characters. </p> </li>
+
+  <li> <p> Fixed an assert crash in <tt>dkim_canon_selecthdrs</tt> when all
+       header fields are skipped. </p> </li>
+
+  <li> <p> Fixed operator precedence in the <tt>DKIM_SIG_CHECK</tt>
+       macro. </p> </li>
+
+  <li> <p> <tt>odkim.del_header()</tt> now deletes the correct indexed
+       instance rather than always the first occurrence. </p> </li>
+
+  <li> <p> The milter capabilities mask is now declared correctly for
+       <tt>FinalPolicyScript</tt> Lua hooks. </p> </li>
+
+  <li> <p> <tt>NoHeaderB</tt> now correctly suppresses <tt>header.b</tt>
+       extraction from the <tt>Authentication-Results</tt>
+       output. </p> </li>
+
+  <li> <p> <tt>authserv-id</tt> and job-id values are now quoted in
+       <tt>Authentication-Results</tt> output as required by
+       RFC 8601. </p> </li>
+
+  <li> <p> <tt>Authentication-Results</tt> key tag fields now use comma as
+       the separator, not semicolon. </p> </li>
+
+  <li> <p> <tt>Authentication-Results</tt> headers with a no-result entry are
+       now accepted as valid syntax. </p> </li>
+
+  <li> <p> DNAME resource records are now skipped when parsing DNS answers for
+       both DKIM key lookups and DKIM failure reports. </p> </li>
+
+  <li> <p> The libunbound resolver context now loads
+       <tt>/etc/resolv.conf</tt> by default, matching the behaviour of the
+       standard system resolver. </p> </li>
+
+  <li> <p> Fixed several memory leaks and an orphaned-list bug in key lookup
+       code (issue #272). </p> </li>
+
+  <li> <p> <tt>endpwent()</tt> is now called on all early return paths from
+       key safety checks (issue #198). </p> </li>
+
+  <li> <p> Fixed a stack overflow in miltertest when <tt>REPLBODY</tt> data
+       exceeded the response buffer. </p> </li>
+
+  <li> <p> <tt>dkimf_lua_writer</tt> is now guarded against the end-of-dump
+       convention introduced in Lua 5.5. </p> </li>
+
+  <li> <p> Many further fixes to key handling, DNS resolution,
+       <tt>Authentication-Results</tt> formatting, miltertest, and
+       the Lua hook interface. See the
+       <a href="/release_notes/PhoenixDKIM-3.0.0-beta13.RELEASE_NOTES">full
+       release notes</a> for the complete list. </p> </li>
+</ul>
+
+<h2> Compiler warning remediation </h2>
+
+<p> <tt>-Wconversion</tt> and <tt>-Wsign-conversion</tt> warnings have been
+addressed systematically across libopendkim, the daemon, miltertest, and the
+test suite. The work covered signed/unsigned arithmetic, implicit narrowing
+conversions, integer type mismatches at function call boundaries, and
+byte-extraction casts. No <tt>-Wconversion</tt> or
+<tt>-Wsign-conversion</tt> diagnostics remain in the default build
+configuration. </p>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
