@@ -19,6 +19,7 @@ add_compile_definitions(_GNU_SOURCE)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(Sanitizers)   # must precede Hardening — defines options checked there
 include(Hardening)
+include(Valgrind)     # must follow Sanitizers — checks for conflicting asan/ubsan options
 
 enable_testing()
 
