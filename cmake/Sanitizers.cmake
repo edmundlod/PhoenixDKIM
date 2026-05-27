@@ -1,14 +1,16 @@
 # cmake/Sanitizers.cmake
 #
-# AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer.
+# AddressSanitizer, UndefinedBehaviorSanitizer, LeakSanitizer, and
+# MemorySanitizer.
 #
 # These are development and CI tools — never enable in production builds.
 # Runtime overhead is 2-10x and memory layout is altered.
 #
 # Include this module BEFORE Hardening.cmake in the top-level CMakeLists.txt.
-# Hardening.cmake reads the OPENDKIM_ENABLE_ASAN and OPENDKIM_ENABLE_UBSAN
-# options to suppress _FORTIFY_SOURCE when any sanitizer is active (ASAN/UBSAN
-# intercept glibc memory functions; FORTIFY_SOURCE on top causes false positives).
+# Hardening.cmake reads the OPENDKIM_ENABLE_ASAN, OPENDKIM_ENABLE_UBSAN, and
+# OPENDKIM_ENABLE_MSAN options to suppress _FORTIFY_SOURCE when any sanitizer
+# is active (ASAN/UBSAN/MSan intercept glibc memory functions; FORTIFY_SOURCE
+# on top causes false positives).
 #
 # Call apply_sanitizers(<target>) on every target that also gets apply_hardening().
 # Both functions are no-ops when all sanitizer options are OFF.
@@ -62,6 +64,15 @@ option(OPENDKIM_ENABLE_LSAN
 enable this option only when ASAN is OFF. Never use in production."
     OFF)
 
+option(OPENDKIM_ENABLE_MSAN
+    "Enable MemorySanitizer: detects reads from uninitialised memory. \
+Clang-only; GCC does not support -fsanitize=memory. \
+CRITICAL: ALL linked libraries (libc, libssl, libmilter, …) must themselves \
+be compiled with -fsanitize=memory, or the run will generate large numbers of \
+false positives. Build a fully-instrumented sysroot before enabling this. \
+Mutually exclusive with ASAN and LSAN. Never use in production."
+    OFF)
+
 # ── Validate flag availability ────────────────────────────────────────────────
 
 if(OPENDKIM_ENABLE_ASAN)
@@ -106,9 +117,36 @@ if(OPENDKIM_ENABLE_LSAN)
     endif()
 endif()
 
+if(OPENDKIM_ENABLE_MSAN)
+    # MSan is Clang-only; give an early, clear error if the compiler lacks it.
+    _check_sanitizer_flag(-fsanitize=memory HARDEN_SAN_HAVE_MSAN)
+    if(NOT HARDEN_SAN_HAVE_MSAN)
+        message(FATAL_ERROR
+            "OPENDKIM_ENABLE_MSAN=ON but -fsanitize=memory is not supported. "
+            "MemorySanitizer requires Clang; GCC does not implement it.")
+    endif()
+
+    # MSan and ASAN instrument the same memory functions; running both together
+    # is not supported by any compiler and will produce link errors or crashes.
+    if(OPENDKIM_ENABLE_ASAN)
+        message(FATAL_ERROR
+            "OPENDKIM_ENABLE_MSAN and OPENDKIM_ENABLE_ASAN cannot both be ON. "
+            "AddressSanitizer and MemorySanitizer instrument overlapping "
+            "runtime functions and cannot be combined in a single build.")
+    endif()
+
+    # LSAN is bundled inside ASAN on Linux; standalone LSAN conflicts with MSan
+    # for the same reason.
+    if(OPENDKIM_ENABLE_LSAN)
+        message(FATAL_ERROR
+            "OPENDKIM_ENABLE_MSAN and OPENDKIM_ENABLE_LSAN cannot both be ON.")
+    endif()
+endif()
+
 # ── Warn on non-Debug build types (single-config generators only) ─────────────
 
-if((OPENDKIM_ENABLE_ASAN OR OPENDKIM_ENABLE_UBSAN OR OPENDKIM_ENABLE_LSAN)
+if((OPENDKIM_ENABLE_ASAN OR OPENDKIM_ENABLE_UBSAN OR OPENDKIM_ENABLE_LSAN
+        OR OPENDKIM_ENABLE_MSAN)
         AND DEFINED CMAKE_BUILD_TYPE
         AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
         AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
@@ -124,7 +162,8 @@ function(apply_sanitizers tgt)
 
     # -fno-omit-frame-pointer: required for readable stack traces under any
     # sanitizer.  Emitted once here rather than duplicated per-sanitizer block.
-    if(OPENDKIM_ENABLE_ASAN OR OPENDKIM_ENABLE_UBSAN OR OPENDKIM_ENABLE_LSAN)
+    if(OPENDKIM_ENABLE_ASAN OR OPENDKIM_ENABLE_UBSAN OR OPENDKIM_ENABLE_LSAN
+            OR OPENDKIM_ENABLE_MSAN)
         target_compile_options(${tgt} PRIVATE -fno-omit-frame-pointer)
     endif()
 
@@ -164,6 +203,24 @@ function(apply_sanitizers tgt)
     if(OPENDKIM_ENABLE_LSAN AND NOT OPENDKIM_ENABLE_ASAN)
         target_compile_options(${tgt} PRIVATE -fsanitize=leak)
         target_link_options(${tgt} PRIVATE -fsanitize=leak)
+    endif()
+
+    # ── MSan ──────────────────────────────────────────────────────────────────
+    # -fsanitize=memory: detect reads from uninitialised memory.
+    # Clang-only; mutually exclusive with ASAN and LSAN (checked at configure
+    # time above).  Requires a fully MSan-instrumented build of every linked
+    # library — without it, false positives on libc internals flood the output.
+    # -fsanitize-memory-track-origins=2: record the allocation/store site for
+    #   each uninitialised byte so the report shows WHERE the bad value came
+    #   from, not just WHERE it was read.  Level 2 is the most precise (and
+    #   most expensive — ~2.5× overhead on top of the baseline ~3×).
+    #   Level 1 tracks origins at a lower cost if 2 is too slow in practice.
+
+    if(OPENDKIM_ENABLE_MSAN)
+        target_compile_options(${tgt} PRIVATE
+            -fsanitize=memory
+            -fsanitize-memory-track-origins=2)
+        target_link_options(${tgt} PRIVATE -fsanitize=memory)
     endif()
 
 endfunction()
