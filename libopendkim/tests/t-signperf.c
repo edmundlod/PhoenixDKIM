@@ -314,7 +314,7 @@ main(int argc, char **argv)
 			w = 0;
 		}
 
-		body[c] = (random() % 95) + 32;
+		body[c] = (unsigned char)((random() % 95) + 32);
 		w++;
 	}
 

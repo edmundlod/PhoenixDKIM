@@ -14,6 +14,22 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <arpa/nameser.h>
+/* DKIM_PUTSHORT / DKIM_PUTLONG: drop-in replacements for the system
+** PUTSHORT/PUTLONG (NS_PUT16/NS_PUT32) with explicit (unsigned char)
+** casts on each byte store; the system macro body omits them, causing
+** -Wconversion under strict builds. */
+#define DKIM_PUTSHORT(s, cp) do { \
+	uint16_t _dps = (uint16_t)(s); \
+	*(cp)++ = (unsigned char)(_dps >> 8); \
+	*(cp)++ = (unsigned char)(_dps); \
+} while (0)
+#define DKIM_PUTLONG(l, cp) do { \
+	uint32_t _dpl = (uint32_t)(l); \
+	*(cp)++ = (unsigned char)(_dpl >> 24); \
+	*(cp)++ = (unsigned char)(_dpl >> 16); \
+	*(cp)++ = (unsigned char)(_dpl >> 8); \
+	*(cp)++ = (unsigned char)(_dpl); \
+} while (0)
 #include <netinet/in.h>
 #include <assert.h>
 #include <stdio.h>
@@ -173,8 +189,8 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		return -1;
 	}
 
-	PUTSHORT(td->dns_type, cp);
-	PUTSHORT(td->dns_class, cp);
+	DKIM_PUTSHORT(td->dns_type, cp);
+	DKIM_PUTSHORT(td->dns_class, cp);
 
 	/* short-circuit? */
 	if (hdr.rcode == NXDOMAIN)
@@ -203,11 +219,11 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		return -1;
 	}
 
-	PUTSHORT(td->dns_type, cp);
-	PUTSHORT(td->dns_class, cp);
+	DKIM_PUTSHORT(td->dns_type, cp);
+	DKIM_PUTSHORT(td->dns_class, cp);
 
 	testttl = htonl(TESTTTL);
-	PUTLONG(testttl, cp);
+	DKIM_PUTLONG(testttl, cp);
 
 	switch (td->dns_type)
 	{
@@ -222,7 +238,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 			DKIM_FREE(dkim, td);
 			return -1;
 		}
-		PUTSHORT(len, cp);
+		DKIM_PUTSHORT(len, cp);
 
 		/* write the buffer, inserting length bytes as needed */
 		len = 0;
@@ -232,7 +248,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 			if (len == 0)
 			{
 				len = MIN(255, n);
-				*cp++ = len;
+				*cp++ = (u_char)len;
 			}
 			*cp++ = *p++;
 			n--;
@@ -247,7 +263,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 			DKIM_FREE(dkim, td);
 			return -1;
 		}
-		PUTSHORT(td->dns_prec, cp);
+		DKIM_PUTSHORT(td->dns_prec, cp);
 		n = dn_comp((char *) td->dns_reply, cp, end - cp, NULL, NULL);
 		if (n < 0)
 		{

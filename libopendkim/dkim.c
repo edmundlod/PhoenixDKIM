@@ -5821,7 +5821,7 @@ dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 		{
 			if (*p == '=')
 			{
-				char c;
+				u_char c;
 
 				if (!isxdigit(*(p + 1)) || !isxdigit(*(p + 2)))
 				{
@@ -5832,7 +5832,7 @@ dkim_ohdrs(DKIM *dkim, DKIM_SIGINFO *sig, u_char **ptrs, int *pcnt)
 					return DKIM_STAT_INVALID;
 				}
 
-				c = 16 * dkim_hexchar(*(p + 1)) + dkim_hexchar(*(p + 2));
+				c = (u_char)(16 * dkim_hexchar(*(p + 1)) + dkim_hexchar(*(p + 2)));
 
 				p += 2;
 
