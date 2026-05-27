@@ -90,10 +90,9 @@ against AWS-LC with trivial or no changes, if that is ever needed.
 - RSA-SHA256 (required by RFC 6376) — minimum key size **2048 bits**
 - Ed25519 (RFC 8463)
 
-**RSA-SHA1**: Signing with RSA-SHA1 is **dropped entirely**. Verification
-of incoming RSA-SHA1 signatures is retained for interoperability with
-legacy signed mail. OpenDKIM will refuse to generate new RSA-SHA1 signatures
-and will log a warning when verifying them.
+**RSA-SHA1**: Signing and verifying with RSA-SHA1 is **dropped entirely**.
+SHA1 code stays in code base, because we must recognise rsa-sha1, so that
+we can permfail the message with the approriate comment.
 
 **RSA key size enforcement**: Keys smaller than 2048 bits are rejected for
 signing with a hard error. On verification, sub-2048-bit keys produce a
