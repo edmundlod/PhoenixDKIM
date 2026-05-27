@@ -4331,7 +4331,7 @@ dkimf_loadkey(char *buf, size_t *buflen, _Bool *insecure, char *error,
 		else
 			*insecure = FALSE;
 
-		*buflen = MIN(s.st_size, *buflen);
+		*buflen = MIN((size_t) s.st_size, *buflen);
 		rlen = read(fd, buf, *buflen);
 		close(fd);
 
@@ -6152,7 +6152,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			conf->conf_setupscript = malloc(s.st_size + 1);
+			conf->conf_setupscript = malloc((size_t) s.st_size + 1);
 			if (conf->conf_setupscript == NULL)
 			{
 				(void) snprintf(err, errlen, "malloc(): %s",
@@ -6161,8 +6161,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			memset(conf->conf_setupscript, '\0', s.st_size + 1);
-			rlen = read(fd, conf->conf_setupscript, s.st_size);
+			memset(conf->conf_setupscript, '\0', (size_t) s.st_size + 1);
+			rlen = read(fd, conf->conf_setupscript, (size_t) s.st_size);
 			if (rlen == -1)
 			{
 				(void) snprintf(err, errlen, "%s: read(): %s",
@@ -6218,7 +6218,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			conf->conf_screenscript = malloc(s.st_size + 1);
+			conf->conf_screenscript = malloc((size_t) s.st_size + 1);
 			if (conf->conf_screenscript == NULL)
 			{
 				(void) snprintf(err, errlen, "malloc(): %s",
@@ -6227,8 +6227,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			memset(conf->conf_screenscript, '\0', s.st_size + 1);
-			rlen = read(fd, conf->conf_screenscript, s.st_size);
+			memset(conf->conf_screenscript, '\0', (size_t) s.st_size + 1);
+			rlen = read(fd, conf->conf_screenscript, (size_t) s.st_size);
 			if (rlen == -1)
 			{
 				(void) snprintf(err, errlen, "%s: read(): %s",
@@ -6284,7 +6284,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			conf->conf_finalscript = malloc(s.st_size + 1);
+			conf->conf_finalscript = malloc((size_t) s.st_size + 1);
 			if (conf->conf_finalscript == NULL)
 			{
 				(void) snprintf(err, errlen, "malloc(): %s",
@@ -6293,8 +6293,8 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			memset(conf->conf_finalscript, '\0', s.st_size + 1);
-			rlen = read(fd, conf->conf_finalscript, s.st_size);
+			memset(conf->conf_finalscript, '\0', (size_t) s.st_size + 1);
+			rlen = read(fd, conf->conf_finalscript, (size_t) s.st_size);
 			if (rlen == -1)
 			{
 				(void) snprintf(err, errlen, "%s: read(): %s",
@@ -7152,7 +7152,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 		}
 
-		s33krit = malloc(s.st_size + 1);
+		s33krit = malloc((size_t) s.st_size + 1);
 		if (s33krit == NULL)
 		{
 			if (conf->conf_dolog)
@@ -7171,9 +7171,9 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			return -1;
 		}
 
-		conf->conf_keylen = s.st_size + 1;
+		conf->conf_keylen = (size_t) s.st_size + 1;
 
-		rlen = read(fd, s33krit, s.st_size + 1);
+		rlen = read(fd, s33krit, (size_t) s.st_size + 1);
 		if (rlen == (ssize_t) -1)
 		{
 			if (conf->conf_dolog)
