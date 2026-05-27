@@ -9479,11 +9479,31 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 
 			if (curl_rc == CURLE_OK)
 			{
-				snprintf(dest, sizeof dest, "%s@%s", addr,
-				         dkim_sig_getdomain(sig));
-				rcpts = curl_slist_append(rcpts, dest);
-				curl_rc = curl_easy_setopt(curl, CURLOPT_MAIL_RCPT,
-				                           rcpts);
+				int n;
+
+				n = snprintf(dest, sizeof dest, "%s@%s", addr,
+				             dkim_sig_getdomain(sig));
+
+				if (n < 0 || (size_t) n >= sizeof dest)
+				{
+					/* truncated recipient: don't send to a
+					   malformed address */
+					if (conf->conf_dolog)
+					{
+						syslog(LOG_ERR,
+						       "%s: report recipient address too long; report not sent",
+						       dfc->mctx_jobid);
+					}
+
+					curl_rc = CURLE_BAD_FUNCTION_ARGUMENT;
+				}
+				else
+				{
+					rcpts = curl_slist_append(rcpts, dest);
+					curl_rc = curl_easy_setopt(curl,
+					                           CURLOPT_MAIL_RCPT,
+					                           rcpts);
+				}
 			}
 
 			if (curl_rc != CURLE_OK)
