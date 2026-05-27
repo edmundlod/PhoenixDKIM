@@ -1386,7 +1386,7 @@ mt_signal(lua_State *l)
 		lua_error(l);
 	}
 
-	signum = lua_tonumber(l, 1);
+	signum = (int) lua_tonumber(l, 1);
 	lua_pop(l, 1);
 
 	if (filterpid <= 1)
@@ -1605,7 +1605,7 @@ mt_connect(lua_State *l)
 		srv = getservbyname(p, "tcp");
 		if (srv != NULL)
 		{
-			sa.sin_port = srv->s_port;
+			sa.sin_port = (in_port_t) srv->s_port;
 		}
 		else
 		{
@@ -1620,7 +1620,7 @@ mt_connect(lua_State *l)
 				lua_error(l);
 			}
 
-			sa.sin_port = htons(port);
+			sa.sin_port = htons((uint16_t) port);
 		}
 
 		if (at != NULL)
@@ -1831,7 +1831,7 @@ mt_test_action(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	action = lua_tonumber(l, 2);
+	action = (unsigned long) lua_tonumber(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_NEGOTIATED))
@@ -1869,7 +1869,7 @@ mt_test_option(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	option = lua_tonumber(l, 2);
+	option = (unsigned long) lua_tonumber(l, 2);
 	lua_pop(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_NEGOTIATED))
@@ -1919,17 +1919,17 @@ mt_negotiate(lua_State *l)
 	buflen = sizeof buf;
 
 	if (lua_isnumber(l, 2))
-		mta_version = lua_tonumber(l, 2);
+		mta_version = (uint32_t) lua_tonumber(l, 2);
 	else
 		mta_version = SMFI_PROT_VERSION;
 
 	if (lua_isnumber(l, 3))
-		mta_protoopts = lua_tonumber(l, 3);
+		mta_protoopts = (uint32_t) lua_tonumber(l, 3);
 	else
 		mta_protoopts = SMFI_CURR_PROT;
 
 	if (lua_isnumber(l, 4))
-		mta_actions = lua_tonumber(l, 4);
+		mta_actions = (uint32_t) lua_tonumber(l, 4);
 	else
 		mta_actions = SMFI_CURR_ACTS;
 
@@ -2041,13 +2041,13 @@ mt_macro(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	type = lua_tonumber(l, 2);
+	type = (int) lua_tonumber(l, 2);
 
 	if (!mt_assert_state(ctx, STATE_NEGOTIATED))
 		lua_error(l);
 
 	s = 1;
-	buf[0] = type;
+	buf[0] = (char) type;
 	bp = buf + 1;
 
 	for (c = 3; c < top; c += 2)
@@ -2172,13 +2172,13 @@ mt_conninfo(lua_State *l)
 
 		if (res->ai_family == AF_INET)
 		{
-			s4 = (struct sockaddr_in *) res->ai_addr;
+			s4 = (struct sockaddr_in *) (void *) res->ai_addr;
 			a = (char *) &s4->sin_addr;
 			family = '4';
 		}
 		else if (res->ai_family == AF_INET6)
 		{
-			s6 = (struct sockaddr_in6 *) res->ai_addr;
+			s6 = (struct sockaddr_in6 *) (void *) res->ai_addr;
 			a = (char *) &s6->sin6_addr;
 			family = '6';
 		}
@@ -3411,7 +3411,7 @@ mt_eom_check(lua_State *l)
 	}
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
-	op = lua_tonumber(l, 2);
+	op = (int) lua_tonumber(l, 2);
 
 	switch (op)
 	{
@@ -3517,7 +3517,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			idx = lua_tonumber(l, 5);
+			idx = (int) lua_tonumber(l, 5);
 		}
 
 		lua_pop(l, lua_gettop(l));
@@ -3592,7 +3592,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			idx = lua_tonumber(l, 4);
+			idx = (int) lua_tonumber(l, 4);
 		}
 
 		lua_pop(l, lua_gettop(l));
@@ -3653,7 +3653,7 @@ mt_eom_check(lua_State *l)
 				lua_error(l);
 			}
 
-			idx = lua_tonumber(l, 4);
+			idx = (int) lua_tonumber(l, 4);
 		}
 
 		if (lua_gettop(l) == 5)
@@ -4027,7 +4027,7 @@ mt_getheader(lua_State *l)
 
 	ctx = (struct mt_context *) lua_touserdata(l, 1);
 	name = lua_tostring(l, 2);
-	idx = lua_tonumber(l, 3);
+	idx = (int) lua_tonumber(l, 3);
 	lua_pop(l, 3);
 
 	for (r = ctx->ctx_eomreqs; r != NULL; r = r->eom_next)

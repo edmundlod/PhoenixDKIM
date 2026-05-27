@@ -891,7 +891,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 
 	(void) memset(&sin, '\0', sizeof sin);
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(time(NULL) % 65536);
+	sin.sin_port = htons((uint16_t)(time(NULL) % 65536));
 	sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
 	/*

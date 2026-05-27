@@ -56,7 +56,7 @@ lowerhdr(char *str)
 	for (p = str; *p != ':' && *p != '\0'; p++)
 	{
 		if (isupper(*p))
-			*p = tolower(*p);
+			*p = (char) tolower((unsigned char) *p);
 	}
 }
 
