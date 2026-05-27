@@ -16,6 +16,11 @@
 # Extra high-noise conversion/alignment warnings (OPENDKIM_ENABLE_EXTRA_WARNINGS, default
 # OFF) are provided for targeted cleanup sessions.
 #
+# Strict ISO C17 conformance (OPENDKIM_ENABLE_STRICT_C, default OFF) adds
+# -pedantic-errors, turning any use of compiler extensions into a hard error.
+# -Wextra is already part of the baseline; combine STRICT_C with EXTRA_WARNINGS
+# for the widest diagnostic net.
+#
 # Sanitizers live in Sanitizers.cmake.  Include that module BEFORE this one so its
 # option variables are defined when the FORTIFY_SOURCE suppression guard runs.
 
@@ -89,6 +94,24 @@ if(OPENDKIM_ENABLE_EXTRA_WARNINGS)
     check_c_compiler_flag(-Wconversion      HARDEN_CC_WCONVERSION)
     check_c_compiler_flag(-Wsign-conversion HARDEN_CC_WSIGN_CONVERSION)
     check_c_compiler_flag(-Wcast-align      HARDEN_CC_WCAST_ALIGN)
+endif()
+
+# Strict ISO C conformance (optional, default OFF)
+#
+# -pedantic-errors enforces strict ISO C17 — any GNU or compiler extension
+# becomes a hard error rather than a warning.  -Wextra is already part of the
+# baseline (always on); -Wconversion/-Wsign-conversion live in
+# OPENDKIM_ENABLE_EXTRA_WARNINGS.  Combine all three options for the widest
+# diagnostic net during cleanup sessions.
+option(OPENDKIM_ENABLE_STRICT_C
+    "Enable -pedantic-errors: reject any code that is not strictly ISO C17. \
+-Wextra is already on by default. Pair with OPENDKIM_ENABLE_EXTRA_WARNINGS \
+(-Wconversion, -Wsign-conversion, -Wcast-align) for maximum diagnostic coverage. \
+Best used during targeted cleanup sessions, not as part of normal CI. Default OFF."
+    OFF)
+
+if(OPENDKIM_ENABLE_STRICT_C)
+    check_c_compiler_flag(-pedantic-errors HARDEN_CC_PEDANTIC_ERRORS)
 endif()
 
 # ── Non-executable stack (independent of PIE/RELRO policy) ────────────────────
@@ -217,13 +240,24 @@ function(apply_hardening tgt)
     # Enabled only under OPENDKIM_ENABLE_EXTRA_WARNINGS.
 
     if(OPENDKIM_ENABLE_EXTRA_WARNINGS)
-        foreach(_xw WCONVERSION WSIGN_CONVERSION WCAST_ALIGN)
-            if(HARDEN_CC_${_xw})
+        foreach(_xw CONVERSION SIGN_CONVERSION CAST_ALIGN)
+            if(HARDEN_CC_W${_xw})
                 string(TOLOWER "${_xw}" _xf)
                 string(REPLACE "_" "-" _xf "${_xf}")
                 target_compile_options(${tgt} PRIVATE "-W${_xf}")
             endif()
         endforeach()
+    endif()
+
+    # ── Strict ISO C conformance (optional) ───────────────────────────────────
+    #
+    # -pedantic-errors: enforce strict ISO C17; reject GNU/compiler extensions
+    # with a hard error rather than a warning.  -Wpedantic would only warn.
+    # -Wextra is already in the baseline above; -Wconversion/-Wsign-conversion
+    # are in the EXTRA_WARNINGS block above — combine for maximum strictness.
+
+    if(OPENDKIM_ENABLE_STRICT_C AND HARDEN_CC_PEDANTIC_ERRORS)
+        target_compile_options(${tgt} PRIVATE -pedantic-errors)
     endif()
 
     # ── Correctness flags ─────────────────────────────────────────────────────
