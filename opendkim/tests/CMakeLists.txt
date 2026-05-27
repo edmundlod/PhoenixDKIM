@@ -1,6 +1,22 @@
 # Copyright (c) 2026 PhoenixDKIM contributors
 #   All rights reserved.
 
+# ── Valgrind integration-test configuration ───────────────────────────────────
+# When either Valgrind tool is enabled, opendkim/tests/CMakeLists.txt redirects
+# OPENDKIM_BINPATH to the cmake/Valgrind.cmake-generated wrapper directory so
+# the Lua scripts launch the daemon under Valgrind rather than directly.
+# Timeouts are stretched by 10× to accommodate Valgrind's overhead (~20-50× on
+# memcheck, ~15-30× on helgrind vs native execution).
+if(OPENDKIM_ENABLE_VALGRIND OR OPENDKIM_ENABLE_HELGRIND)
+    # OPENDKIM_VALGRIND_BIN_DIR is set by cmake/Valgrind.cmake (included from
+    # the top-level CMakeLists.txt before this subdirectory is processed).
+    set(_int_binpath "${OPENDKIM_VALGRIND_BIN_DIR}")
+    set(_int_timeout 300)
+else()
+    set(_int_binpath "${CMAKE_BINARY_DIR}/opendkim")
+    set(_int_timeout 30)
+endif()
+
 # Collect bare test names — files matching t-* with no extension
 file(GLOB _all_files
     LIST_DIRECTORIES false
@@ -28,8 +44,8 @@ foreach(test_name ${TEST_DRIVERS})
     )
 
     set_tests_properties("integration/${test_name}" PROPERTIES
-        ENVIRONMENT "srcdir=${CMAKE_CURRENT_SOURCE_DIR};OPENDKIM_BINPATH=${CMAKE_BINARY_DIR}/opendkim"
-        TIMEOUT 30
+        ENVIRONMENT "srcdir=${CMAKE_CURRENT_SOURCE_DIR};OPENDKIM_BINPATH=${_int_binpath}"
+        TIMEOUT ${_int_timeout}
     )
 endforeach()
 

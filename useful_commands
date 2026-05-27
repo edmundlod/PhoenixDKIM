@@ -17,6 +17,45 @@ $ cmake -DWITH_LUA=1 -DWITH_REDIS=1 -B build && cmake --build build 2>&1 | tee b
 OR:
     $ cmake --build build --target clean && cmake --build build 2>&1 | tee build.log
 
+# ── Valgrind Memcheck build ───────────────────────────────────────────────────
+# Plain Debug, no sanitizers (ASan conflicts with Valgrind's shadow memory).
+# OPENDKIM_ENABLE_VALGRIND generates build-valgrind/valgrind-bin/opendkim so
+# integration tests also run the daemon under Valgrind.
+
+$ cmake -DWITH_LUA=1 -DWITH_REDIS=1 \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DOPENDKIM_ENABLE_VALGRIND=ON \
+        -B build-valgrind
+$ cmake --build build-valgrind -j$(nproc)
+
+# Run unit tests under Valgrind (CTest memcheck mode):
+$ cd build-valgrind && ctest -T memcheck --output-on-failure -j1
+
+# Run integration tests under Valgrind (daemon wrapped by valgrind-bin/opendkim):
+$ cd build-valgrind && ctest -R integration --output-on-failure -j1
+
+# Run everything:
+$ cd build-valgrind && ctest -T memcheck --output-on-failure -j1
+
+# Memcheck results are written to build-valgrind/Testing/Temporary/MemoryChecker.*.log
+
+# ── Valgrind Helgrind build (thread-race detection) ──────────────────────────
+# Same plain Debug build, different Valgrind tool.
+# Requires concurrent load to trigger races; integration tests provide this
+# naturally since opendkim serves milter connections in a thread pool.
+
+$ cmake -DWITH_LUA=1 -DWITH_REDIS=1 \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DOPENDKIM_ENABLE_HELGRIND=ON \
+        -B build-helgrind
+$ cmake --build build-helgrind -j$(nproc)
+
+# Run integration tests (most valuable for Helgrind — threaded daemon):
+$ cd build-helgrind && ctest -R integration --output-on-failure -j1
+
+# Run unit tests too (less likely to expose races but catches library-level ones):
+$ cd build-helgrind && ctest -T memcheck --output-on-failure -j1
+
 $ grep -oE "\-W[a-z-]+\]" build.log | sort | uniq -c | sort -rn
         894 -Wdiscarded-qualifiers]
         111 -Wmissing-prototypes]

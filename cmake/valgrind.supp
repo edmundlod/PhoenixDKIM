@@ -1,0 +1,216 @@
+# cmake/valgrind.supp
+#
+# Valgrind suppressions for PhoenixDKIM / OpenDKIM.
+#
+# Covers known false positives from:
+#   • OpenSSL 3 — one-time init, thread-local error state, PRNG seeding
+#   • glibc / ld.so — dynamic linker, NSS, iconv one-time init
+#   • libpthread — thread-stack accounting
+#   • libunbound — DNSSEC cache retained until process exit
+#
+# Philosophy: suppress only "reachable" and "still reachable" leaks from
+# library init paths that are demonstrably intentional (singletons, caches
+# freed at exit).  "definite" and "indirect" leaks in our own code are NOT
+# suppressed — those are what we want to find.
+#
+# Add project-specific suppressions at the bottom as they are discovered.
+
+# ════════════════════════════════════════════════════════════════════════════════
+# OpenSSL 3
+# ════════════════════════════════════════════════════════════════════════════════
+
+# OpenSSL global initialisation — OPENSSL_init_crypto() allocates a number of
+# singletons on first call (e.g. the RAND, ENGINE, and CONF subsystems).  These
+# are "still reachable" at exit via static pointers; OpenSSL registers OPENSSL_cleanup
+# via atexit() but Valgrind sometimes sees them before atexit runs.
+{
+   openssl_init_crypto_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:OPENSSL_init_crypto
+}
+
+{
+   openssl_init_ssl_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:OPENSSL_init_ssl
+}
+
+# OpenSSL thread-local error state (ERR_get_state).
+# Each thread gets a per-thread ERR_STATE block via CRYPTO_THREAD_get_local().
+# On Linux this lives in a pthread key; it is freed when the thread exits, but
+# any thread that is still alive at Valgrind's shutdown snapshot looks like a
+# reachable leak.
+{
+   openssl_err_state_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:ERR_get_state
+}
+
+# RAND_poll / RAND_bytes on Linux reads /dev/urandom and keeps a small internal
+# buffer.  Same pattern: reachable at exit, freed by OPENSSL_cleanup.
+{
+   openssl_rand_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:RAND_poll
+}
+
+# BIO subsystem initialisation — holds a method table.
+{
+   openssl_bio_methods_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:BIO_s_socket
+}
+
+# OpenSSL digests / ciphers are cached in method tables after first lookup.
+{
+   openssl_digest_fetch_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:EVP_MD_fetch
+}
+
+{
+   openssl_cipher_fetch_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:EVP_CIPHER_fetch
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# glibc / dynamic linker
+# ════════════════════════════════════════════════════════════════════════════════
+
+# dlopen() keeps module handles for the lifetime of the process.
+# Any shared library loaded lazily (e.g. NSS modules, libresolv) stays
+# "reachable" via the dl handle; this is intentional.
+{
+   dl_open_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:_dl_open
+}
+
+{
+   dl_open_worker_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:dl_open_worker
+}
+
+# glibc name-service switch (NSS) caches resolver configuration.
+{
+   nss_parse_service_list_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:nss_parse_service_list
+}
+
+# iconv charset conversion tables are loaded once and kept.
+{
+   iconv_open_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:iconv_open
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# libpthread
+# ════════════════════════════════════════════════════════════════════════════════
+
+# pthread_create allocates a stack for the new thread.  The stack pointer is
+# "reachable" from the thread-list while the thread is alive; it appears as
+# still-reachable if threads survive to Valgrind shutdown (e.g. the milter
+# thread pool).
+{
+   pthread_create_stack_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:pthread_create*
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# libunbound
+# ════════════════════════════════════════════════════════════════════════════════
+
+# libunbound keeps a DNSSEC validation cache and config blob for the lifetime
+# of the ub_ctx.  When the process exits without calling ub_ctx_delete() (e.g.
+# on SIGTERM/SIGINT during a test), the cache appears as "still reachable".
+{
+   unbound_ctx_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:ub_ctx_create
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Helgrind — known benign races / lock-order questions
+# ════════════════════════════════════════════════════════════════════════════════
+
+# OpenSSL 3 uses CRYPTO_THREAD_run_once() for one-time init of subsystems.
+# Helgrind may complain about the internal once-flag read/write pattern even
+# though it is correctly guarded; the memory model is guaranteed by
+# CRYPTO_THREAD_run_once's own memory barrier.
+{
+   openssl_run_once_helgrind
+   Helgrind:Race
+   fun:*
+   ...
+   fun:CRYPTO_THREAD_run_once
+}
+
+# OpenSSL's locking wrappers go through CRYPTO_THREAD_write_lock /
+# CRYPTO_THREAD_read_lock, which in turn call pthread_rwlock_*.
+# Helgrind occasionally flags the internal rwlock state; suppress the noise.
+{
+   openssl_rwlock_helgrind
+   Helgrind:Race
+   fun:pthread_rwlock_*
+   ...
+   fun:CRYPTO_THREAD_write_lock
+}
+
+{
+   openssl_rwlock_read_helgrind
+   Helgrind:Race
+   fun:pthread_rwlock_*
+   ...
+   fun:CRYPTO_THREAD_read_lock
+}
+
+# ════════════════════════════════════════════════════════════════════════════════
+# Project-specific — add as needed
+# ════════════════════════════════════════════════════════════════════════════════
+
+# (none yet — add suppressions here as genuine false positives are found,
+#  with a brief comment explaining why each one is a false positive)
