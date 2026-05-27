@@ -13,7 +13,28 @@
 # Call apply_sanitizers(<target>) on every target that also gets apply_hardening().
 # Both functions are no-ops when all sanitizer options are OFF.
 
-include(CheckCCompilerFlag)
+include(CheckCSourceCompiles)
+include(CMakePushCheckState)
+
+# ── Helper: probe a sanitizer flag at compile AND link time ───────────────────
+#
+# check_c_compiler_flag() passes the flag only at compile time (via
+# CMAKE_REQUIRED_FLAGS).  Sanitizer flags must also appear on the link command
+# so the compiler driver can inject the runtime library (libasan, libubsan, …).
+# Without the flag on the link line GCC 16 / CMake 4.x emit undefined-reference
+# errors for __asan_init etc. even though the compiler itself supports the flag.
+#
+# This macro passes the flag via both CMAKE_REQUIRED_FLAGS (compile) and
+# CMAKE_REQUIRED_LINK_OPTIONS (link), which is the correct approach for any
+# flag that affects both the object file and the final binary.
+
+macro(_check_sanitizer_flag _san_flag _san_result)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_FLAGS        "${_san_flag}")
+    set(CMAKE_REQUIRED_LINK_OPTIONS "${_san_flag}")
+    check_c_source_compiles("int main(void){return 0;}" ${_san_result})
+    cmake_pop_check_state()
+endmacro()
 
 # ── Options ───────────────────────────────────────────────────────────────────
 
@@ -44,7 +65,7 @@ enable this option only when ASAN is OFF. Never use in production."
 # ── Validate flag availability ────────────────────────────────────────────────
 
 if(OPENDKIM_ENABLE_ASAN)
-    check_c_compiler_flag(-fsanitize=address HARDEN_SAN_HAVE_ASAN)
+    _check_sanitizer_flag(-fsanitize=address HARDEN_SAN_HAVE_ASAN)
     if(NOT HARDEN_SAN_HAVE_ASAN)
         message(FATAL_ERROR
             "OPENDKIM_ENABLE_ASAN=ON but -fsanitize=address is not supported. "
@@ -53,14 +74,14 @@ if(OPENDKIM_ENABLE_ASAN)
 endif()
 
 if(OPENDKIM_ENABLE_UBSAN)
-    check_c_compiler_flag(-fsanitize=undefined HARDEN_SAN_HAVE_UBSAN)
+    _check_sanitizer_flag(-fsanitize=undefined HARDEN_SAN_HAVE_UBSAN)
     if(NOT HARDEN_SAN_HAVE_UBSAN)
         message(FATAL_ERROR
             "OPENDKIM_ENABLE_UBSAN=ON but -fsanitize=undefined is not supported. "
             "Use GCC or Clang built with sanitizer support.")
     endif()
     if(OPENDKIM_ENABLE_UBSAN_INTEGER)
-        check_c_compiler_flag(-fsanitize=integer HARDEN_SAN_HAVE_UBSAN_INTEGER)
+        _check_sanitizer_flag(-fsanitize=integer HARDEN_SAN_HAVE_UBSAN_INTEGER)
         if(NOT HARDEN_SAN_HAVE_UBSAN_INTEGER)
             message(WARNING
                 "OPENDKIM_ENABLE_UBSAN_INTEGER=ON but -fsanitize=integer is not "
@@ -68,7 +89,7 @@ if(OPENDKIM_ENABLE_UBSAN)
         endif()
     endif()
     # -fsanitize=nullability is Clang-only; probe unconditionally, apply if found
-    check_c_compiler_flag(-fsanitize=nullability HARDEN_SAN_HAVE_UBSAN_NULLABILITY)
+    _check_sanitizer_flag(-fsanitize=nullability HARDEN_SAN_HAVE_UBSAN_NULLABILITY)
 endif()
 
 if(OPENDKIM_ENABLE_UBSAN_INTEGER AND NOT OPENDKIM_ENABLE_UBSAN)
@@ -78,7 +99,7 @@ if(OPENDKIM_ENABLE_UBSAN_INTEGER AND NOT OPENDKIM_ENABLE_UBSAN)
 endif()
 
 if(OPENDKIM_ENABLE_LSAN)
-    check_c_compiler_flag(-fsanitize=leak HARDEN_SAN_HAVE_LSAN)
+    _check_sanitizer_flag(-fsanitize=leak HARDEN_SAN_HAVE_LSAN)
     if(NOT HARDEN_SAN_HAVE_LSAN)
         message(FATAL_ERROR
             "OPENDKIM_ENABLE_LSAN=ON but -fsanitize=leak is not supported.")
