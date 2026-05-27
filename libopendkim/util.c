@@ -227,7 +227,7 @@ dkim_lowerhdr(unsigned char *str)
 			return;
 
 		if (isascii(*p) && isupper(*p))
-			*p = tolower(*p);
+			*p = (unsigned char)tolower(*p);
 	}
 }
 
@@ -451,7 +451,7 @@ dkim_qp_decode(const unsigned char *in, unsigned char *out, int outlen)
 
 			if (q < end)
 			{
-				*q = xl;
+				*q = (unsigned char)xl;
 				q++;
 			}
 

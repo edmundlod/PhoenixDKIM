@@ -464,7 +464,7 @@ dkim_dstring_cat1(struct dkim_dstring *dstr, int c)
 	}
 
 	/* append */
-	dstr->ds_buf[dstr->ds_len++] = c;
+	dstr->ds_buf[dstr->ds_len++] = (unsigned char)c;
 	dstr->ds_buf[dstr->ds_len] = '\0';
 
 	return TRUE;

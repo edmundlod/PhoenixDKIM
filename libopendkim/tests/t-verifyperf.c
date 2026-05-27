@@ -320,7 +320,7 @@ main(int argc, char **argv)
 			w = 0;
 		}
 
-		body[c++] = (random() + 32) % 127;
+		body[c++] = (unsigned char)((random() + 32) % 127);
 		w++;
 	}
 

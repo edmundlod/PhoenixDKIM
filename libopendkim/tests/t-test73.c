@@ -16,6 +16,22 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
+/* DKIM_PUTSHORT / DKIM_PUTLONG: drop-in replacements for the system
+** PUTSHORT/PUTLONG (NS_PUT16/NS_PUT32) with explicit (unsigned char)
+** casts on each byte store; the system macro body omits them, causing
+** -Wconversion under strict builds. */
+#define DKIM_PUTSHORT(s, cp) do { \
+	uint16_t _dps = (uint16_t)(s); \
+	*(cp)++ = (unsigned char)(_dps >> 8); \
+	*(cp)++ = (unsigned char)(_dps); \
+} while (0)
+#define DKIM_PUTLONG(l, cp) do { \
+	uint32_t _dpl = (uint32_t)(l); \
+	*(cp)++ = (unsigned char)(_dpl >> 24); \
+	*(cp)++ = (unsigned char)(_dpl >> 16); \
+	*(cp)++ = (unsigned char)(_dpl >> 8); \
+	*(cp)++ = (unsigned char)(_dpl); \
+} while (0)
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
@@ -107,17 +123,17 @@ stub_dns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	if (elen == -1)
 		return DKIM_DNS_ERROR;
 	cp += elen;
-	PUTSHORT(T_TXT, cp);
-	PUTSHORT(C_IN, cp);
+	DKIM_PUTSHORT(T_TXT, cp);
+	DKIM_PUTSHORT(C_IN, cp);
 
 	/* answer section */
 	elen = dn_comp(qbuf, cp, eom - cp, dnptrs, lastdnptr);
 	if (elen == -1)
 		return DKIM_DNS_ERROR;
 	cp += elen;
-	PUTSHORT(T_TXT, cp);
-	PUTSHORT(C_IN, cp);
-	PUTLONG(0L, cp);
+	DKIM_PUTSHORT(T_TXT, cp);
+	DKIM_PUTSHORT(C_IN, cp);
+	DKIM_PUTLONG(0L, cp);
 
 	len = cp;
 	cp += INT16SZ;
@@ -142,7 +158,7 @@ stub_dns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 	eom = cp;
 
 	cp = len;
-	PUTSHORT(olen, cp);
+	DKIM_PUTSHORT(olen, cp);
 
 	*bytes = eom - abuf;
 

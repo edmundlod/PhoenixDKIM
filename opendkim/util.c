@@ -256,7 +256,7 @@ dkimf_lowercase(u_char *str)
 	for (p = str; *p != '\0'; p++)
 	{
 		if (isascii(*p) && isupper(*p))
-			*p = tolower(*p);
+			*p = (u_char)tolower(*p);
 	}
 }
 
@@ -478,7 +478,7 @@ dkimf_checkip(DKIMF_DB db, struct sockaddr *ip)
 
 				idx = 15 - (bits / 8);
 				bit = bits % 8;
-				addr.s6_addr[idx] &= ~(1 << bit);
+				addr.s6_addr[idx] &= (uint8_t)(~(1u << bit));
 			}
 		}
 	}
@@ -1043,7 +1043,7 @@ dkimf_dstring_cat1(struct dkimf_dstring *dstr, int c)
 	}
 
 	/* append */
-	dstr->ds_buf[dstr->ds_len++] = c;
+	dstr->ds_buf[dstr->ds_len++] = (u_char)c;
 	dstr->ds_buf[dstr->ds_len] = '\0';
 
 	return TRUE;

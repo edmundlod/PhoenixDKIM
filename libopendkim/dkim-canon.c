@@ -292,7 +292,7 @@ dkim_canon_header_string(struct dkim_dstring *dstr, dkim_canon_t canon,
 
 				/* convert to lowercase */
 				if (isupper(*p))
-					*tmp++ = tolower(*p);
+					*tmp++ = (u_char)tolower(*p);
 				else
 					*tmp++ = *p;
 			}
@@ -509,7 +509,7 @@ dkim_canon_fixcrlf(DKIM *dkim, DKIM_CANON *canon, const u_char *buf,
 
 	eob = buf + buflen - 1;
 
-	prev = canon->canon_lastchar;
+	prev = (u_char)canon->canon_lastchar;
 
 	for (p = buf; p <= eob; p++)
 	{
