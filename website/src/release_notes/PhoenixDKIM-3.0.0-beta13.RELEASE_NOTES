@@ -1,0 +1,271 @@
+PhoenixDKIM 3.0.0-beta13 release notes
+=======================================
+
+Date: 27 May 2026
+
+This is the thirteenth beta of PhoenixDKIM. It contains a large batch
+of changes since beta12: RFC 8301 enforcement, new configuration
+options, systemd integration, dozens of bug fixes, and a completed
+pass of -Wconversion / -Wsign-conversion remediation across the entire
+codebase.
+
+If you are upgrading from beta12, read the "Incompatible changes"
+section first.
+
+
+Incompatible changes
+--------------------
+
+[Incompat 20260525] RSA-SHA1 verification is now refused
+unconditionally. The daemon sets DKIM_LIBFLAGS_NOSHA1VERIFY on every
+startup; any rsa-sha1 signature short-circuits before DNS lookup or
+cryptographic verification and is permanently marked as a weak-
+algorithm failure. This aligns with RFC 8301, which states that
+rsa-sha1 MUST NOT be used for signing or verifying.
+
+A new On-WeakAlgorithm configuration option controls the milter
+disposition for messages that carry an rsa-sha1 signature:
+
+    On-WeakAlgorithm  neutral      # default: deliver with neutral result
+    On-WeakAlgorithm  reject
+    On-WeakAlgorithm  quarantine
+    On-WeakAlgorithm  tempfail
+    On-WeakAlgorithm  discard
+
+The disposition "accept" is rejected at configuration load time, as
+trusting an rsa-sha1 result is non-compliant with RFC 8301. Regardless
+of disposition, such a signature is reported as dkim=neutral with a
+reason comment naming the deprecated algorithm.
+
+RSA-SHA1 signing is also disabled.
+
+
+New features
+------------
+
+[Feature 20260525] New CheckSigningTable configuration option and
+-g / -G command-line flags. When enabled, the daemon verifies that the
+sender address appears in the signing table before applying a
+signature, so a misconfigured table produces a logged diagnostic
+rather than a silently unsigned message. See opendkim.conf(5).
+
+[Feature 20260525] opendkim-genzone gains a -s flag that extends DNS
+zone output to cover subdomains when used with -d. Zone output is now
+reproducible: records are sorted and contain no timestamp-dependent
+content.
+
+[Feature 20260525] The KeyTable now accepts an optional fourth field
+specifying the signing algorithm (e.g. ed25519). Different keys in
+the same table may use different algorithms.
+
+[Feature 20260525] systemd integration:
+
+  - Type=notify readiness signalling: the daemon calls sd_notify(3)
+    after binding its socket, so service dependencies activate only
+    once PhoenixDKIM is ready to accept connections.
+
+  - Watchdog keep-alive: a background thread sends sd_notify
+    WATCHDOG=1 pings on the configured WatchdogSec interval.
+
+  - Service hardening directives have been added to the systemd
+    unit (PrivateTmp, ProtectSystem, CapabilityBoundingSet, etc.).
+
+  - The service is now ordered before common MTAs on a best-effort
+    basis.
+
+[Feature 20260527] opendkim -V now prints the full build
+configuration: enabled optional features, library versions, and
+compile-time flags. Development builds embed the git commit hash in
+the version string.
+
+[Feature 20260525] A DKIM_FEATURE_ED25519 capability flag has been
+added so callers can test for Ed25519 support at run time. New unit
+tests t-test204 and t-test205 provide multi-key signing coverage.
+
+
+Removals
+--------
+
+[Removal 20260527] K&R __P() portability wrappers have been removed
+throughout the codebase. A C89 prototype-aware compiler is assumed.
+
+[Removal 20260525] The smfi_insheader() compatibility shim for
+sendmail < 8.13.0 has been removed.
+
+[Removal 20260525] The dead conf_singleauthres configuration field
+has been removed.
+
+
+Bug fixes — signing and verification
+-------------------------------------
+
+[Fix 20260525] dkim_sign() now correctly emits the l= body-length
+tag when a length is supplied. A missing final CRLF is no longer
+rejected when the l= tag is in use.
+
+[Fix 20260525] sig_signalg is now set before the feature-check
+continue in dkim_siglist_setup(), preventing incorrect algorithm
+labels on certain code paths.
+
+[Fix 20260525] Corrected operator precedence in the DKIM_SIG_CHECK
+macro.
+
+[Fix 20260525] The header field-body character validation always
+returned "valid" due to a tautology in the comparison. It now
+correctly rejects out-of-range characters.
+
+[Fix 20260525] dkim_canon_selecthdrs no longer asserts when all
+header fields are skipped.
+
+[Fix 20260525] The Ed25519 verification reuse path now frees ed_pkey
+before calling memset, avoiding a use-after-free.
+
+[Fix 20260525] opendkim-testkey now supports ED25519 key
+verification.
+
+
+Bug fixes — Authentication-Results and header handling
+-------------------------------------------------------
+
+[Fix 20260525] NoHeaderB now correctly suppresses header.b extraction
+from the Authentication-Results output.
+
+[Fix 20260525] Authentication-Results headers with a no-result entry
+are now accepted as valid syntax.
+
+[Fix 20260525] The daemon now correctly distinguishes "no From/Date
+field" from "multiple From/Date fields" in header diagnostics.
+
+[Fix 20260525] Authentication-Results key tag fields now use comma
+as the separator, not semicolon.
+
+[Fix 20260525] authserv-id and job-id values are now quoted in
+Authentication-Results output as required by RFC 8601.
+
+[Fix 20260525] A BADFORMAT Authentication-Results header is no longer
+added in sign-only mode when the sender address cannot be resolved.
+
+[Fix 20260525] MaximumHeaders rejection now includes an SMTP reply
+code and a log message that names the oversized header field.
+
+
+Bug fixes — DNS and resolver
+-----------------------------
+
+[Fix 20260525] DNAME resource records are now skipped when parsing
+DNS answers for both DKIM key lookups and DKIM failure reports.
+
+[Fix 20260527] The libunbound resolver context now loads
+/etc/resolv.conf by default, matching the behaviour of the standard
+system resolver.
+
+[Fix 20260525] NXDOMAIN is now correctly distinguished from transient
+DNS errors in the stub resolver.
+
+[Fix 20260525] dkim_res_nslist() is now correct under
+HAVE_RES_SETSERVERS.
+
+[Fix 20260525] When a DKIM key DNS query returns multiple TXT records,
+the first record is used consistently.
+
+
+Bug fixes — key handling and configuration
+------------------------------------------
+
+[Fix 20260525] Several memory leaks and an orphaned-list bug in key
+lookup code have been fixed (issue #272).
+
+[Fix 20260525] endpwent() is now called on all early return paths
+from key safety checks (issue #198).
+
+[Fix 20260525] SafeKeys group warnings now report the file path
+rather than the owning username.
+
+[Fix 20260525] A warning is logged when KeyFile and KeyTable are
+both present in the configuration.
+
+[Fix 20260525] Diagnostics for KeyTable and SafeKeys lookup failures
+are more specific and actionable.
+
+[Fix 20260525] DNS timeout is now distinguished from key-not-found
+in key retrieval error logging.
+
+[Fix 20260525] OpenSSL errors encountered in opendkim-genkey are now
+propagated to the user.
+
+[Fix 20260525] ABI-compatible OpenSSL patch releases (same major and
+minor version, higher patch level) are now accepted at daemon startup.
+
+[Fix 20260525] The primary GID is now passed to initgroups() when an
+explicit Group is configured.
+
+
+Bug fixes — miltertest and Lua hooks
+-------------------------------------
+
+[Fix 20260525] A stack overflow in miltertest when REPLBODY data
+exceeded the response buffer has been fixed.
+
+[Fix 20260525] MT_SMTPREPLY can now check the SMTP reply after any
+milter callback, not only EOM.
+
+[Fix 20260525] odkim.del_header() now deletes the correct (indexed)
+header instance rather than always the first occurrence.
+
+[Fix 20260525] The milter capabilities mask is now declared correctly
+for FinalPolicyScript Lua hooks.
+
+[Fix 20260525] dkimf_lua_writer is now guarded against the end-of-
+dump convention introduced in Lua 5.5.
+
+
+Bug fixes — miscellaneous
+--------------------------
+
+[Fix 20260525] The SubDomains domain walk now uses memmove for
+potentially overlapping copies.
+
+[Fix 20260525] A leading '[' character in an address is now treated
+as the start of a bracketed IPv6 address rather than a type prefix.
+
+[Fix 20260525] The milter hostname is included in SoftwareHeader
+when it differs from the MTA hostname.
+
+[Fix 20260525] DKIM failure reports are no longer attempted when the
+recipient address has been truncated.
+
+[Fix 20260527] Corrected function name and index variable in
+screen.lua.sample.
+
+
+Compiler warning remediation
+------------------------------
+
+-Wconversion and -Wsign-conversion warnings have been addressed
+systematically across libopendkim, the daemon, miltertest, and the
+test suite. The work covered signed/unsigned arithmetic, implicit
+narrowing conversions, integer type mismatches at function call
+boundaries, and byte-extraction casts. const qualification was
+extended through dkimf_add_signrequest and strncasecmp call sites.
+
+No -Wconversion or -Wsign-conversion diagnostics remain in the
+default build configuration.
+
+
+Optional developer build targets
+----------------------------------
+
+The following are off by default and intended for development and
+CI use; they have no effect on production builds.
+
+[Build 20260527] OPENDKIM_ENABLE_STRICT_C=ON enables -pedantic-errors
+for ISO C17 strict-conformance testing. Intended to be combined with
+OPENDKIM_ENABLE_EXTRA_WARNINGS=ON.
+
+[Build 20260527] Valgrind Memcheck and Helgrind are now registered as
+optional CTest test sets. Run with:
+    ctest -T memcheck
+    ctest -T helgrind   (if your CTest supports custom test sets)
+
+[Build 20260527] MemorySanitizer (MSan) support has been added to
+cmake/Sanitizers.cmake. Enable with -DSANITIZE=memory.

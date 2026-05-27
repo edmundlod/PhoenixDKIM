@@ -1,3 +1,75 @@
+phoenixdkim (3.0.0~beta13-ng1) trixie; urgency=medium
+
+  * RFC 8301: RSA-SHA1 verification refused unconditionally;
+    DKIM_LIBFLAGS_NOSHA1VERIFY set on every startup. New
+    On-WeakAlgorithm option controls milter disposition
+    (neutral/reject/quarantine/tempfail/discard); "accept" is
+    rejected at config load. RSA-SHA1 signing also disabled.
+  * Feature: CheckSigningTable config option and -g/-G flags
+  * Feature: opendkim-genzone -s flag for subdomain matching;
+    output is now reproducible
+  * Feature: optional fourth KeyTable field for signing algorithm
+  * Feature: systemd Type=notify readiness signalling and watchdog
+    keep-alive thread; service hardening directives
+  * Feature: opendkim -V prints full build configuration; git commit
+    embedded in version string for development builds
+  * Feature: DKIM_FEATURE_ED25519 capability flag; multi-signing
+    unit tests t-test204 and t-test205
+  * Remove: K&R __P() portability wrappers
+  * Remove: smfi_insheader() compatibility stub for sendmail < 8.13.0
+  * Remove: dead conf_singleauthres config field
+  * Fix: dkim_sign() correctly emits l= body-length tag; missing
+    final CRLF no longer rejected when l= is in use
+  * Fix: sig_signalg set before feature-check continue in
+    dkim_siglist_setup()
+  * Fix: correct operator precedence in DKIM_SIG_CHECK macro
+  * Fix: header field-body character validation tautology — check
+    now correctly rejects invalid characters
+  * Fix: assert crash in dkim_canon_selecthdrs when all headers
+    are skipped
+  * Fix: Ed25519 verification reuse path frees ed_pkey before memset
+  * Fix: opendkim-testkey now supports ED25519 key verification
+  * Fix: NoHeaderB now suppresses A-R header.b extraction
+  * Fix: Authentication-Results with no-result entry accepted as
+    valid syntax
+  * Fix: distinguish "no From/Date field" from "multiple From/Date
+    fields" in header diagnostics
+  * Fix: A-R key tag separator changed from semicolon to comma
+  * Fix: authserv-id and job-id quoted in A-R per RFC 8601
+  * Fix: no BADFORMAT A-R header in sign-only mode when sender
+    unresolvable
+  * Fix: MaximumHeaders rejection includes SMTP reply and field name
+  * Fix: DNAME RRs skipped in DKIM key and failure-report DNS lookups
+  * Fix: libunbound context loads /etc/resolv.conf by default
+  * Fix: NXDOMAIN distinguished from transient errors in stub resolver
+  * Fix: dkim_res_nslist() under HAVE_RES_SETSERVERS
+  * Fix: first TXT record used when key query returns multiple records
+  * Fix: memory leaks and orphaned-list bug in key lookup (issue #272)
+  * Fix: endpwent() called on early returns from key safety checks
+    (issue #198)
+  * Fix: SafeKeys group warnings report path, not username
+  * Fix: warn when KeyFile and KeyTable are both set
+  * Fix: clearer diagnostics for KeyTable and SafeKeys failures
+  * Fix: DNS timeout distinguished from key-not-found in error log
+  * Fix: OpenSSL errors propagated to user in opendkim-genkey
+  * Fix: ABI-compatible OpenSSL patch releases accepted at startup
+  * Fix: primary GID passed to initgroups() when Group is configured
+  * Fix: stack overflow in miltertest on oversized REPLBODY
+  * Fix: MT_SMTPREPLY usable after any milter callback, not only EOM
+  * Fix: odkim.del_header() deletes the indexed instance, not the first
+  * Fix: milter capabilities declared for FinalPolicyScript hooks
+  * Fix: dkimf_lua_writer guarded against Lua 5.5 end-of-dump
+  * Fix: memmove for overlapping copy in SubDomains domain walk
+  * Fix: leading '[' treated as bracketed IPv6 address
+  * Fix: milter hostname included in SoftwareHeader when distinct
+  * Fix: DKIM failure report skipped when recipient address truncated
+  * Code: -Wconversion / -Wsign-conversion remediation complete
+    across libopendkim, daemon, miltertest, and test suite
+  * Build: optional OPENDKIM_ENABLE_STRICT_C, Valgrind CTest targets,
+    and MSan support (all off by default)
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Wed, 27 May 2026 00:00:00 +0200
+
 phoenixdkim (3.0.0~beta12-ng1) trixie; urgency=medium
 
   * Rename: project and source package renamed from opendkim-ng to
