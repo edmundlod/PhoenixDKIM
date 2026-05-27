@@ -9,16 +9,16 @@ Current state on `fix/wcast-qual-cleanup` after a full clean rebuild:
 | -Wignored-qualifiers      |   9 |   0 | DONE
 | -Wunused-variable         |  15 |   0 | DONE
 | -Wunused-but-set-variable |  29 |   0 | DONE (via -UNDEBUG, see below)
-| -Wunused-function         |   1 |   1 | DONE
-| -Wunused-parameter        |  44 |  44 | DONE
-| -Wsign-compare            | 113 | 113 | DONE
+| -Wunused-function         |   1 |   0 | DONE
+| -Wunused-parameter        |  44 |   0 | DONE
+| -Wsign-compare            | 113 |   0 | DONE
 | -Wpointer-sign            | 217 |   0 | DONE
 | -Wformat-truncation=      |   7 |   7 | SKIP (verified safe last session)
 | -Wdiscarded-qualifiers    |3776 |   0 | DONE
 | -Wcast-qual               | 391 |  68 | DONE (all annotated, see below)
 | -Wmissing-prototypes      | 111 |   0 | DONE
-| -Wundef                   |  33 |  33 | DONE
-| -Wshadow                  |  25 |  25 | DONE
+| -Wundef                   |  33 |   0 | DONE
+| -Wshadow                  |  25 |   0 | DONE
 
 ### -Wpointer-sign (DONE)
 
