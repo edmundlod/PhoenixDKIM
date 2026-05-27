@@ -344,7 +344,7 @@ struct msgctx
 	dkim_canon_t	mctx_bodycanon;		/* body canonicalization */
 	dkim_alg_t	mctx_signalg;		/* signature algorithm */
 	int		mctx_queryalg;		/* query algorithm */
-	int		mctx_hdrbytes;		/* header space allocated */
+	size_t		mctx_hdrbytes;		/* header space accumulated */
 	struct dkimf_dstring * mctx_tmpstr;	/* temporary string */
 	const u_char *	mctx_jobid;		/* job ID */
 	u_char *	mctx_laddr;		/* address triggering l= */
@@ -3766,14 +3766,14 @@ dkimf_restart_check(int n, time_t t)
 
 	if (t == 0)
 	{
-		alen = n * sizeof(time_t);
+		size_t nbytes = (size_t) n * sizeof(time_t);
 
-		list = (time_t *) malloc(alen);
+		list = (time_t *) malloc(nbytes);
 
 		if (list == NULL)
 			return FALSE;
 
-		memset(list, '\0', alen);
+		memset(list, '\0', nbytes);
 
 		idx = 0;
 		alen = n;
@@ -4901,7 +4901,7 @@ dkimf_prescreen(DKIM *dkim, DKIM_SIGINFO **sigs, int nsigs)
 		int n;
 		_Bool *ig = NULL;
 
-		ig = (_Bool *) malloc(sizeof(_Bool) * nsigs);
+		ig = (_Bool *) malloc(sizeof(_Bool) * (size_t) nsigs);
 		if (ig == NULL)
 			return DKIM_CBSTAT_ERROR;
 
@@ -9774,7 +9774,7 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 					break;                                      \
 				}                                               \
                                                                 \
-				n += r;                                         \
+				n += (size_t) r;                                \
 			} while (0)
 
 			APPEND("%s%sdkim=%s%s (%u-bit key%s%s) header.d=%s header.i=%s header.a=%s header.s=%s%s%s%s",
@@ -11637,7 +11637,7 @@ mlfi_eoh(SMFICTX *ctx)
 
 			status = dkimf_msr_header(dfc->mctx_srhead, &dkim,
 				                  dkimf_dstring_get(dfc->mctx_tmpstr),
-				                  dkimf_dstring_len(dfc->mctx_tmpstr));
+				                  (size_t) dkimf_dstring_len(dfc->mctx_tmpstr));
 			if (status != DKIM_STAT_OK)
 			{
 				ms = dkimf_libstatus(ctx, dkim,
@@ -11650,7 +11650,7 @@ mlfi_eoh(SMFICTX *ctx)
 		{
 			status = dkim_header(dfc->mctx_dkimv,
 			                     (u_char *) dkimf_dstring_get(dfc->mctx_tmpstr),
-			                     dkimf_dstring_len(dfc->mctx_tmpstr));
+			                     (size_t) dkimf_dstring_len(dfc->mctx_tmpstr));
 
 			if (status != DKIM_STAT_OK)
 			{
@@ -13689,7 +13689,7 @@ main(int argc, char **argv)
 				return EX_USAGE;
 			}
 	
-			result = (char **) malloc(sizeof(char *) * n);
+			result = (char **) malloc(sizeof(char *) * (size_t) n);
 			if (result == NULL)
 			{
 				fprintf(stderr, "%s: malloc(): %s\n", progname,
@@ -13710,7 +13710,7 @@ main(int argc, char **argv)
 				memset(result[c], '\0', BUFRSZ + 1);
 			}
 
-			dbdp = (DKIMF_DBDATA) malloc(sizeof(struct dkimf_db_data) * n);
+			dbdp = (DKIMF_DBDATA) malloc(sizeof(struct dkimf_db_data) * (size_t) n);
 			if (dbdp == NULL)
 			{
 				fprintf(stderr, "%s: malloc(): %s\n", progname,
@@ -14682,13 +14682,13 @@ main(int argc, char **argv)
 	{
 		if (strchr(argv[c], ' ') != NULL)
 		{
-			status = snprintf(p, n, "%s \"%s\"",
+			status = snprintf(p, (size_t) n, "%s \"%s\"",
 			                  c == 1 ? "args:" : "",
 			                  argv[c]);
 		}
 		else
 		{
-			status = snprintf(p, n, "%s %s",
+			status = snprintf(p, (size_t) n, "%s %s",
 			                  c == 1 ? "args:" : "",
 			                  argv[c]);
 		}
