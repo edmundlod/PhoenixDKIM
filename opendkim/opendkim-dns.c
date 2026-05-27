@@ -192,7 +192,7 @@ dkimf_unbound_cb(void *mydata, int err, struct ub_result *result)
 	ubdata->ubd_stat = DKIM_STAT_NOKEY;
 	ubdata->ubd_rcode = result->rcode;
 	memcpy(ubdata->ubd_buf, result->answer_packet,
-	       MIN(ubdata->ubd_buflen, result->answer_len));
+	       MIN(ubdata->ubd_buflen, (size_t) result->answer_len));
 	ubdata->ubd_buflen = result->answer_len;
 
 	/*

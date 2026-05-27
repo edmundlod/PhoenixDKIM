@@ -126,7 +126,7 @@ loadkey(char *buf, size_t *buflen)
 			return FALSE;
 		}
 
-		*buflen = MIN(s.st_size, *buflen);
+		*buflen = MIN((size_t) s.st_size, *buflen);
 		rlen = read(fd, buf, *buflen);
 		close(fd);
 
@@ -672,7 +672,7 @@ main(int argc, char **argv)
 			BIO_flush(decode);
 
 			outlen = BIO_get_mem_data(decode, &p);
-			memcpy(derdata, p, MIN(sizeof derdata, outlen));
+			memcpy(derdata, p, MIN(sizeof derdata, (size_t) outlen));
 
 			BIO_free_all(b64);
 			BIO_free(decode);
