@@ -4064,7 +4064,7 @@ dkim_eom_verify(DKIM *dkim, _Bool *testkey)
 				    sig->sig_keybits < lib->dkiml_minkeybits)
 				{
 					sig->sig_error = DKIM_SIGERROR_KEYTOOSMALL;
-					sig->sig_flags &= ~DKIM_SIGFLAG_PASSED;
+					sig->sig_flags &= ~(u_int)DKIM_SIGFLAG_PASSED;
 				}
 
 				/* pass and bh match? */

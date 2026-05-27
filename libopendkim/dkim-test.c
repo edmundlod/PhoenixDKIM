@@ -155,7 +155,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 
 	td = dkim->dkim_dnstesth;
 	if (td == NULL)
-		return -1;
+		return (size_t)-1;
 
 	dkim->dkim_dnstesth = td->dns_next;
 
@@ -175,7 +175,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	if (n < 0)
 	{
 		DKIM_FREE(dkim, td);
-		return -1;
+		return (size_t)-1;
 	}
 	cp += n;
 	/*
@@ -186,7 +186,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	if (cp >= end || (size_t) (end - cp) < 2 * sizeof(uint16_t))
 	{
 		DKIM_FREE(dkim, td);
-		return -1;
+		return (size_t)-1;
 	}
 
 	DKIM_PUTSHORT(td->dns_type, cp);
@@ -207,7 +207,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	if (n < 0)
 	{
 		DKIM_FREE(dkim, td);
-		return -1;
+		return (size_t)-1;
 	}
 	cp += n;
 
@@ -216,7 +216,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	    (size_t) (end - cp) < 2 * sizeof(uint16_t) + sizeof(uint32_t))
 	{
 		DKIM_FREE(dkim, td);
-		return -1;
+		return (size_t)-1;
 	}
 
 	DKIM_PUTSHORT(td->dns_type, cp);
@@ -236,7 +236,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		    (size_t) (end - cp) < (size_t) len + sizeof(uint16_t))
 		{
 			DKIM_FREE(dkim, td);
-			return -1;
+			return (size_t)-1;
 		}
 		DKIM_PUTSHORT(len, cp);
 
@@ -261,14 +261,14 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		if (cp >= end || (size_t) (end - cp) < sizeof(uint16_t))
 		{
 			DKIM_FREE(dkim, td);
-			return -1;
+			return (size_t)-1;
 		}
 		DKIM_PUTSHORT(td->dns_prec, cp);
 		n = dn_comp((char *) td->dns_reply, cp, end - cp, NULL, NULL);
 		if (n < 0)
 		{
 			DKIM_FREE(dkim, td);
-			return -1;
+			return (size_t)-1;
 		}
 
 		cp += n;
@@ -276,7 +276,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 
 	  default:
 		DKIM_FREE(dkim, td);
-		return -1;
+		return (size_t)-1;
 	}
 
 	DKIM_FREE(dkim, td);
