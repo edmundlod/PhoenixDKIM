@@ -16,11 +16,13 @@ t-setup
 .deps/
 .libs/
 /build/
+/build-strict/
 Testing/
 build-config.h.in
 missing
 stamp-h*
 build.log
+build-warnings.txt
 build-config.h
 config.log
 config.status
@@ -36,7 +38,7 @@ tags
 autom4te.cache
 core
 *.core
-build-aux
+build-au
 opendkim-[0-9].[0-9].[0-9]
 ctest-output.txt
 *.swp
