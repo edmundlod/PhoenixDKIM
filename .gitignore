@@ -24,6 +24,13 @@ stamp-h*
 build.log
 build-warnings.txt
 build-config.h
+build-clang-warnings.txt
+/build-clang/
+/build-cproc/
+/build-debug/
+/build-helgrind/
+/build-scan/
+/build-valgrind/
 config.log
 config.status
 ltmain.sh
