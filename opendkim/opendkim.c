@@ -1598,7 +1598,7 @@ dkimf_xs_requestsig(lua_State *l)
 
 	top = lua_gettop(l);
 
-	if (top == 0 && top > 4)
+	if (top == 0 || top > 4)
 	{
 		lua_pushstring(l, "odkim.sign(): incorrect argument count");
 		lua_error(l);

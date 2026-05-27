@@ -6369,7 +6369,8 @@ dkim_chunk(DKIM *dkim, const u_char *buf, size_t buflen)
 				break;
 			}
 			/* FALLTHROUGH */
-				
+			__attribute__((fallthrough));
+
 		  case 3:
 			if (*p == '\n')
 			{
