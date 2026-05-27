@@ -121,7 +121,7 @@ config_getline(FILE *in)
 			new = newnew;
 		}
 
-		new[len++] = c;
+		new[len++] = (char) c;
 		new[len] = '\0';
 	}
 

@@ -192,8 +192,6 @@ dkim_res_query(void *srv, int type, unsigned char *query, unsigned char *buf,
 #ifdef HAVE_RES_NINIT
 	struct __res_state *statp;
 #endif /* HAVE_RES_NINIT */
-	HEADER *hdr;
-
 #ifdef HAVE_RES_NINIT
 	statp = srv;
 	ret = res_nquery(statp, (char *) query, C_IN, type, buf, buflen);
@@ -229,11 +227,14 @@ dkim_res_query(void *srv, int type, unsigned char *query, unsigned char *buf,
 		    buflen < HFIXEDSZ + 2 * INT16SZ)
 			return DKIM_DNS_ERROR;
 
-		memset(buf, '\0', HFIXEDSZ);
-		hdr = (HEADER *) buf;
-		hdr->qr = 1;
-		hdr->rcode = NXDOMAIN;
-		hdr->qdcount = htons(1);
+		{
+			HEADER hdr_tmp;
+			memset(&hdr_tmp, '\0', sizeof hdr_tmp);
+			hdr_tmp.qr = 1;
+			hdr_tmp.rcode = NXDOMAIN;
+			hdr_tmp.qdcount = htons(1);
+			memcpy(buf, &hdr_tmp, sizeof hdr_tmp);
+		}
 
 		/* reserve room for the trailing QTYPE and QCLASS */
 		cp = buf + HFIXEDSZ;
@@ -253,11 +254,14 @@ dkim_res_query(void *srv, int type, unsigned char *query, unsigned char *buf,
 	if (rq == NULL)
 		return DKIM_DNS_ERROR;
 
-	hdr = (HEADER *) buf;
-	if (hdr->ad)
-		rq->rq_dnssec = DKIM_DNSSEC_SECURE;
-	else
-		rq->rq_dnssec = DKIM_DNSSEC_INSECURE;
+	{
+		HEADER hdr_tmp;
+		memcpy(&hdr_tmp, buf, sizeof hdr_tmp);
+		if (hdr_tmp.ad)
+			rq->rq_dnssec = DKIM_DNSSEC_SECURE;
+		else
+			rq->rq_dnssec = DKIM_DNSSEC_INSECURE;
+	}
 	if (ret == -1)
 	{
 		rq->rq_error = errno;
