@@ -295,6 +295,9 @@ function(apply_hardening tgt)
     if(DEFINED OPENDKIM_ENABLE_UBSAN AND OPENDKIM_ENABLE_UBSAN)
         set(_san_active TRUE)
     endif()
+    if(DEFINED OPENDKIM_ENABLE_MSAN  AND OPENDKIM_ENABLE_MSAN)
+        set(_san_active TRUE)
+    endif()
 
     if(NOT _san_active)
         target_compile_options(${tgt} PRIVATE
