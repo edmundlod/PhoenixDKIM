@@ -112,7 +112,7 @@ struct dkimf_db
 {
 	u_int			db_flags;
 	u_int			db_iflags;
-	u_int			db_type;
+	int			db_type;
 	int			db_status;
 	int			db_nrecs;
 	pthread_mutex_t *	db_lock;
@@ -488,7 +488,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 				new->db_type = dbtypes[c].code;
 		}
 
-		if (new->db_type == (u_int) DKIMF_DB_TYPE_UNKNOWN)
+		if (new->db_type == DKIMF_DB_TYPE_UNKNOWN)
 		{
 			free(new);
 			if (err != NULL)
@@ -504,7 +504,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	if (lock != NULL)
 	{
 		new->db_lock = lock;
-		new->db_flags &= ~DKIMF_DB_FLAG_MAKELOCK;
+		new->db_flags &= ~(u_int)DKIMF_DB_FLAG_MAKELOCK;
 	}
 	else if ((new->db_flags & DKIMF_DB_FLAG_MAKELOCK) != 0)
 	{
