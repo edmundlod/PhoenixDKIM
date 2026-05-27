@@ -5121,7 +5121,7 @@ dkim_sign(DKIM_LIB *libhandle, const unsigned char *id, void *memclosure,
 		new->dkim_domain = dkim_strdup(new, domain, 0);
 		if (length == (ssize_t) -1)
 		{
-			new->dkim_signlen = ULONG_MAX;
+			new->dkim_signlen = (ssize_t) -1;
 		}
 		else
 		{
