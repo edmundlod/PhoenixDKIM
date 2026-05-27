@@ -89,9 +89,9 @@ dkim_base64_decode(const u_char *str, u_char *buf, size_t buflen)
 			return -2;
 		if (char_count == 4)
 		{
-			buf[n++] = (bits >> 16);
-			buf[n++] = ((bits >> 8) & 0xff);
-			buf[n++] = (bits & 0xff);
+			buf[n++] = (u_char)(bits >> 16);
+			buf[n++] = (u_char)((bits >> 8) & 0xff);
+			buf[n++] = (u_char)(bits & 0xff);
 			bits = 0;
 			char_count = 0;
 		}
@@ -117,15 +117,15 @@ dkim_base64_decode(const u_char *str, u_char *buf, size_t buflen)
 		/* see above: buflen < N guard prevents size_t underflow */
 		if (buflen < 1 || (size_t) n > buflen - 1)
 			return -2;
-		buf[n++] = (bits >> 10);
+		buf[n++] = (u_char)(bits >> 10);
 		break;
 
 	  case 3:
 		/* see above: buflen < N guard prevents size_t underflow */
 		if (buflen < 2 || (size_t) n > buflen - 2)
 			return -2;
-		buf[n++] = (bits >> 16);
-		buf[n++] = ((bits >> 8) & 0xff);
+		buf[n++] = (u_char)(bits >> 16);
+		buf[n++] = (u_char)((bits >> 8) & 0xff);
 		break;
 	}
 
