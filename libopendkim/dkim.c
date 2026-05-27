@@ -6930,14 +6930,14 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, const u_char *hdr)
 				start = c2 + 1;
 				len = p - c2 - 1;
 
-				if (strncasecmp((char *) hdr,
+				if (strncasecmp((const char *) hdr,
 				                (const char *) start,
 				                len) == 0)
 					return TRUE;
 			}
 			else
 			{
-				if (strcasecmp((char *) hdr,
+				if (strcasecmp((const char *) hdr,
 				               (const char *) hdrlist) == 0)
 					return TRUE;
 			}
@@ -6947,7 +6947,7 @@ dkim_sig_hdrsigned(DKIM_SIGINFO *sig, const u_char *hdr)
 
 		if (len != (size_t) -1)
 		{
-			if (strncasecmp((char *) hdr, (const char *) start,
+			if (strncasecmp((const char *) hdr, (const char *) start,
 			                len) == 0)
 				return TRUE;
 		}

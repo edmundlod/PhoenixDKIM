@@ -551,7 +551,7 @@ sfsistat mlfi_negotiate(SMFICTX *, unsigned long, unsigned long,
 
 static int dkimf_add_signrequest(struct dkimf_config *,
                                       struct msgctx *, DKIMF_DB,
-                                      char *, char *, ssize_t);
+                                      const char *, const char *, ssize_t);
 sfsistat dkimf_addheader(SMFICTX *, const char *, const char *);
 sfsistat dkimf_addrcpt(SMFICTX *, char *);
 static int dkimf_apply_signtable(struct dkimf_config *, struct msgctx *,
@@ -1672,8 +1672,8 @@ dkimf_xs_requestsig(lua_State *l)
 	if (keyname != NULL)
 	{
 		switch (dkimf_add_signrequest(conf, dfc, conf->conf_keytabledb,
-		                              (char *) keyname,
-		                              (char *) ident,
+		                              keyname,
+		                              ident,
 		                              signlen))
 		{
 		  case 3:
@@ -1711,7 +1711,7 @@ dkimf_xs_requestsig(lua_State *l)
 			return 1;
 		}
 	}
-	else if (dkimf_add_signrequest(conf, dfc, NULL, NULL, (char *) ident,
+	else if (dkimf_add_signrequest(conf, dfc, NULL, NULL, ident,
 	                               (ssize_t) -1) != 0)
 	{
 		if (conf->conf_dolog)
@@ -4432,8 +4432,8 @@ dkimf_keytype(const char *keydata, size_t keylen)
 
 static int
 dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
-                      DKIMF_DB keytable, char *keyname,
-                      char *signer, ssize_t signlen)
+                      DKIMF_DB keytable, const char *keyname,
+                      const char *signer, ssize_t signlen)
 {
 	_Bool found = FALSE;
 	size_t keydatasz = 0;
