@@ -17,15 +17,18 @@ git checkout "$TAG"
 
 VERSION=$(dpkg-parsechangelog -S Version)
 SOURCE_PKG=$(dpkg-parsechangelog -S Source)
-# Derive upstream version from the tag (strip leading 'v'), not from
-# dpkg-parsechangelog, which would give a Debian-style tilde (3.0.0~beta13).
-# Public tarballs use a dash: phoenixdkim-3.0.0-beta13.tar.gz.
-UPSTREAM="${TAG#v}"                                                                                                                                 
+# Two spellings of the upstream version are needed:
+#   UPSTREAM      dash form  (3.0.0-beta13) — public tarball, human-facing
+#   DEB_UPSTREAM  tilde form (3.0.0~beta13) — Debian orig tarball; must match
+#                 the upstream part of the changelog version or dpkg-source
+#                 and sbuild will not find the orig.
+UPSTREAM="${TAG#v}"
+DEB_UPSTREAM="${UPSTREAM/-/\~}"
 
 # 3.0 (quilt) requires an orig tarball to exist before sbuild can package the source
-ORIG_TARBALL="$RELEASES_DIR/${SOURCE_PKG}_${UPSTREAM}.orig.tar.gz"
+ORIG_TARBALL="$RELEASES_DIR/${SOURCE_PKG}_${DEB_UPSTREAM}.orig.tar.gz"
 echo "==> Creating orig tarball: $(basename "$ORIG_TARBALL")"
-git archive --prefix="${SOURCE_PKG}-${UPSTREAM}/" HEAD | gzip -9 > "$ORIG_TARBALL"
+git archive --prefix="${SOURCE_PKG}-${DEB_UPSTREAM}/" HEAD | gzip -9 > "$ORIG_TARBALL"
 
 echo "==> Updating chroot"
 #mmdebstrap --variant=buildd trixie "$HOME/releases/chroots/trixie.tar.xz"
