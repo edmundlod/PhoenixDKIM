@@ -4376,14 +4376,14 @@ dkimf_keytype(const char *keydata, size_t keylen)
 	if (strncmp(keydata, "-----", 5) == 0)
 	{
 		keylen = strlen(keydata);
-		bio = BIO_new_mem_buf(keydata, keylen);
+		bio = BIO_new_mem_buf(keydata, (int) keylen); /* key << INT_MAX */
 		if (bio == NULL)
 			return -1;
 		pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
 	}
 	else
 	{
-		bio = BIO_new_mem_buf(keydata, keylen);
+		bio = BIO_new_mem_buf(keydata, (int) keylen); /* key << INT_MAX */
 		if (bio == NULL)
 			return -1;
 		pkey = d2i_PrivateKey_bio(bio, NULL);
@@ -12627,7 +12627,7 @@ mlfi_eom(SMFICTX *ctx)
 				     p = strtok_r(NULL, DELIMITER,
 				                  &last))
 				{
-					len = strlen(p);
+					len = (int) strlen(p); /* token bounded by DKIM_MAXHEADER */
 
 					if (!first)
 					{
