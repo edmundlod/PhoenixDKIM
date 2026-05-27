@@ -57,8 +57,19 @@ fi
 # Add packages to reprepro apt repo
 REPO_DIR="$RELEASES_DIR/repo"
 if [[ -d "$REPO_DIR/conf" ]]; then
-    echo "==> Updating apt repo"
-    reprepro -b "$REPO_DIR" include trixie "$RELEASES_DIR/${SOURCE_PKG}_${VERSION}_amd64.changes"
+    # A published version is immutable: reprepro will refuse to register a
+    # rebuilt .deb of an already-present version (different checksums), and
+    # the whole include — source included — aborts. Detect that up front and
+    # skip cleanly rather than emitting a confusing checksum error.
+    if reprepro -b "$REPO_DIR" ls "$SOURCE_PKG" 2>/dev/null \
+        | awk -F' \\| ' -v v="$VERSION" -v d="trixie" '$2==v && $3==d {found=1} END{exit !found}'; then
+        echo "==> $SOURCE_PKG $VERSION already in apt repo (trixie); skipping include."
+        echo "    A released version is immutable — bump the revision or cut a new"
+        echo "    tag to publish changed packages."
+    else
+        echo "==> Updating apt repo"
+        reprepro -b "$REPO_DIR" include trixie "$RELEASES_DIR/${SOURCE_PKG}_${VERSION}_amd64.changes"
+    fi
 fi
 
 # Source tarball
