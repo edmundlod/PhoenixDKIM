@@ -1,20 +1,19 @@
 # Task: triage and clear the conversion-family strict warnings
 
-## Current state (as of 2026-05-27, after commits 17f5a79f / 912d8ffa / 68d3daa3)
+## Current state (as of 2026-05-27, after commit f0ba82df)
 
-`build-warnings.txt` is fresh.  **67 conversion-family warnings remain**, all in
-`opendkim/opendkim.c`.  Buckets 3 and 6 are fully done.
+**All in-scope conversion warnings cleared.**  `build-warnings.txt` is fresh.
 
 | Category             | WAS | NOW | Disposition |
 |----------------------|-----|-----|-------------|
-| -Wsign-conversion    | 519 |  54 | IN SCOPE    |
-| -Wconversion         | 327 |  12 | IN SCOPE    |
-| -Wfloat-conversion   |  13 |   1 | IN SCOPE    |
-| -Wcast-qual          |  66 |  66 | OUT — already triaged/annotated in prior pass |
-| -Wformat-truncation= |  45 |  45 | OUT — SKIP policy, all verified safe |
+| -Wsign-conversion    | 519 |   0 | ✅ DONE |
+| -Wconversion         | 327 |   0 | ✅ DONE |
+| -Wfloat-conversion   |  13 |   0 | ✅ DONE |
+| -Wcast-qual          |  66 |  28 | OUT — already triaged/annotated in prior pass |
+| -Wformat-truncation= |  45 |   6 | OUT — SKIP policy, all verified safe |
 | -Wformat=            |   3 |   0 | Fixed in prior pass |
 
-In-scope total: **859 → 67** (792 cleared).
+In-scope total: **859 → 0** (all cleared).
 
 ## What was already done
 
@@ -23,6 +22,12 @@ In-scope total: **859 → 67** (792 cleared).
 | `17f5a79f` | Bucket 3 (partial): `(u_char)` casts in `dkim_base64_decode()` |
 | `912d8ffa` | Bucket 3 (rest): byte-extraction across all other files (`dkim-canon.c`, `util.c`, `dkim-util.c`, `opendkim/util.c`, `dkim.c`, `dkim-dns.c`, `dkim-test.c`, `opendkim-dns.c`, `t-test73.c`, `t-signperf.c`, `t-verifyperf.c`); also added `DKIM_PUTSHORT`/`DKIM_PUTLONG` file-local macros in 4 files to replace the system `PUTSHORT`/`PUTLONG` which lack `(unsigned char)` casts |
 | `68d3daa3` | Bucket 6: all 13 "changes value" sign-flip sentinels (hand-audited; all were intentional sentinels or a private-struct type fix — none were missing error checks) |
+| `20f10d30` | Cluster A: `int dbflags` → `u_int` in `dkimf_config_load()` (21 warnings) |
+| `23aeb44e` | Cluster B: `(size_t)` casts on `stat.st_size` at 13 fstat-guarded sites |
+| `2ba3ff97` | Cluster D: int→size_t sign-conversion (16 warnings): local `nbytes`, field type fix for `mctx_hdrbytes`, call-site casts |
+| `068161bb` | Cluster C: size_t→int narrowing at `BIO_new_mem_buf` and `mlfi_eom` header-token sites |
+| `a7799017` | Cluster F: 11 miscellaneous single-site warnings (boolean casts, return type fix, config field casts, etc.) |
+| `f0ba82df` | Cluster E: Lua API boundary — `(lua_Number)` casts for `ssize_t` body lengths, `(int)` cast for occurrence index |
 
 ## Verdict: NOT a one-sweep fix
 
