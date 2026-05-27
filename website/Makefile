@@ -32,6 +32,7 @@
 # Usage:
 #   make        — build all pages and man pages
 #   make clean  — remove output
+#   make check  - check for dead links (only internal, not to github.com or so)
 #   make deploy — rsync to server (edit DEST in `website.local.mk`)
 
 -include website.local.mk
@@ -64,6 +65,11 @@ MANHTML     := $(patsubst %,$(OUTDIR)/man/%.html,$(notdir $(MANPAGES)))
 ANN_SRCS := $(wildcard src/announcements/*.content.html)
 ANN_HTML := $(patsubst src/announcements/%.content.html,$(OUTDIR)/announcements/%.html,$(ANN_SRCS))
 
+# ── release notes (plain-text static files) ──────────────────────────────────
+
+RN_SRCS := $(wildcard src/release_notes/*)
+RN_OUT  := $(patsubst src/release_notes/%,$(OUTDIR)/release_notes/%,$(RN_SRCS))
+
 # ── well-known / static assets ───────────────────────────────────────────────
 
 WELLKNOWN_DIR   = $(OUTDIR)/.well-known
@@ -73,8 +79,9 @@ STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc
 
 # ── targets ───────────────────────────────────────────────────────────────────
 
-all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(WELLKNOWN_DIR) \
-     $(HTML) $(MANHTML) $(ANN_HTML) $(WELLKNOWN_FILES) $(STATIC_FILES)
+all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
+     $(WELLKNOWN_DIR) \
+     $(HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
@@ -85,6 +92,9 @@ $(OUTDIR)/man:
 $(OUTDIR)/announcements:
 	mkdir -p $(OUTDIR)/announcements
 
+$(OUTDIR)/release_notes:
+	mkdir -p $(OUTDIR)/release_notes
+
 $(WELLKNOWN_DIR):
 	mkdir -p $(WELLKNOWN_DIR)
 
@@ -93,6 +103,10 @@ $(WELLKNOWN_DIR)/security.txt: src/security.txt | $(WELLKNOWN_DIR)
 	@echo "  built $@"
 
 $(OUTDIR)/phoenixdkim-security.asc: src/phoenixdkim-security.asc | $(OUTDIR)
+	cp $< $@
+	@echo "  built $@"
+
+$(OUTDIR)/release_notes/%: src/release_notes/% | $(OUTDIR)/release_notes
 	cp $< $@
 	@echo "  built $@"
 
@@ -155,10 +169,15 @@ $(OUTDIR)/man/%.html: $(TMPL)
 	rm $$tmpfile
 	@echo "  built $@"
 
+check: all
+	linkchecker out/index.html
+
 deploy: all
-	rsync -avz --delete $(OUTDIR)/ $(DEST)
+	rsync -avz --delete \
+	    --exclude=/releases/ \
+	    $(OUTDIR)/ $(DEST)
 
 clean:
 	rm -rf $(OUTDIR)
 
-.PHONY: all deploy clean
+.PHONY: all check deploy clean
