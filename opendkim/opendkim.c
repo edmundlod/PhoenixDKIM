@@ -3125,7 +3125,7 @@ dkimf_xs_bodylength(lua_State *l)
 	if (status != DKIM_STAT_OK)
 		lua_pushnil(l);
 	else
-		lua_pushnumber(l, body);
+		lua_pushnumber(l, (lua_Number) body); /* ssize_t → double at Lua boundary */
 
 	return 1;
 }
@@ -3187,7 +3187,7 @@ dkimf_xs_canonlength(lua_State *l)
 	if (status != DKIM_STAT_OK)
 		lua_pushnil(l);
 	else
-		lua_pushnumber(l, cl);
+		lua_pushnumber(l, (lua_Number) cl); /* ssize_t → double at Lua boundary */
 
 	return 1;
 }
@@ -3277,7 +3277,7 @@ dkimf_xs_delheader(lua_State *l)
 
 	ctx = (SMFICTX *) lua_touserdata(l, 1);
 	name = (char *) lua_tostring(l, 2);
-	idx = lua_tonumber(l, 3);
+	idx = (int) lua_tonumber(l, 3); /* header-occurrence index fits in int */
 	lua_pop(l, 3);
 
 	if (ctx == NULL)
