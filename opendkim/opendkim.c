@@ -987,7 +987,7 @@ dkimf_import_globals(void *p, lua_State *l)
 		  }
 
 		  case LUA_TBOOLEAN:
-			lua_pushboolean(l, (long) lg->lg_value);
+			lua_pushboolean(l, (int)(long) lg->lg_value);
 			lua_setglobal(l, lg->lg_name);
 			break;
 
@@ -4812,7 +4812,7 @@ dkimf_msr_body(struct signreq *sr, DKIM **last, u_char *body, size_t bodylen)
 **  	Maximum of all dkim_minbody() returns.
 */
 
-static int
+static u_long
 dkimf_msr_minbody(struct signreq *sr)
 {
 	u_long mb = 0;
@@ -4909,7 +4909,7 @@ dkimf_prescreen(DKIM *dkim, DKIM_SIGINFO **sigs, int nsigs)
 		for (c = 0; c < nsigs; c++)
 			ig[c] = TRUE;
 
-		n = conf->conf_maxverify;
+		n = (int) conf->conf_maxverify;
 
 		if (conf->conf_thirdpartydb != NULL)
 		{
@@ -6098,7 +6098,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			conf->conf_boguskey = c;
+			conf->conf_boguskey = (unsigned int) c;
 		}
 		else
 		{
@@ -6119,7 +6119,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 				return -1;
 			}
 
-			conf->conf_unprotectedkey = c;
+			conf->conf_unprotectedkey = (unsigned int) c;
 		}
 		else
 		{
@@ -7521,7 +7521,7 @@ dkimf_config_setlib(struct dkimf_config *conf, const char **err)
 
 	if (conf->conf_clockdrift != 0)
 	{
-		uint64_t drift = conf->conf_clockdrift;
+		uint64_t drift = (uint64_t) conf->conf_clockdrift;
 
 		status = dkim_setopt(lib,
 		                      DKIM_OPTS_CLOCKDRIFT, &drift,
@@ -9085,7 +9085,7 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 
 	if (pct < 100)
 	{
-		rn = random() % 100;
+		rn = (u_int)(random() % 100);
 		if (rn > pct)
 			return;
 	}
@@ -12508,14 +12508,15 @@ mlfi_eom(SMFICTX *ctx)
 				                            sig, &bodylen,
 				                            &canonlen, NULL);
 
-				/* empty body is never treated as partial */
-				if (bodylen)
+				/* empty body is never treated as partial;
+				 * canonlen/bodylen use -1 as "unset" sentinel */
+				if (bodylen > 0 && canonlen >= 0)
 				{
 					if (conf->conf_sigmintype == SIGMIN_PERCENT)
 					{
 						size_t signpct;
 
-						signpct = (100 * canonlen) / bodylen;
+						signpct = (size_t)(100 * canonlen) / (size_t) bodylen;
 
 						if (signpct < conf->conf_sigmin)
 							dfc->mctx_status = DKIMF_STATUS_PARTIAL;
@@ -13238,7 +13239,7 @@ main(int argc, char **argv)
 	progname = (p = strrchr(argv[0], '/')) == NULL ? argv[0] : p + 1;
 
 	(void) time(&now);
-	srandom(now);
+	srandom((unsigned int) now);
 
 	curconf = dkimf_config_new();
 	if (curconf == NULL)
@@ -13729,7 +13730,7 @@ main(int argc, char **argv)
 			*p = '\0';
 
 			status = dkimf_db_get(dbtest, query, strlen(query),
-			                      dbdp, n, &exists);
+			                      dbdp, (unsigned int) n, &exists);
 
 			if (status != 0)
 			{
@@ -13821,7 +13822,7 @@ main(int argc, char **argv)
 				}
 
 				*p = '\0';
-				n = strtol(rate, &q, 10);
+				n = (int) strtol(rate, &q, 10); /* restart rate bounded by int */
 				if (n < 0 || *q != '\0')
 				{
 					fprintf(stderr,
