@@ -16,13 +16,19 @@ git fetch --tags
 git checkout "$TAG"
 
 VERSION=$(dpkg-parsechangelog -S Version)
-UPSTREAM=$(dpkg-parsechangelog -S Version | cut -d- -f1)
 SOURCE_PKG=$(dpkg-parsechangelog -S Source)
+# Derive upstream version from the tag (strip leading 'v'), not from
+# dpkg-parsechangelog, which would give a Debian-style tilde (3.0.0~beta13).
+# Public tarballs use a dash: phoenixdkim-3.0.0-beta13.tar.gz.
+UPSTREAM="${TAG#v}"                                                                                                                                 
 
 # 3.0 (quilt) requires an orig tarball to exist before sbuild can package the source
 ORIG_TARBALL="$RELEASES_DIR/${SOURCE_PKG}_${UPSTREAM}.orig.tar.gz"
 echo "==> Creating orig tarball: $(basename "$ORIG_TARBALL")"
 git archive --prefix="${SOURCE_PKG}-${UPSTREAM}/" HEAD | gzip -9 > "$ORIG_TARBALL"
+
+echo "==> Updating chroot"
+#mmdebstrap --variant=buildd trixie "$HOME/releases/chroots/trixie.tar.xz"
 
 echo "==> Building PhoenixDKIM $VERSION"
 
