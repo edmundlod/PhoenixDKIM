@@ -34,15 +34,21 @@ echo "==> Building PhoenixDKIM $VERSION"
 
 if command -v sbuild &>/dev/null; then
     echo "==> Using sbuild (clean chroot)"
+    # --source includes the source package (.dsc, .orig.tar.*, .debian.tar.*)
+    # in the resulting .changes so reprepro can serve it via 'apt-get source'.
     sbuild \
         --dist=trixie \
         --chroot-mode=unshare \
         --chroot="$RELEASES_DIR/chroots/trixie.tar.xz" \
         --no-clean-source \
+        --source \
         --keyid="$KEYID"
 else
     echo "==> sbuild not available, building directly"
-    dpkg-buildpackage -b -k"$KEYID"
+    # -F (full build: source + binary) is the dpkg-buildpackage default, but
+    # we state it explicitly — previously this was -b (binary only), which
+    # produced a source-less .changes.
+    dpkg-buildpackage -F -k"$KEYID"
 fi
 
 # Add packages to reprepro apt repo
@@ -62,4 +68,6 @@ echo ""
 echo "==> Artifacts in $RELEASES_DIR:"
 ls -lh "$RELEASES_DIR"/*.deb "$RELEASES_DIR"/*.changes \
         "$RELEASES_DIR"/*.buildinfo \
+        "$RELEASES_DIR"/*.dsc "$RELEASES_DIR"/*.debian.tar.* \
+        "$RELEASES_DIR"/*.orig.tar.* \
         "$TARBALL" "${TARBALL}.asc" 2>/dev/null

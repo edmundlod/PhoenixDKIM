@@ -16,6 +16,13 @@
 # The reprepro repo at ~/releases/repo/ is rsynced as a whole (db/ excluded).
 # After a successful upload the source tarball and .asc are moved into
 # ~/releases/archive/<tag>/; the reprepro tree is left in place.
+#
+# The loose Debian build by-products that dpkg-buildpackage/sbuild scatter in
+# ~/releases/ (.deb, .changes, .buildinfo, .build, .dsc, .debian.tar.*,
+# .orig.tar.*) are then deleted: the packages already live in the reprepro
+# pool, and everything else is regenerable by re-running build-release.sh.
+# Deletion is scoped to this version and only fires once the version's .debs
+# are confirmed present in the reprepro pool.
 
 set -euo pipefail
 
@@ -56,7 +63,9 @@ fi
 
 # ── derive version from tag (strip leading 'v') ───────────────────────────────
 
-UPSTREAM="${TAG#v}"          # 3.0.0-beta13
+UPSTREAM="${TAG#v}"                 # 3.0.0-beta13
+# Debian upstream version uses a tilde where the public tarball uses a dash.
+DEB_UPSTREAM="${UPSTREAM/-/\~}"     # 3.0.0~beta13
 
 # ── locate artifacts ──────────────────────────────────────────────────────────
 
@@ -112,6 +121,35 @@ mkdir -p "$ARCHIVE_DIR"
 echo ""
 echo "==> Archiving tarball to: $ARCHIVE_DIR"
 mv "$TARBALL" "$TARBALL_ASC" "$ARCHIVE_DIR/"
+
+# ── clean build by-products ───────────────────────────────────────────────────
+# Only delete once this version's .debs are confirmed in the reprepro pool, so
+# a skipped/failed reprepro include can never leave us with no copy at all.
+
+echo ""
+if find "$REPO_DIR/pool" -name "*_${DEB_UPSTREAM}-*.deb" 2>/dev/null | grep -q .; then
+    mapfile -t LITTER < <(
+        find "$RELEASES_DIR" -maxdepth 1 \( \
+            -name "*_${DEB_UPSTREAM}-*_*.deb" \
+            -o -name "*_${DEB_UPSTREAM}-*_*.build" \
+            -o -name "*_${DEB_UPSTREAM}-*_*.buildinfo" \
+            -o -name "*_${DEB_UPSTREAM}-*_*.changes" \
+            -o -name "phoenixdkim_${DEB_UPSTREAM}-*.dsc" \
+            -o -name "phoenixdkim_${DEB_UPSTREAM}-*.debian.tar.*" \
+            -o -name "phoenixdkim_${DEB_UPSTREAM}.orig.tar.*" \
+        \)
+    )
+    if [[ ${#LITTER[@]} -gt 0 ]]; then
+        echo "==> Removing build by-products for $DEB_UPSTREAM (in reprepro pool / regenerable):"
+        printf "    %s\n" "${LITTER[@]}"
+        rm -f "${LITTER[@]}"
+    else
+        echo "==> No loose build by-products to remove."
+    fi
+else
+    echo "==> WARNING: no $DEB_UPSTREAM .debs found in $REPO_DIR/pool;" >&2
+    echo "    leaving build by-products in place (reprepro include may have been skipped)." >&2
+fi
 
 echo ""
 echo "==> Done."
