@@ -5731,7 +5731,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
                   char *err, size_t errlen, char *become)
 {
 	int maxsign;
-	int dbflags = 0;
+	u_int dbflags = 0;
 	char *str;
 	char confstr[BUFRSZ + 1];
 	char basedir[MAXPATHLEN + 1];
