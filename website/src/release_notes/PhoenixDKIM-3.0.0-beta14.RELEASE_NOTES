@@ -1,0 +1,45 @@
+PhoenixDKIM 3.0.0-beta14 release notes
+=======================================
+
+Date: 28 May 2026
+
+This is a hotfix release. It fixes a single issue introduced in beta13:
+when PhoenixDKIM was built without libsystemd, the shipped systemd unit
+was still Type=notify, causing "systemctl start" to hang until the
+timeout.
+
+
+Bug fixes
+---------
+
+[Fix 20260528] Fixed a hang during "systemctl start" when PhoenixDKIM
+was built without libsystemd. In beta13, WITH_SYSTEMD defaulted ON but
+only gated the library search; a build without libsystemd silently
+produced a binary without sd_notify support, yet the shipped unit was
+still Type=notify — so systemd waited for a READY=1 signal that the
+daemon could never send.
+
+The fix makes the dependency honest end to end:
+
+  - WITH_SYSTEMD is now a tri-state option: AUTO (default, detects
+    and warns if absent), ON (requires libsystemd — configure fails
+    if it is missing), or OFF (disables sd_notify entirely).
+
+  - The -V "Configured with" line now reports systemd based on what
+    was actually compiled (HAVE_LIBSYSTEMD), not the request value.
+
+  - The systemd unit is generated from a template
+    (contrib/systemd/opendkim.service.in) so its Type= and WatchdogSec
+    match the build: Type=notify with watchdog when sd_notify is
+    compiled in; Type=simple (no watchdog) otherwise, so the service
+    still starts cleanly.
+
+  - A new INSTALL_SYSTEMD_UNIT cmake option (default ON on Linux)
+    installs the generated unit; the Debian package passes OFF to
+    avoid colliding with its own packaged copy.
+
+  - The Debian Build-Depends now includes libsystemd-dev [linux-any]
+    so the package always builds with notify support.
+
+  - The static debian/opendkim.service had a literal @sbindir@ in
+    ExecStart and ExecPaths; corrected to /usr/sbin.
