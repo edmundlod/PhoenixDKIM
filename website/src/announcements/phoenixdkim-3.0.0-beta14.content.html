@@ -1,0 +1,40 @@
+<h1>PhoenixDKIM 3.0.0-beta14</h1>
+
+<p> <b>28 May 2026</b> </p>
+
+<p> A hotfix release. It fixes a single issue introduced in beta13:
+when PhoenixDKIM was built without libsystemd, the shipped systemd unit
+was <tt>Type=notify</tt>, causing <tt>systemctl start</tt> to hang until
+the timeout. </p>
+
+<p> Users running the Debian package are unaffected — the package
+Build-Depends now includes <tt>libsystemd-dev</tt> so notify support is
+always compiled in, and the shipped unit matches. Source builds on
+systems without libsystemd now get a <tt>Type=simple</tt> unit that
+starts cleanly. </p>
+
+<h2> Bug fix </h2>
+
+<ul>
+  <li> <p> Fixed a hang during <tt>systemctl start</tt> when
+       PhoenixDKIM was built without libsystemd. <tt>WITH_SYSTEMD</tt>
+       defaulted <tt>ON</tt> in beta13 but only gated the library
+       search, so a build without libsystemd silently produced a binary
+       without <tt>sd_notify</tt> support, yet the shipped unit was
+       still <tt>Type=notify</tt>. </p>
+
+       <p> <tt>WITH_SYSTEMD</tt> is now tri-state
+       <tt>AUTO</tt>&thinsp;/&thinsp;<tt>ON</tt>&thinsp;/&thinsp;<tt>OFF</tt>:
+       <tt>ON</tt> fails configure when libsystemd is absent;
+       <tt>AUTO</tt> (the new default) detects and warns; <tt>OFF</tt>
+       disables. The systemd unit is now generated from a template so
+       its <tt>Type=</tt> and <tt>WatchdogSec</tt> match the build —
+       <tt>Type=notify</tt> with watchdog when <tt>sd_notify</tt> is
+       compiled in, <tt>Type=simple</tt> otherwise. </p>
+
+       <p> The <tt>-V</tt> output now reports <tt>systemd</tt> based on
+       what was actually compiled, not the <tt>WITH_SYSTEMD</tt>
+       request. </p> </li>
+</ul>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
