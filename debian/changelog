@@ -1,3 +1,25 @@
+phoenixdkim (3.0.0~beta14-ng1) trixie; urgency=medium
+
+  * Fix: systemd Type=notify hang when built without libsystemd —
+    WITH_SYSTEMD defaulted ON but only gated the library search,
+    so a build without libsystemd produced a Type=notify unit backed
+    by a daemon that never sends READY=1.  WITH_SYSTEMD is now
+    tri-state AUTO/ON/OFF: ON fails configure when libsystemd is
+    absent; AUTO detects and warns; OFF disables.
+  * Build: systemd unit generated from opendkim.service.in so
+    Type= and WatchdogSec match the build (notify+watchdog or
+    simple, depending on HAVE_LIBSYSTEMD); @sbindir@ in ExecStart
+    and ExecPaths now correctly substituted.
+  * Build: new INSTALL_SYSTEMD_UNIT cmake option (default ON on
+    Linux) installs the generated unit; debian/rules passes OFF to
+    avoid colliding with the packaged copy.
+  * Debian: libsystemd-dev [linux-any] added to Build-Depends so
+    the Debian package always builds with notify support.
+  * Debian: @sbindir@ corrected to /usr/sbin in
+    debian/opendkim.service.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Thu, 28 May 2026 00:00:00 +0200
+
 phoenixdkim (3.0.0~beta13-ng1) trixie; urgency=medium
 
   * RFC 8301: RSA-SHA1 verification refused unconditionally;
