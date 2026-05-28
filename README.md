@@ -41,6 +41,7 @@ Optional:
 - libunbound — DNSSEC-aware DNS resolution (`-DWITH_UNBOUND=ON`)
 - libcurl >= 7.20.0 — SMTP report delivery via the `SMTPURI` config option (`-DWITH_CURL=ON`)
 - hiredis or libvalkey — Redis/Valkey signing-table backend (`-DWITH_REDIS=ON`)
+- libsystemd — `Type=notify` readiness signalling and watchdog (`-DWITH_SYSTEMD`; auto-detected on Linux)
 - libbsd — provides `strlcpy`/`strlcat` on systems without them
   (not needed on glibc 2.38+, FreeBSD, or OpenBSD)
 
@@ -50,7 +51,7 @@ Optional:
 apt install build-essential cmake libssl-dev liblmdb-dev \
             libmilter-dev liblua5.4-dev
 # optional
-apt install libcurl4-openssl-dev libhiredis-dev
+apt install libcurl4-openssl-dev libhiredis-dev libsystemd-dev
 ```
 
 ### RHEL / AlmaLinux / Rocky
@@ -58,7 +59,7 @@ apt install libcurl4-openssl-dev libhiredis-dev
 ```
 dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel lua-devel
 # optional
-dnf install libcurl-devel hiredis-devel
+dnf install libcurl-devel hiredis-devel systemd-devel
 ```
 
 ### FreeBSD
@@ -84,6 +85,8 @@ Common build options:
 | `-DWITH_UNBOUND=ON` | ON | Enable libunbound DNSSEC resolver |
 | `-DWITH_CURL=ON` | OFF | Enable libcurl SMTP report delivery (`SMTPURI`) |
 | `-DWITH_REDIS=ON` | OFF | Enable Redis/Valkey signing-table backend |
+| `-DWITH_SYSTEMD=AUTO` | AUTO | systemd `sd_notify` readiness/watchdog: `AUTO` detects, `ON` requires it (configure fails if libsystemd is absent), `OFF` disables |
+| `-DINSTALL_SYSTEMD_UNIT=ON` | ON on Linux | Install the generated `opendkim.service` (its `Type=`/`WatchdogSec` match the build) |
 | `-DCMAKE_BUILD_TYPE=Release` | `RelWithDebInfo` | Build type (Debug/Release/RelWithDebInfo/MinSizeRel) |
 
 To install:
@@ -110,7 +113,9 @@ non_smtpd_milters = unix:/run/opendkim/opendkim.sock
 milter_default_action = accept (or: tempfail)
 ```
 
-A systemd service unit is in `contrib/systemd`, and for Debian in `debian/`.
+The systemd service unit is generated from `contrib/systemd/opendkim.service.in`
+at build time (so its `Type=`/`WatchdogSec` match what was compiled) and
+installed by `make install`; the Debian package ships its own unit in `debian/`.
 
 ## Key Generation
 

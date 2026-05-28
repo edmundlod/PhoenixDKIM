@@ -11,17 +11,14 @@ Wants=network-online.target
 Before=postfix.service sendmail.service exim.service exim4.service opensmtpd.service
 
 [Service]
-Type=notify
+Type=@SD_TYPE@
 RuntimeDirectory=opendkim
 RuntimeDirectoryMode=0750
-ExecStart=/usr/sbin/opendkim -f -x /etc/opendkim.conf
+ExecStart=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim -f -x /etc/opendkim.conf
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 
-# opendkim feeds this watchdog from a dedicated thread at half the interval
-# below (i.e. every 15s).  systemd restarts the service if no keep-alive
-# arrives within WatchdogSec, catching a wholly hung process.
-WatchdogSec=30
+@SD_WATCHDOG_BLOCK@
 User=opendkim
 Group=opendkim
 
@@ -64,10 +61,10 @@ SystemCallFilter=~ @privileged @resources
 # IMPORTANT: if you use ReportAddress or ReportCommand in opendkim.conf,
 # opendkim will popen() a mail submission binary (sendmail by default).
 # In that case you must add the binary's path, e.g.:
-#   ExecPaths=@sbindir@/opendkim /usr/lib /usr/sbin/sendmail
+#   ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim /usr/lib /usr/sbin/sendmail
 # or override via: systemctl edit opendkim.service
 NoExecPaths=/
-ExecPaths=@sbindir@/opendkim /usr/lib
+ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim /usr/lib
 
 
 [Install]

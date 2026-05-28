@@ -95,21 +95,77 @@ if(WITH_CURL)
     set(HAVE_LIBCURL 1)
 endif()
 
-# ── systemd sd_notify (optional, auto-detected) ───────────────────────────────
-# Enables Type=notify readiness signalling and the watchdog keep-alive.  The
-# integration degrades gracefully: when libsystemd is absent the daemon simply
-# builds without it, so this defaults ON.
+# ── systemd sd_notify (optional) ──────────────────────────────────────────────
+# Enables Type=notify readiness signalling and the watchdog keep-alive.
+# Tri-state, because a plain boolean cannot tell a deliberate request apart from
+# the inherited default:
+#   ON   -- require it; FATAL if libsystemd is missing (a deliberate request
+#           must not silently produce a binary that can't honour Type=notify).
+#   OFF  -- skip it; build without sd_notify.
+#   AUTO -- detect; if libsystemd is missing, warn and build without it.  Safe
+#           default for non-systemd platforms (BSD/macOS), where the search is
+#           simply a no-op.
+set(WITH_SYSTEMD "AUTO" CACHE STRING
+    "systemd sd_notify integration: AUTO (detect), ON (require), OFF (disable)")
+set_property(CACHE WITH_SYSTEMD PROPERTY STRINGS AUTO ON OFF)
 
-option(WITH_SYSTEMD "Enable systemd sd_notify readiness/watchdog integration" ON)
+# Normalise: accept the usual boolean spellings as ON/OFF so existing
+# -DWITH_SYSTEMD=ON / =OFF / =1 / =0 invocations keep working.
+string(TOUPPER "${WITH_SYSTEMD}" _sd_req)
+if(_sd_req MATCHES "^(OFF|0|NO|FALSE|N)$")
+    set(_sd_req OFF)
+elseif(_sd_req MATCHES "^(ON|1|YES|TRUE|Y)$")
+    set(_sd_req ON)
+elseif(NOT _sd_req STREQUAL "AUTO")
+    message(FATAL_ERROR "WITH_SYSTEMD must be AUTO, ON, or OFF (got '${WITH_SYSTEMD}')")
+endif()
 
-if(WITH_SYSTEMD)
+if(NOT _sd_req STREQUAL "OFF")
     pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
     if(LIBSYSTEMD_FOUND)
         set(HAVE_LIBSYSTEMD 1)
         message(STATUS "systemd integration: enabled (libsystemd ${LIBSYSTEMD_VERSION})")
+    elseif(_sd_req STREQUAL "ON")
+        # Deliberately requested but unsatisfiable: fail hard rather than ship a
+        # Type=notify unit backed by a daemon that never sends READY=1 (which
+        # makes "systemctl start" hang until the timeout).
+        message(FATAL_ERROR
+            "WITH_SYSTEMD=ON was requested but libsystemd was not found. "
+            "Install libsystemd-dev / systemd-devel, or configure with "
+            "-DWITH_SYSTEMD=OFF (or AUTO) to build without sd_notify.")
     else()
-        message(STATUS "systemd integration: libsystemd not found, disabled")
+        # AUTO: degrade, but loudly — the generated unit will fall back to
+        # Type=simple so it still starts, yet anyone expecting notify support
+        # should see why it is absent.
+        message(WARNING
+            "libsystemd not found: building without sd_notify "
+            "(Type=notify/watchdog unavailable). Install libsystemd-dev / "
+            "systemd-devel, or pass -DWITH_SYSTEMD=ON to require it.")
     endif()
+endif()
+
+# ── systemd unit install (tarball/source builds) ──────────────────────────────
+# Distro packaging ships its own unit, so default this OFF off-Linux and let
+# packagers turn it off explicitly (Debian does, via debian/rules).  The unit
+# itself is generated from the build so its Type=/WatchdogSec match what was
+# actually compiled (see opendkim.service.in below).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    option(INSTALL_SYSTEMD_UNIT "Install the generated systemd service unit" ON)
+else()
+    option(INSTALL_SYSTEMD_UNIT "Install the generated systemd service unit" OFF)
+endif()
+
+if(INSTALL_SYSTEMD_UNIT)
+    # systemdsystemunitdir is an absolute, distro-defined path (e.g.
+    # /usr/lib/systemd/system) and intentionally ignores CMAKE_INSTALL_PREFIX.
+    # Query it from the systemd .pc (note: the 'systemd' module, not
+    # 'libsystemd'); fall back under the prefix when systemd.pc is absent.
+    pkg_get_variable(_sd_unitdir systemd systemdsystemunitdir)
+    if(NOT _sd_unitdir)
+        set(_sd_unitdir "${CMAKE_INSTALL_PREFIX}/lib/systemd/system")
+    endif()
+    set(SYSTEMD_UNIT_DIR "${_sd_unitdir}" CACHE PATH
+        "Directory in which to install the systemd service unit")
 endif()
 
 # ── Version string + build configuration for -V / -v diagnostics ─────────────
@@ -159,13 +215,20 @@ endif()
 # carries "ON"/"OFF", so emit a consistent boolean rather than the raw value.
 set(CONFIGURE_ARGS
     "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
-foreach(_opt WITH_LUA WITH_REDIS WITH_CURL WITH_SYSTEMD WITH_UNBOUND)
+foreach(_opt WITH_LUA WITH_REDIS WITH_CURL WITH_UNBOUND)
     if(${_opt})
         string(APPEND CONFIGURE_ARGS " -D${_opt}=ON")
     else()
         string(APPEND CONFIGURE_ARGS " -D${_opt}=OFF")
     endif()
 endforeach()
+# WITH_SYSTEMD is tri-state (AUTO/ON/OFF); report what was actually compiled,
+# not the request, so -V never claims systemd support the binary lacks.
+if(HAVE_LIBSYSTEMD)
+    string(APPEND CONFIGURE_ARGS " -DWITH_SYSTEMD=ON")
+else()
+    string(APPEND CONFIGURE_ARGS " -DWITH_SYSTEMD=OFF")
+endif()
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/build-version.h.cmake.in
@@ -316,6 +379,35 @@ endif()
 install(TARGETS opendkim_daemon
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
+
+# ── systemd unit (generated to match the build) ───────────────────────────────
+# Type/WatchdogSec follow what was actually compiled: a build without sd_notify
+# gets Type=simple so the unit still starts, instead of a Type=notify unit that
+# would hang waiting for a READY=1 the daemon can never send.  Distro packaging
+# ships its own unit and disables this (see -DINSTALL_SYSTEMD_UNIT=OFF).
+if(INSTALL_SYSTEMD_UNIT)
+    if(HAVE_LIBSYSTEMD)
+        set(SD_TYPE "notify")
+        set(SD_WATCHDOG_BLOCK
+"# opendkim feeds this watchdog from a dedicated thread at half the interval
+# below (i.e. every 15s).  systemd restarts the service if no keep-alive
+# arrives within WatchdogSec, catching a wholly hung process.
+WatchdogSec=30")
+    else()
+        set(SD_TYPE "simple")
+        set(SD_WATCHDOG_BLOCK
+"# Built without libsystemd: sd_notify()/watchdog are unavailable, so this unit
+# uses Type=simple and omits WatchdogSec.")
+    endif()
+    configure_file(
+        ${CMAKE_SOURCE_DIR}/contrib/systemd/opendkim.service.in
+        ${CMAKE_CURRENT_BINARY_DIR}/opendkim.service
+        @ONLY
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opendkim.service
+        DESTINATION ${SYSTEMD_UNIT_DIR}
+    )
+endif()
 
 # ── opendkim-testkey ──────────────────────────────────────────────────────────
 # Source list from opendkim/Makefile.am opendkim_testkey_SOURCES.
