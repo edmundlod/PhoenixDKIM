@@ -40,6 +40,8 @@ Optional:
   * Lua 5.4      -- policy scripting hooks and data set scripts
                     (-DWITH_LUA=ON; also enables miltertest)
   * libunbound   -- DNSSEC-aware DNS resolution (-DWITH_UNBOUND=ON)
+  * libsystemd   -- systemd Type=notify readiness + watchdog
+                    (-DWITH_SYSTEMD; auto-detected on Linux)
   * libbsd       -- provides strlcpy/strlcat on older Linux systems
                     (not needed on glibc 2.38+, FreeBSD, or OpenBSD)
 
@@ -47,11 +49,11 @@ Installing prerequisites on common platforms:
 
   Debian / Ubuntu:
     apt install build-essential cmake libssl-dev liblmdb-dev \
-                libmilter-dev liblua5.4-dev libunbound-dev
+                libmilter-dev liblua5.4-dev libunbound-dev libsystemd-dev
 
   RHEL / AlmaLinux / Rocky:
     dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel \
-                lua-devel unbound-devel
+                lua-devel unbound-devel systemd-devel
 
   FreeBSD:
     pkg install cmake openssl lmdb milter lua54 unbound
@@ -78,6 +80,9 @@ BUILDING
 
       -DWITH_LUA=ON              Enable Lua 5.4 scripting (default: OFF)
       -DWITH_UNBOUND=ON          Enable DNSSEC resolver (default: ON)
+      -DWITH_SYSTEMD=ON          Require systemd sd_notify support; configure
+                                 fails if libsystemd is absent.  Default AUTO
+                                 detects it; OFF disables it.
       -DCMAKE_BUILD_TYPE=Release Production build without debug symbols
       -DCMAKE_INSTALL_PREFIX=/   Installation prefix (default: /usr/local)
 

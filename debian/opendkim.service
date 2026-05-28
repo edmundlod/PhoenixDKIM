@@ -64,10 +64,10 @@ SystemCallFilter=~ @privileged @resources
 # IMPORTANT: if you use ReportAddress or ReportCommand in opendkim.conf,
 # opendkim will popen() a mail submission binary (sendmail by default).
 # In that case you must add the binary's path, e.g.:
-#   ExecPaths=@sbindir@/opendkim /usr/lib /usr/sbin/sendmail
+#   ExecPaths=/usr/sbin/opendkim /usr/lib /usr/sbin/sendmail
 # or override via: systemctl edit opendkim.service
 NoExecPaths=/
-ExecPaths=@sbindir@/opendkim /usr/lib
+ExecPaths=/usr/sbin/opendkim /usr/lib
 
 [Install]
 WantedBy=multi-user.target
