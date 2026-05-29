@@ -17,6 +17,16 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_compile_definitions(_GNU_SOURCE)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# ── BSD package prefix ────────────────────────────────────────────────────────
+# On FreeBSD and OpenBSD, packages install under /usr/local, which CMake does
+# not search by default.  Appending it to CMAKE_PREFIX_PATH makes find_package,
+# find_path, and find_library pick up installed packages without requiring
+# manual -D flags.
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD|OpenBSD")
+    list(APPEND CMAKE_PREFIX_PATH /usr/local)
+endif()
+
 include(Sanitizers)   # must precede Hardening — defines options checked there
 include(Hardening)
 include(Valgrind)     # must follow Sanitizers — checks for conflicting asan/ubsan options
@@ -28,7 +38,7 @@ enable_testing()
 # probe.  Catches porting gaps like the HAVE_REALPATH incident (commit 6f9e571f).
 add_test(
     NAME check-have-macro-coverage
-    COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/check-have-macros.sh"
+    COMMAND sh "${CMAKE_SOURCE_DIR}/cmake/check-have-macros.sh"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 set_tests_properties(check-have-macro-coverage PROPERTIES
