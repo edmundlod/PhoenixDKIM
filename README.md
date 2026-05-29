@@ -70,6 +70,25 @@ pkg install cmake openssl lmdb milter lua54
 pkg install curl hiredis
 ```
 
+### OpenBSD
+
+LibreSSL and `strlcpy` are in the base system — no crypto or BSD-compat package needed.
+
+```
+pkg_add git cmake lmdb libmilter lua%5.4
+# optional: DNSSEC resolver (libevent is a libunbound dependency)
+pkg_add unbound libevent
+```
+
+CMake automatically searches `/usr/local` on OpenBSD, so no extra `-D` flags are
+needed for milter. A minimal build:
+
+```
+cmake -B build -DSSL_PROVIDER=libressl -DWITH_LUA=ON
+cmake --build build -j$(sysctl -n hw.ncpuonline)
+ctest --test-dir build
+```
+
 ## Building
 
 ```
