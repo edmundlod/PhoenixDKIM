@@ -30,7 +30,7 @@ To build the library and filter you will need:
 
 - A C17-capable compiler (GCC 8+ or Clang 5+)
 - CMake >= 3.20
-- OpenSSL >= 3.0
+- OpenSSL >= 3.0, or LibreSSL >= 3.7 (e.g. OpenBSD base)
 - LMDB
 - libmilter (from Sendmail or as a standalone package)
 - libresolv
@@ -81,6 +81,8 @@ Common build options:
 
 | Option | Default | Description |
 |---|---|---|
+| `-DSSL_PROVIDER=auto` | auto | Crypto provider: `auto` (system default — OpenSSL on Linux, LibreSSL on OpenBSD), `openssl`, or `libressl`. Non-`auto` values validate that the located library is that provider |
+| `-DSSL_ROOT_DIR=<prefix>` | (unset) | Build against a non-default OpenSSL/LibreSSL install. Handy for compat testing against, say, a side-installed OpenSSL 4 or a specific LibreSSL: `-DSSL_PROVIDER=openssl -DSSL_ROOT_DIR=/opt/openssl-4` |
 | `-DWITH_LUA=ON` | OFF | Enable Lua 5.4 policy scripting |
 | `-DWITH_UNBOUND=ON` | ON | Enable libunbound DNSSEC resolver |
 | `-DWITH_CURL=ON` | OFF | Enable libcurl SMTP report delivery (`SMTPURI`) |
