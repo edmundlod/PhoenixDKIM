@@ -30,7 +30,8 @@ Required:
 
   * A C17-capable compiler: GCC 8+ or Clang 5+
   * CMake >= 3.20
-  * OpenSSL >= 3.0  (dynamically linked against the system library)
+  * OpenSSL >= 3.0, or LibreSSL >= 3.7  (dynamically linked against the
+    system library; LibreSSL is the base libcrypto on OpenBSD)
   * LMDB
   * libmilter  (from Sendmail or as a standalone package)
   * libresolv
@@ -78,6 +79,14 @@ BUILDING
 
     Common configuration options:
 
+      -DSSL_PROVIDER=auto        Crypto provider: auto (system default --
+                                 OpenSSL on Linux, LibreSSL on OpenBSD),
+                                 openssl, or libressl.  Non-auto values
+                                 validate the located library is that provider.
+      -DSSL_ROOT_DIR=<prefix>    Build against a non-default OpenSSL/LibreSSL
+                                 install -- e.g. a side-installed LibreSSL, or
+                                 an OpenSSL 4 prefix for compat testing:
+                                   -DSSL_PROVIDER=openssl -DSSL_ROOT_DIR=/opt/openssl-4
       -DWITH_LUA=ON              Enable Lua 5.4 scripting (default: OFF)
       -DWITH_UNBOUND=ON          Enable DNSSEC resolver (default: ON)
       -DWITH_SYSTEMD=ON          Require systemd sd_notify support; configure

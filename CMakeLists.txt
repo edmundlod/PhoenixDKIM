@@ -35,6 +35,31 @@ set_tests_properties(check-have-macro-coverage PROPERTIES
     LABELS "buildsys"
 )
 
+# ── Crypto provider selection ─────────────────────────────────────────────────
+# PhoenixDKIM builds against either OpenSSL 3 or LibreSSL 3.7+; both implement
+# the OpenSSL 3 EVP API this code uses.  SSL_PROVIDER selects/validates which:
+#   auto      use whatever the system provides -- OpenSSL on Linux, LibreSSL on
+#             OpenBSD base (the default; the right choice for most builds)
+#   openssl   require OpenSSL; fail the configure if LibreSSL is what's found
+#   libressl  require LibreSSL; fail the configure if OpenSSL is what's found
+# Detection, per-provider minimum-version enforcement, and this validation live
+# in cmake/CheckCryptoProvider.cmake, run after find_package(OpenSSL).
+set(SSL_PROVIDER "auto" CACHE STRING
+    "Crypto provider to build against: auto, openssl, or libressl")
+set_property(CACHE SSL_PROVIDER PROPERTY STRINGS auto openssl libressl)
+
+# SSL_ROOT_DIR: provider-neutral path to a non-default OpenSSL *or* LibreSSL
+# install -- e.g. -DSSL_ROOT_DIR=/usr/local to build against a LibreSSL on a
+# Linux box whose system libcrypto is OpenSSL.  CMake's built-in FindOpenSSL
+# only understands the OPENSSL_ROOT_DIR spelling, which -- despite its name --
+# is equally how you point the build at LibreSSL.  Forward ours into it; an
+# explicitly-set OPENSSL_ROOT_DIR is respected and takes precedence.
+set(SSL_ROOT_DIR "" CACHE PATH
+    "Path to a non-default OpenSSL or LibreSSL install (forwarded to OPENSSL_ROOT_DIR)")
+if(SSL_ROOT_DIR AND NOT OPENSSL_ROOT_DIR)
+    set(OPENSSL_ROOT_DIR "${SSL_ROOT_DIR}")
+endif()
+
 add_subdirectory(libopendkim)
 add_subdirectory(opendkim)
 add_subdirectory(miltertest)

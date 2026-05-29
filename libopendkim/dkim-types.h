@@ -32,6 +32,7 @@
 # include <openssl/bio.h>
 # include <openssl/err.h>
 # include <openssl/evp.h>
+# include "openssl-compat.h"
 
 /* libopendkim includes */
 #include "dkim.h"

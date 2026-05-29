@@ -86,6 +86,29 @@ access. No `ENGINE_*` API. Use `EVP_DigestSign*`, `EVP_DigestVerify*`,
 `EVP_PKEY_*` throughout. Code written correctly to this API will compile
 against AWS-LC with trivial or no changes, if that is ever needed.
 
+**Crypto provider — OpenSSL 3 or LibreSSL, selectable**: PhoenixDKIM supports
+building against either OpenSSL 3 or LibreSSL; both implement the OpenSSL 3 EVP
+API this code uses. Neither is a lesser build target — the choice is exposed as
+a first-class build option, `-DSSL_PROVIDER=auto|openssl|libressl` (default
+`auto`, which uses whatever the system provides: OpenSSL on Linux, LibreSSL on
+OpenBSD base). A non-default install of either is pointed to with
+`-DSSL_ROOT_DIR=<prefix>`, so a LibreSSL build on an otherwise-OpenSSL Linux
+host is fully supported. LibreSSL needs only a small compatibility header
+(`libopendkim/openssl-compat.h`, mapping the OpenSSL 3 `EVP_PKEY_get_size`/
+`EVP_PKEY_get_bits` spellings onto LibreSSL's legacy `EVP_PKEY_size`/
+`EVP_PKEY_bits`) and a provider-aware version gate in the build system.
+
+The two providers differ only in these factual respects, not in support tier:
+- **Minimum versions:** OpenSSL ≥ 3.0.0; LibreSSL ≥ 3.7.0 (the first release
+  with `EVP_PKEY_new_raw_public_key()` and working Ed25519, RFC 8463, which
+  this fork mandates).
+- **FIPS / crypto policy:** LibreSSL has **no FIPS mode** and is **not** subject
+  to `update-crypto-policies`. The RHEL crypto-policy behaviour described below
+  applies to the OpenSSL build only.
+- **Default:** on Linux the system libcrypto is OpenSSL, so `auto` selects it
+  there; OpenSSL is therefore the most widely deployed and exercised path, but
+  not a privileged one.
+
 **Algorithms supported:**
 - RSA-SHA256 (required by RFC 6376) — minimum key size **2048 bits**
 - Ed25519 (RFC 8463)
@@ -216,7 +239,7 @@ once they are written and passing.
 
 | Dependency | Required / Optional | Notes |
 |---|---|---|
-| OpenSSL 3 | Required | Dynamically linked. System library. Minimum version 3.0.0. |
+| OpenSSL 3 **or** LibreSSL 3.7+ | Required (one of) | Dynamically linked system library. Selected via `-DSSL_PROVIDER` (default `auto`); a non-default install is located with `-DSSL_ROOT_DIR`. OpenSSL minimum 3.0.0 (4.x supported); LibreSSL minimum 3.7.0. FIPS / crypto-policy applies to the OpenSSL build only. See Crypto section. |
 | libmilter | Required | MTA filter protocol. Sendmail or Postfix libmilter. |
 | LMDB | Required | Binary key/table storage backend. |
 | libresolv / libar | Required | DNS resolution. libar is the preferred async path. |

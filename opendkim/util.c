@@ -59,6 +59,7 @@
 #include "opendkim.h"
 #include "util.h"
 #include "opendkim-db.h"
+#include "openssl-compat.h"
 
 /* macros */
 #define	DEFARGS		8
@@ -95,9 +96,7 @@ static const char *optlist[] =
 	"HAVE_LIBSYSTEMD",
 #endif /* HAVE_LIBSYSTEMD */
 
-#ifdef OPENSSL_VERSION_STR
-	"OpenSSL-" OPENSSL_VERSION_STR,
-#endif
+	DKIMF_SSL_PROVIDER_STR,
 
 	NULL
 };

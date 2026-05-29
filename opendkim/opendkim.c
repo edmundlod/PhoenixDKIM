@@ -61,6 +61,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include "openssl-compat.h"
 
 #ifdef HAVE_LIBCURL
 # include <curl/curl.h>
@@ -13492,12 +13493,12 @@ main(int argc, char **argv)
 	if (optind != argc)
 		return usage();
 
-	if ((dkim_ssl_version() >> 8) != (OPENSSL_VERSION_NUMBER >> 8))
+	if ((dkim_ssl_version() >> 8) != (DKIMF_SSL_VERSION_NUMBER >> 8))
 	{
 		fprintf(stderr,
 		        "%s: incompatible SSL versions (library = 0x%09lx, filter = %09lx)\n",
 		        progname, dkim_ssl_version(),
-		        (unsigned long) OPENSSL_VERSION_NUMBER);
+		        (unsigned long) DKIMF_SSL_VERSION_NUMBER);
 
 		return EX_SOFTWARE;
 	}
