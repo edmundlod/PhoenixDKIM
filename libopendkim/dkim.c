@@ -8013,20 +8013,22 @@ dkim_sig_ignore(DKIM_SIGINFO *siginfo)
 }
 
 /*
-**  DKIM_SSL_VERSION -- return version of OpenSSL that was used to build
-**                      the library
+**  DKIM_SSL_VERSION -- return version of the crypto provider that was used to
+**                      build the library
 **
 **  Parameters:
 **  	None.
 **
 **  Return value:
-**  	The constant OPENSSL_VERSION_NUMBER as defined by OpenSSL.
+**  	DKIMF_SSL_VERSION_NUMBER: OPENSSL_VERSION_NUMBER under OpenSSL, or
+**  	LIBRESSL_VERSION_NUMBER under LibreSSL (whose OPENSSL_VERSION_NUMBER is
+**  	a frozen compatibility sentinel that does not track the real release).
 */
 
 unsigned long
 dkim_ssl_version(void)
 {
-	return OPENSSL_VERSION_NUMBER;
+	return DKIMF_SSL_VERSION_NUMBER;
 }
 
 /*
