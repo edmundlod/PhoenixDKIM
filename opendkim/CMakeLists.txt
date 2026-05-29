@@ -243,7 +243,11 @@ find_package(Threads REQUIRED)
 # ── libresolv ─────────────────────────────────────────────────────────────────
 
 find_library(RESOLV_LIBRARY NAMES resolv)
-find_library(UNBOUND_LIBRARY NAMES unbound)
+# Only look for libunbound when the feature is enabled.  WITH_UNBOUND is the
+# option declared in libopendkim/CMakeLists.txt (a cache var, visible here).
+if(WITH_UNBOUND)
+    find_library(UNBOUND_LIBRARY NAMES unbound)
+endif()
 
 # ── strlcpy / strlcat ─────────────────────────────────────────────────────────
 
@@ -305,7 +309,13 @@ function(configure_daemon_target tgt)
     if(RESOLV_LIBRARY)
         target_link_libraries(${tgt} PRIVATE ${RESOLV_LIBRARY})
     endif()
-    if(UNBOUND_LIBRARY)
+    # Gate on WITH_UNBOUND, not merely on the library being present on the
+    # system: opendkim-dns.c's unbound code is compiled in only when
+    # USE_UNBOUND is set (build-config.h, driven by WITH_UNBOUND), so linking
+    # libunbound when the feature is off is dead weight -- and on a host whose
+    # libunbound pulls in a different libcrypto it drags a second crypto
+    # library into the process.
+    if(WITH_UNBOUND AND UNBOUND_LIBRARY)
         target_link_libraries(${tgt} PRIVATE ${UNBOUND_LIBRARY})
     endif()
 
