@@ -75,7 +75,7 @@ RN_OUT  := $(patsubst src/release_notes/%,$(OUTDIR)/release_notes/%,$(RN_SRCS))
 WELLKNOWN_DIR   = $(OUTDIR)/.well-known
 WELLKNOWN_FILES = $(WELLKNOWN_DIR)/security.txt
 
-STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc
+STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/logo2.png
 
 # ── targets ───────────────────────────────────────────────────────────────────
 
@@ -103,6 +103,10 @@ $(WELLKNOWN_DIR)/security.txt: src/security.txt | $(WELLKNOWN_DIR)
 	@echo "  built $@"
 
 $(OUTDIR)/phoenixdkim-security.asc: src/phoenixdkim-security.asc | $(OUTDIR)
+	cp $< $@
+	@echo "  built $@"
+
+$(OUTDIR)/logo2.png: logo2.png | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
