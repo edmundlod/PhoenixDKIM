@@ -48,6 +48,7 @@ PAGES = \
     announcements \
     download \
     documentation \
+    removed-features \
     packages \
     contributing \
     security
@@ -75,7 +76,7 @@ RN_OUT  := $(patsubst src/release_notes/%,$(OUTDIR)/release_notes/%,$(RN_SRCS))
 WELLKNOWN_DIR   = $(OUTDIR)/.well-known
 WELLKNOWN_FILES = $(WELLKNOWN_DIR)/security.txt
 
-STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/logo2.png
+STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-logo.png
 
 # ── targets ───────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ $(OUTDIR)/phoenixdkim-security.asc: src/phoenixdkim-security.asc | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
-$(OUTDIR)/logo2.png: logo2.png | $(OUTDIR)
+$(OUTDIR)/phoenixdkim-logo.png: phoenixdkim-logo.png | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
