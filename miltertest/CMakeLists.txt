@@ -15,6 +15,7 @@ target_include_directories(miltertest PRIVATE
     ${CMAKE_SOURCE_DIR}/libopendkim
     ${CMAKE_BINARY_DIR}/libopendkim
     ${LUA_INCLUDE_DIR}
+    ${MILTER_INCLUDE_DIR}
 )
 
 target_link_libraries(miltertest PRIVATE
