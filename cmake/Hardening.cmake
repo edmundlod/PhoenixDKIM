@@ -57,14 +57,32 @@ endif()
 message(STATUS "Hardening: _FORTIFY_SOURCE=${HARDEN_FORTIFY_LEVEL}")
 
 # ── Compile flag probes ───────────────────────────────────────────────────────
+#
+# Code-generation flags are probed with -Werror=unused-command-line-argument so
+# that Clang's habit of silently accepting flags it does not implement (e.g.
+# -fstack-clash-protection on OpenBSD/ARM, -fcf-protection on non-x86) is
+# treated as a probe failure rather than a false positive.  Without this,
+# check_c_compiler_flag sees a clean compile and reports Success, but the flag
+# then generates a warning on every real TU.
 
-# Code-generation / correctness
+cmake_push_check_state(RESET)
+# Clang silently accepts flags it does not implement and emits an
+# "argument unused" warning instead of an error, which fools
+# check_c_compiler_flag into reporting Success.  Turn that warning into
+# an error during probes so the result is accurate.  GCC correctly errors
+# on unsupported flags and does not have this option.
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_REQUIRED_FLAGS "-Werror=unused-command-line-argument")
+endif()
+
 check_c_compiler_flag(-fstack-protector-strong   HARDEN_CC_STACK_PROTECTOR_STRONG)
 check_c_compiler_flag(-fstack-clash-protection   HARDEN_CC_STACK_CLASH_PROTECTION)
 check_c_compiler_flag(-fcf-protection=full       HARDEN_CC_CF_PROTECTION)
 check_c_compiler_flag(-fno-strict-aliasing       HARDEN_CC_NO_STRICT_ALIASING)
 check_c_compiler_flag(-fwrapv                    HARDEN_CC_WRAPV)
 check_c_compiler_flag(-fno-omit-frame-pointer    HARDEN_CC_NO_OMIT_FRAME_POINTER)
+
+cmake_pop_check_state()
 
 # Warnings — simple -Wfoo flags (no =N suffix; handled via loop in apply_hardening)
 check_c_compiler_flag(-Wshadow                   HARDEN_CC_WSHADOW)
