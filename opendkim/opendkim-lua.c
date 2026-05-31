@@ -638,7 +638,7 @@ pdkim_http_get(lua_State *l)
 **  module loading respectively, plus the top-level loaders (require,
 **  loadfile, dofile, loadstring, load) that re-enable arbitrary code
 **  execution from disk or strings.  Nil them out so a policy script can do
-**  only what the registered odkim API allows.
+**  only what the registered pdkim API allows.
 **
 **  Parameters:
 **  	l -- Lua state to sandbox
@@ -749,11 +749,20 @@ dkimf_lua_setup_hook(void *ctx, const char *script, size_t scriptlen,
 	**  Register functions.
 	*/
 
+	/*
+	**  The policy API is exposed as "pdkim" (primary); "odkim" is bound to
+	**  the same table as a deprecation-windowed alias so existing policy
+	**  scripts (and the frozen t-*.lua tests, Process Rule 1) keep working.
+	*/
+
 # if LUA_VERSION_NUM >= 502
 	luaL_newlib(l, dkimf_lua_lib_setup);
+	lua_pushvalue(l, -1);
+	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
 # else /* LUA_VERSION_NUM >= 502 */
-	luaL_register(l, "odkim", dkimf_lua_lib_setup);
+	luaL_register(l, "pdkim", dkimf_lua_lib_setup);
+	lua_setglobal(l, "odkim");
 # endif /* LUA_VERSION_NUM >= 502 */
 
 
@@ -910,11 +919,15 @@ dkimf_lua_screen_hook(void *ctx, const char *script, size_t scriptlen,
 	**  Register functions.
 	*/
 
+	/* "pdkim" primary, "odkim" deprecation alias -- see setup hook. */
 # if LUA_VERSION_NUM >= 502
 	luaL_newlib(l, dkimf_lua_lib_screen);
+	lua_pushvalue(l, -1);
+	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
 # else /* LUA_VERSION_NUM >= 502 */
-	luaL_register(l, "odkim", dkimf_lua_lib_screen);
+	luaL_register(l, "pdkim", dkimf_lua_lib_screen);
+	lua_setglobal(l, "odkim");
 # endif /* LUA_VERSION_NUM >= 502 */
 
 
@@ -1061,11 +1074,15 @@ dkimf_lua_final_hook(void *ctx, const char *script, size_t scriptlen,
 	**  Register functions.
 	*/
 
+	/* "pdkim" primary, "odkim" deprecation alias -- see setup hook. */
 # if LUA_VERSION_NUM >= 502
 	luaL_newlib(l, dkimf_lua_lib_final);
+	lua_pushvalue(l, -1);
+	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
 # else /* LUA_VERSION_NUM >= 502 */
-	luaL_register(l, "odkim", dkimf_lua_lib_final);
+	luaL_register(l, "pdkim", dkimf_lua_lib_final);
+	lua_setglobal(l, "odkim");
 # endif /* LUA_VERSION_NUM >= 502 */
 
 

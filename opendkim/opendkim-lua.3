@@ -15,6 +15,19 @@ Lua in the context of PhoenixDKIM, specifically the functions and global variabl
 PhoenixDKIM provides for use in user-constructed scripts beyond what Lua provides
 by default.
 
+All functions described below live in the global
+.B pdkim
+table (for example
+.BR pdkim.sign() ).
+For backward compatibility the same table is also reachable under the
+deprecated name
+.BR odkim ,
+so existing policy scripts continue to work unchanged.  The
+.B odkim
+alias is retained only for a migration window and will be removed in a future
+release; new scripts should use
+.BR pdkim .
+
 Unless otherwise noted, all functions described below return a single result;
 on success they return the requested data, and on error they return the Lua
 constant "nil".
@@ -55,22 +68,22 @@ in progress, and the connection that accepted it.
 These functions are made available to Lua for processing a message through
 the setup script:
 .TP
-.B odkim.db_check(db, string)
+.B pdkim.db_check(db, string)
 Returns 1 if
 .I db
 refers to a valid database handle (see
-.B odkim.get_dbhandle()
+.B pdkim.get_dbhandle()
 below) and
 .I string
 is found in that database, and 0 otherwise.  If an error occurs, the Lua
 constant "nil" is returned.
 .TP
-.B odkim.db_close(db)
+.B pdkim.db_close(db)
 Closes the specified data set.  Returns 1.  The current implementation
 will conduct data set garbage collection when the script terminates, so this
 is not strictly necessary, but is recommended.
 .TP
-.B odkim.db_open(name[, icase])
+.B pdkim.db_open(name[, icase])
 Opens the data set specified by
 .I name.
 If
@@ -80,25 +93,25 @@ case-insensitive.  See the
 .I opendkim(8)
 man page for information on specifying a data set.  On success, returns a
 handle that can be passed to
-.B odkim.db_check();
+.B pdkim.db_check();
 raises an exception on failure.
 .TP
-.B odkim.export(ctx, name, value[, name2, value2[, ...]])
+.B pdkim.export(ctx, name, value[, name2, value2[, ...]])
 Exports variables named with their corresponding values so that they
 will be available to later scripts.
 .TP
-.B odkim.get_clienthost(ctx)
+.B pdkim.get_clienthost(ctx)
 Returns the name of the host on the other end of the SMTP connection
 sending the current message.  This is usually a hostname, but might be
 an IP address in square brackets if the SMTP client's IP address does not
 have a name associated with it.
 .TP
-.B odkim.get_clientip(ctx)
+.B pdkim.get_clientip(ctx)
 Returns the IP address of the client on the other end of the SMTP connection
 sending the current message as a string.  Both IPv4 and IPv6 addresses are
 supported.
 .TP
-.B odkim.get_dbhandle(ctx, db)
+.B pdkim.get_dbhandle(ctx, db)
 Returns a handle for the requested database that can be used in later
 queries.  The value of
 .I db
@@ -118,15 +131,15 @@ should be one of
 database is not set in the current configuration file, a Lua "nil" is
 returned.
 .TP
-.B odkim.get_envfrom(ctx)
+.B pdkim.get_envfrom(ctx)
 Retrieves the SMTP envelope sender address for the message represented by
 .I ctx.
 .TP
-.B odkim.get_fromdomain(ctx)
+.B pdkim.get_fromdomain(ctx)
 Retrieves the domain name of the sender of the message represented by
 .I ctx.
 .TP
-.B odkim.get_header(ctx, name, n)
+.B pdkim.get_header(ctx, name, n)
 Retrieves the string contained in instance
 .I n
 of the header field called
@@ -137,7 +150,7 @@ or the Lua constant "nil" if there was no such header field.
 Header field numbering starts at 0, so use 0 for the first instance,
 1 for the second, etc.  For example:
 
-fromaddr = odkim.get_header(ctx, "From", 0)
+fromaddr = pdkim.get_header(ctx, "From", 0)
 
 This will return the value of the first (and hopefully only) "From" header
 field.  Negative values of
@@ -145,11 +158,11 @@ field.  Negative values of
 count backwards from the end of the set
 of header fields, so:
 
-rcvd = odkim.get_header(ctx, "Received", \-2)
+rcvd = pdkim.get_header(ctx, "Received", \-2)
 
 will retrieve the second-last Received: header field on the message.
 .TP
-.B odkim.get_mtasymbol(ctx, name)
+.B pdkim.get_mtasymbol(ctx, name)
 Retrieves the value of the symbol called
 .I name
 from the MTA connection represented by
@@ -157,7 +170,7 @@ from the MTA connection represented by
 or the Lua constant "nil" if the requested symbol was not available at the
 time of the request.
 .TP
-.B odkim.get_rcpt(ctx, n)
+.B pdkim.get_rcpt(ctx, n)
 Returns the
 .I nth
 envelope recipient for the message represented by
@@ -168,16 +181,16 @@ If
 .I n
 references an out-of-range value, the Lua constant "nil" is returned.
 .TP
-.B odkim.get_rcptarray(ctx)
+.B pdkim.get_rcptarray(ctx)
 Returns the envelope recipients for the message represented by
 .I ctx
 in a single Lua array.
 .TP
-.B odkim.internal_ip(ctx)
+.B pdkim.internal_ip(ctx)
 Returns 1 if the SMTP client is coming from an internal IP address, and 0
 otherwise.
 .TP
-.B odkim.log(ctx, log)
+.B pdkim.log(ctx, log)
 Logs the string
 .I log
 if the current configuration requested logging.  (Checking current
@@ -185,10 +198,10 @@ configuration is why the
 .I ctx
 parameter is required.)
 .TP
-.B odkim.rcpt_count(ctx)
+.B pdkim.rcpt_count(ctx)
 Returns the count of envelope recipients on the message.
 .TP
-.B odkim.replace_header(ctx, name, n, newval)
+.B pdkim.replace_header(ctx, name, n, newval)
 Retrieves the value of in instance
 .I n
 of header field
@@ -198,7 +211,7 @@ in the message referenced by
 and replaces it with the string in
 .I newval.
 See
-.I odkim.get_header()
+.I pdkim.get_header()
 above for more information about possible parameter values for
 .I n.
 Note that this only changes the content of the header field used when
@@ -207,11 +220,11 @@ modified.  This can be used to anticipate how an intermediate mail transfer
 agent might alter the message, thus correcting an avoidable signature
 invalidation.
 .TP
-.B odkim.resign(ctx)
+.B pdkim.resign(ctx)
 Arranges that the arriving message will be verified and then re-signed in
 a single operation.  Returns 1 on success or the Lua constant "nil" on failure.
 .TP
-.B odkim.set_result(ctx, result)
+.B pdkim.set_result(ctx, result)
 Arranges to have the MTA return a specific result code in response
 to the message represented by
 .I ctx.
@@ -231,7 +244,7 @@ and
 message disposition; the MTA will be told immediately to take the specified
 action, and no further filter processing will occur.
 .TP
-.B odkim.sign(ctx[, keyname[, signer[, signlen]]])
+.B pdkim.sign(ctx[, keyname[, signer[, signlen]]])
 Requests that the filter sign the message represented by
 .I ctx
 using the specified
@@ -251,7 +264,7 @@ is specified, the string there will be included in the generated signature's
 is specified, the signature will cover that many bytes of the message body.
 The order of these last two parameters is interchangeable.
 .TP
-.B odkim.signfor(ctx, address[, multi])
+.B pdkim.signfor(ctx, address[, multi])
 Applies whatever signatures would be applied by default if the candidate
 message had the specified
 .I address
@@ -260,18 +273,18 @@ in the message's From: field.  The
 parameter, if "true" (default is "false"), allows the application of multiple
 signatures.  Returns the number of signatures applied, which may be zero.
 .TP
-.B odkim.use_ltag(ctx)
+.B pdkim.use_ltag(ctx)
 Requests that all signatures added to the message represented by
 .I ctx
 include "l=" (body length) tags.  Always returns the Lua constant "nil".
 .TP
-.B odkim.verify(ctx)
+.B pdkim.verify(ctx)
 Requests that the message represented by
 .I ctx
 be subjected to DKIM signature verification.  Returns the Lua constant "nil"
 on success, or an error string on failure.
 .TP
-.B odkim.xtag(ctx, tag, value)
+.B pdkim.xtag(ctx, tag, value)
 Requests that all signatures added to the message represented by
 .I ctx
 include the named extension
@@ -284,36 +297,36 @@ the DKIM library, or if there is a syntax error in the tag or value.
 .SH SCREEN SCRIPT FUNCTIONS
 The screen script has the following functions available to it, whose
 descriptions can be found above:
-.B odkim.db_check,
-.B odkim.db_close,
-.B odkim.db_open,
-.B odkim.export,
-.B odkim.get_dbhandle,
-.B odkim.get_envfrom,
-.B odkim.get_fromdomain,
-.B odkim.get_header,
-.B odkim.get_mtasymbol,
-.B odkim.get_rcpt,
-.B odkim.get_rcptarray,
-.B odkim.log,
-.B odkim.rcpt_count
+.B pdkim.db_check,
+.B pdkim.db_close,
+.B pdkim.db_open,
+.B pdkim.export,
+.B pdkim.get_dbhandle,
+.B pdkim.get_envfrom,
+.B pdkim.get_fromdomain,
+.B pdkim.get_header,
+.B pdkim.get_mtasymbol,
+.B pdkim.get_rcpt,
+.B pdkim.get_rcptarray,
+.B pdkim.log,
+.B pdkim.rcpt_count
 and
-.B odkim.internal_ip.
+.B pdkim.internal_ip.
 
 The following additional functions are provided for this script:
 .TP
-.B odkim.get_sigarray(ctx)
+.B pdkim.get_sigarray(ctx)
 Returns the complete set of signature handles found in the message represented
 by
 .I ctx,
 as a Lua array, or the Lua constant "nil" in case of an error.
 .TP
-.B odkim.get_sigcount(ctx)
+.B pdkim.get_sigcount(ctx)
 Returns the number of signatures found in the message represented by
 .I ctx,
 or the Lua constant "nil" in case of an error.
 .TP
-.B odkim.get_sighandle(ctx, n)
+.B pdkim.get_sighandle(ctx, n)
 Returns a handle representing an internal copy of the
 .I nth
 signature found on the message represented by
@@ -322,68 +335,68 @@ signature found on the message represented by
 must be a number greater than or equal to zero (representing the first
 signature) and less than the number of signatures on the message, which
 can be determined using
-.B odkim.get_sigcount
+.B pdkim.get_sigcount
 above.  The requested handle is returned on success, or the Lua constant
 "nil" is returned on failure.
 .TP
-.B odkim.parse_field(string)
+.B pdkim.parse_field(string)
 Parses the contents of a header field, provided as
 .I string,
 into user and domain parts, discarding whitespace and comment components.
 Returns two strings, the user part and the domain part, or the Lua constant
 "nil" in case of a parsing error.
 .TP
-.B odkim.sig_getdomain(sig)
+.B pdkim.sig_getdomain(sig)
 Returns the name of the domain in the signature handle specified by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle().
+.B pdkim.get_sighandle().
 This is taken from the signature's "d=" tag.
 .TP
-.B odkim.sig_getidentity(sig)
+.B pdkim.sig_getidentity(sig)
 Returns the identity of the agent adding the signature handle specified by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle().
+.B pdkim.get_sighandle().
 This is taken from the signature's "i=" tag.  This may be a default value
 and not one that was explicitly part of the signature.  If the identity could
 not be determined, the Lua constant "nil" is returned.
 .TP
-.B odkim.sig_ignore(sig)
+.B pdkim.sig_ignore(sig)
 Instructs the verification code to ignore completely the signature specified
 by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle().
+.B pdkim.get_sighandle().
 Any pending verification of the message will act as if that signature was
 not present on the message.  Always returns the Lua constant "nil".
 .SH FINAL SCRIPT FUNCTIONS
 The final script has the following functions available to it, whose
 descriptions can be found above:
-.B odkim.get_clienthost,
-.B odkim.get_clientip,
-.B odkim.get_envfrom,
-.B odkim.get_fromdomain,
-.B odkim.get_header,
-.B odkim.get_mtasymbol,
-.B odkim.get_rcpt,
-.B odkim.get_rcptarray,
-.B odkim.get_sigarray,
-.B odkim.get_sigcount,
-.B odkim.get_sighandle,
-.B odkim.internal_ip,
-.B odkim.log,
-.B odkim.parse_field,
-.B odkim.rcpt_count,
-.B odkim.set_result,
-.B odkim.sig_getdomain,
-.B odkim.sig_getidentity
+.B pdkim.get_clienthost,
+.B pdkim.get_clientip,
+.B pdkim.get_envfrom,
+.B pdkim.get_fromdomain,
+.B pdkim.get_header,
+.B pdkim.get_mtasymbol,
+.B pdkim.get_rcpt,
+.B pdkim.get_rcptarray,
+.B pdkim.get_sigarray,
+.B pdkim.get_sigcount,
+.B pdkim.get_sighandle,
+.B pdkim.internal_ip,
+.B pdkim.log,
+.B pdkim.parse_field,
+.B pdkim.rcpt_count,
+.B pdkim.set_result,
+.B pdkim.sig_getdomain,
+.B pdkim.sig_getidentity
 and
-.B odkim.xtag.
+.B pdkim.xtag.
 
 The following additional functions are provided for this script:
 .TP
-.B odkim.add_header(ctx, name, value)
+.B pdkim.add_header(ctx, name, value)
 Adds a new header field called
 .I name
 with the specified
@@ -392,14 +405,14 @@ to the message represented by
 .I ctx.
 Returns 1 on success, or the Lua constant "nil" on failure.
 .TP
-.B odkim.add_rcpt(ctx, addr)
+.B pdkim.add_rcpt(ctx, addr)
 Adds
 .I addr
 as an envelope recipient to the message represented by
 .I ctx.
 Returns 1 on success, or the Lua constant "nil" on failure.
 .TP
-.B odkim.del_header(ctx, name, n)
+.B pdkim.del_header(ctx, name, n)
 Deletes the
 .I nth
 instance (starting from 0) of the header field called
@@ -408,7 +421,7 @@ from the message represented by
 .I ctx.
 Returns 1 on success, or the Lua constant "nil" on failure.
 .TP
-.B odkim.del_rcpt(ctx, addr)
+.B pdkim.del_rcpt(ctx, addr)
 Deletes
 .I addr
 from the list of envelope recipients on the message represented by
@@ -416,7 +429,7 @@ from the list of envelope recipients on the message represented by
 and adds a new X-Original-Recipient: header field containing the deleted
 address.  Returns 1 on success, or the Lua constant "nil" on failure.
 .TP
-.B odkim.quarantine(ctx, reason)
+.B pdkim.quarantine(ctx, reason)
 Asks the MTA to quarantine the message represented by
 .I ctx
 using
@@ -424,7 +437,7 @@ using
 as a text string indicating the reason for the request.  Returns 1 on
 success or the Lua constant "nil" on failure.
 .TP
-.B odkim.set_reply(ctx, rcode, xcode, message)
+.B pdkim.set_reply(ctx, rcode, xcode, message)
 Instructs the MTA to return the specified SMTP reply to the client sending
 the message represented by
 .I ctx.
@@ -439,39 +452,39 @@ and
 must be the text portion of the SMTP reply to be sent.  Returns 1 on success
 or the Lua constant "nil" on failure.
 .TP
-.B odkim.sig_bhresult(sig)
+.B pdkim.sig_bhresult(sig)
 Returns the result code corresponding to the body hash evaluation of
 the signature handled specified by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle().
+.B pdkim.get_sighandle().
 Valid values are the DKIM_SIGBH_* constants defined in the
 .B libopendkim
 header file
 .I dkim.h.
 .TP
-.B odkim.sig_bodylength(sig)
+.B pdkim.sig_bodylength(sig)
 Returns the total length of the message signed by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle(),
+.B pdkim.get_sighandle(),
 or the Lua constant "nil" if this value could not be determined.
 .TP
-.B odkim.sig_canonlength(sig)
+.B pdkim.sig_canonlength(sig)
 Returns the canonicalized length of the message signed by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle(),
+.B pdkim.get_sighandle(),
 or the Lua constant "nil" if this value could not be determined.
 Note that this may be less than the value returned by
-.B odkim.get_bodylength()
+.B pdkim.get_bodylength()
 if the signature only covered part of the message.
 .TP
-.B odkim.sig_result(sig)
+.B pdkim.sig_result(sig)
 Returns the result code corresponding to the signature handled specified by
 .I sig,
 previously returned by a call to
-.B odkim.get_sighandle().
+.B pdkim.get_sighandle().
 Valid values are the constants with DKIM_SIGERROR_ prefixes as defined in the
 .B libopendkim
 header file
