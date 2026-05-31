@@ -172,7 +172,17 @@ dkim_canon_write(DKIM_CANON *canon, const u_char *buf, size_t buflen)
 		sha = (struct dkim_sha *) canon->canon_hash;
 		EVP_DigestUpdate(sha->sha_mdctx, buf, buflen);
 
-		if (sha->sha_tmpbio != NULL)
+		/*
+		**  sha_tmpbio mirrors the canonicalized stream into a temp
+		**  file.  It is non-NULL only when DKIM_LIBFLAGS_TMPFILES is
+		**  set (KeepTemporaryFiles, or RFC 6651 failure reporting,
+		**  which hands these fds back via dkim_sig_getreportinfo()).
+		**  In the common case the feature is off; hint the branch as
+		**  unlikely so the hot path stays tight, but keep the write --
+		**  it is real work, not debug cruft, when the feature is on.
+		*/
+
+		if (__builtin_expect(sha->sha_tmpbio != NULL, 0))
 			BIO_write(sha->sha_tmpbio, buf, buflen);
 
 		break;
