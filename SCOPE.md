@@ -1,9 +1,16 @@
 # PhoenixDKIM — Project Scope
 
-This document defines the scope for the PhoenixDKIM project
-(originally forked from trusteddomainproject/OpenDKIM). It is the
+This document defines the scope for the PhoenixDKIM project. It is the
 authoritative reference for all AI-assisted work on this project.
 Do not modify it without explicit human approval.
+
+PhoenixDKIM began as a modernisation fork of trusteddomainproject/OpenDKIM,
+but has since become a standalone project with its own direction. The goals
+are no longer just "bring OpenDKIM up to date" — they are to produce the
+milter daemon that is cleanest, most secure, best optimised, and most ready
+for DKIM2 when the RFC lands. We track upstream OpenDKIM bug fixes and port
+the relevant ones, but we are not bound to upstream's architecture or
+decisions.
 
 ---
 
@@ -18,6 +25,23 @@ Do not modify it without explicit human approval.
 7. All behaviour within scope must be covered by a conformance test suite
    validated against RFC 6376 and the existing 2.11.0 beta before any
    rewriting begins.
+8. **Security**: Treat memory safety as a first-class concern throughout.
+   Proactively audit the codebase for exploitable defects using both static
+   analysis and LLM-assisted review on a regular cadence. See the Security
+   section and `ai/security-audit-process.md`.
+9. **Performance**: Optimise the signing and verification hot paths so that
+   PhoenixDKIM performs well at high mail volumes and is not a bottleneck
+   when DKIM2's higher per-message CPU requirements arrive. See the
+   Performance section and `ai/optimization-roadmap.md`.
+10. **DKIM2 readiness**: Track the DKIM2 specification
+    (draft-ietf-dkim-dkim2-spec) and implement DKIM2-core support when
+    the RFC reaches Proposed Standard. The milter deployment profile
+    (draft-moccia-dkim2-deployment-profile) confirms our architecture is
+    already the right target. See `ai/dkim2-readiness.md`.
+11. **HTTP/Vault backend**: Provide an optional HTTP/HTTPS data set backend
+    so that operators can integrate with secrets managers (Vault, Infisical,
+    etc.) and LDAP/SQL systems via a thin HTTP bridge, without native
+    directory or database drivers. See `ai/backend-extension-plan.md`.
 
 ---
 
@@ -53,6 +77,18 @@ avoid scope creep and compatibility breakage.
 | Comma-separated list (`csl:`) | Inline list in config. Keep. |
 | LMDB (`lmdb:`) | **New.** Replaces BerkeleyDB (`bdb:`). Fast, crash-safe, actively maintained, single-file. Implement as the binary/indexed backend. |
 | Lua script (`lua:`) | Dynamic key lookup via Lua script. Keep as optional (`-DWITH_LUA=ON`). Useful for multi-tenant and secrets-manager integrations. Lua 5.4 target. |
+| HTTP / HTTPS (`http:`, `https:`) | **New. Optional (`-DWITH_CURL=ON`).** GET-based key lookup against any HTTP endpoint. Bearer token auth. Covers secrets managers and LDAP/SQL bridge services. See `ai/backend-extension-plan.md`. |
+| Vault (`vault:`) | **New. Optional (`-DWITH_CURL=ON`).** Convenience wrapper over `https:` that knows the HashiCorp Vault KVv2 JSON envelope and the `X-Vault-Token` header. See `ai/backend-extension-plan.md`. |
+
+**Why no native LDAP or SQL drivers**: The original OpenLDAP code depended on
+`libldap`, optional Cyrus SASL, and a BerkeleyDB caching layer (now gone).
+The usage evidence across OpenDKIM's entire history traces to 2–3
+organisations. OpenDBX is unmaintained. An HTTP bridge (a 50-line Python or
+Go script) is the architecturally cleaner answer: it decouples the signing
+daemon from directory service authentication complexity, can be written in
+any language with mature DB/LDAP libraries, and the HTTP backend covers it
+cleanly. Lua scripts (with OS-installed `luasql-*` or `lualdap`) cover the
+use case when Lua is enabled.
 
 ### Crypto — replace entirely
 
@@ -115,7 +151,7 @@ The two providers differ only in these factual respects, not in support tier:
 
 **RSA-SHA1**: Signing and verifying with RSA-SHA1 is **dropped entirely**.
 SHA1 code stays in code base, because we must recognise rsa-sha1, so that
-we can permfail the message with the approriate comment.
+we can permfail the message with the appropriate comment.
 
 **RSA key size enforcement**: Keys smaller than 2048 bits are rejected for
 signing with a hard error. On verification, sub-2048-bit keys produce a
@@ -152,6 +188,97 @@ breakage is in the C-side embedding code only.
 
 Lua remains optional: `-DWITH_LUA=ON` (default OFF). The filter must build
 and operate correctly without Lua.
+
+**`pdkim` Lua module**: When `WITH_CURL` is also enabled, the Lua sandbox
+exposes a built-in `pdkim` module providing `pdkim.http_get(url, opts)` —
+a synchronous HTTP GET using libcurl, with optional Bearer token and timeout.
+This allows Lua data set scripts to query Vault or any HTTP bridge without
+OS-installed Lua packages. See `ai/backend-extension-plan.md`.
+
+### Performance targets
+
+The goal is for PhoenixDKIM to not be the bottleneck at any realistic mail
+volume, and to remain competitive when DKIM2's higher per-message CPU
+requirements arrive. Specific targets, all tracked in `ai/optimization-roadmap.md`:
+
+**Body hash sharing.** When a message carries multiple signatures with the
+same body canonicalization algorithm and length (e.g. dual-signing RSA-SHA256
+and Ed25519 during key rotation, or DKIM1+DKIM2 during the transition
+period), the body is hashed once and the digest shared. Currently each
+`DKIM_CANON` instance runs a separate `EVP_DigestUpdate` pass over the full
+body. This is the highest-impact optimization.
+
+**Hot path cleanup.** The `sha_tmpbio` debug branch in `dkim_canon_write()`
+executes a pointer load and conditional branch on every call — which fires
+for every chunk of every message body fed to the hash. It must be
+compile-time gated (`#ifdef DKIM_DEBUG`) or removed. This is pure overhead
+with no production value.
+
+**Pre-sized string buffers.** The DKIM-Signature header for RSA-SHA256 is
+typically 400–700 bytes; Ed25519 is 250–350 bytes. The `dkim_dstring` used
+to construct it starts small and doubles. Pre-allocating 512 bytes eliminates
+2–4 reallocs per signed message.
+
+**Ed25519 as the documented recommendation for high-volume deployments.**
+RSA-3072 signing takes ~2–5 ms per message. Ed25519 signing takes ~0.05 ms.
+For DKIM2, where a message to 50 recipients requires generating 51 signed
+headers, this is a 40–100× difference. Documentation should steer
+high-volume operators towards Ed25519 clearly and early.
+
+### Security
+
+PhoenixDKIM is written in C. C is memory-unsafe by default. It runs as a
+daemon processing attacker-influenced data (email messages, DNS responses).
+It is open source. Everyone now has access to LLM tools capable of
+identifying exploitable patterns in C code given the source as input.
+
+This changes the threat model: it is no longer sufficient to fix bugs when
+reported. We must proactively find them first, faster than an attacker
+would, using the same tools.
+
+**Threat model — attack surfaces:**
+
+| Surface | Risk class |
+|---|---|
+| DKIM-Signature header parsing | Buffer overflow, integer overflow, format string |
+| DNS TXT record parsing | Oversized records, malformed tag=value, NUL injection |
+| Message body canonicalisation | Off-by-one in CRLF handling, integer wraparound in `canon_remain` |
+| Base64 decode (public keys, signature values) | Overlong input, invalid alphabet |
+| Config file parsing | Path traversal in `KeyFile`/`SigningTable` values |
+| opendkim-db.c backends | Injection via key value into Lua sandbox, HTTP URI, Redis prefix |
+| Lua sandbox | Sandbox escape via upvalue manipulation or C API misuse |
+| HTTP backend (new) | SSRF via attacker-influenced key values substituted into URI templates |
+
+**Proactive audit cadence:**
+
+A security-focused LLM review of the codebase is run on a regular schedule
+(target: weekly, minimum: before every release). The process is documented
+in `ai/security-audit-process.md` and includes:
+- File-by-file review of all parsing and buffer manipulation code
+- Review of every code path that handles externally-supplied data
+- Review of threading primitives for race conditions and TOCTOU
+- Tracking of all findings in a structured log with severity and disposition
+
+**Static analysis and fuzzing:**
+- The build must remain clean under `-Wall -Wextra -Wformat-security
+  -Wformat-overflow -fstack-protector-strong` at all times.
+- AddressSanitizer and UBSanitizer CI builds (`-DENABLE_SANITIZERS=ON`)
+  catch use-after-free, buffer overreads, integer overflow, and undefined
+  behaviour.
+- Fuzzing targets for DKIM-Signature header parsing, DNS record parsing, and
+  the opendkim-db URI parser are tracked in `ai/security-audit-process.md`.
+
+**Defensive coding rules** (binding on all new code):
+- Every `strlcpy`/`strlcat`/`snprintf` result must be checked or
+  explicitly documented as truncation-safe.
+- No `sprintf`, `strcpy`, `strcat`, `gets` anywhere.
+- Every externally-supplied value that is substituted into a URI, log
+  format, Lua string, or shell command must be validated and/or escaped
+  before use.
+- Every error path must free all in-flight allocations. Valgrind is the
+  reference; the build must be leak-free under `ctest -T memcheck`.
+- Signed/unsigned comparisons in bounds checks use the guarded-subtraction
+  form: `buflen < N || (size_t)n > buflen - N`, never `(size_t)n + N > buflen`.
 
 ### FFR features — selected subset promoted to supported
 
@@ -200,7 +327,7 @@ once they are written and passing.
 | GnuTLS | Entire alternative build path removed |
 | BerkeleyDB (libdb) | Unmaintained upstream. Replaced by LMDB. |
 | OpenDBX (libopendbx) | SQL abstraction layer. Unmaintained. All SQL backends removed. |
-| OpenLDAP | LDAP directory lookups removed entirely. |
+| OpenLDAP | LDAP directory lookups removed entirely. HTTP bridge is the replacement path. |
 | tre (regex library) | Only used by `diffheaders` FFR. Both removed. |
 
 ### Data set backends to remove
@@ -208,8 +335,8 @@ once they are written and passing.
 | Backend | Reason |
 |---|---|
 | `bdb:` (BerkeleyDB) | Replaced by `lmdb:` |
-| `dsn:` (SQL via OpenDBX) | OpenDBX unmaintained. SQL in a signing daemon is wrong architecture. |
-| `ldap:` / `ldaps:` / `ldapi:` | LDAP removed entirely. |
+| `dsn:` (SQL via OpenDBX) | OpenDBX unmaintained. SQL in a signing daemon is wrong architecture. Use HTTP bridge + `http:` backend. |
+| `ldap:` / `ldaps:` / `ldapi:` | Native LDAP removed. Use HTTP bridge + `http:` backend, or Lua with `lualdap`. |
 
 ### FFR features removed permanently
 
@@ -242,8 +369,9 @@ once they are written and passing.
 | OpenSSL 3 **or** LibreSSL 3.7+ | Required (one of) | Dynamically linked system library. Selected via `-DSSL_PROVIDER` (default `auto`); a non-default install is located with `-DSSL_ROOT_DIR`. OpenSSL minimum 3.0.0 (4.x supported); LibreSSL minimum 3.7.0. FIPS / crypto-policy applies to the OpenSSL build only. See Crypto section. |
 | libmilter | Required | MTA filter protocol. Sendmail or Postfix libmilter. |
 | LMDB | Required | Binary key/table storage backend. |
-| libresolv / libar | Required | DNS resolution. libar is the preferred async path. |
+| libresolv | Required | DNS resolution. |
 | Lua 5.4 | Optional (`-DWITH_LUA=ON`) | Data set scripts and policy hooks. Default OFF. |
+| libcurl | Optional (`-DWITH_CURL=ON`) | Enables two features: (1) SMTP delivery for RFC 6651 failure reports (`SMTPURI`); (2) HTTP/HTTPS/Vault data set backends and `pdkim.http_get()` in the Lua sandbox. Minimum 7.20.0. Default OFF. |
 | libbsd | Optional, auto-detected | Provides `strlcpy`/`strlcat` on older Linux. Not needed on FreeBSD/OpenBSD (in libc) or glibc 2.38+. |
 | pthreads | Required | Thread support. |
 
@@ -258,30 +386,86 @@ dependency on any distribution package.
 
 ---
 
-## Future Development Notes (Out of Scope Now)
+## Future Development — Active Roadmap
 
-- **Stats / metrics**: If implemented later, should emit via StatsD or
-  Prometheus rather than a proprietary SQL schema. Optional at compile time.
-- **ARC (Authenticated Received Chain)**: RFC 8617. Related to but distinct
-  from DKIM. Would be a new subsystem, not built on `resign`. Out of scope.
-- **openarc / flowerysong tools**: Improved genkey/testkey implementations
-  exist. May be incorporated in a future phase once API compatibility is
-  assessed.
-- **DKIM failure reporting (RFC 6651)**: Inherited from upstream and still
-  compiled in. Covers the signer-side request (`r=y` / `ra=` in the key
-  record) and the verifier-side ARF (RFC 5965) "feedback-report" emission
-  triggered by the `SendReports` / `RequestReports` / `ReportAddress` /
-  `ReportBccAddress` / `MTACommand` config options, plus the optional
-  libcurl SMTP transport gated by `WITH_CURL` and the `SMTPURI` option.
-  RFC 6651 is a Proposed Standard, not obsoleted, but has essentially zero
-  deployed footprint: DMARC failure reports (RFC 7489 §7.2.2, "RUF")
-  supplanted the use case, and even RUF is rarely emitted in practice due
-  to GDPR concerns about forwarding raw failing messages. Revisit in a
-  later phase: decide whether to keep the popen/sendmail report path,
-  drop only the libcurl `SMTPURI` alternate transport, or remove the
-  whole RFC 6651 surface (daemon-side ARF formatter, libopendkim
-  `dkim_sig_getreportinfo` and `dkim-report.c`, and the associated
-  `DKIM_SETTYPE_SIGREPORT` / `DKIM_LIBFLAGS_REQUESTREPORTS` plumbing).
+These items are out of scope for the current milestone but are on the active
+roadmap with concrete plans. Each has a corresponding document in `ai/`.
+
+### DKIM2-core
+
+**Specification**: `draft-ietf-dkim-dkim2-spec` (active WG document, May 2026).
+**Milter profile**: `draft-moccia-dkim2-deployment-profile` — explicitly
+confirms that DKIM2-core is implementable via existing milter callbacks
+without MTA core changes.
+
+**What DKIM2-core adds** (DKIM1 infrastructure unchanged):
+- `DKIM2-Signature` header (new; `DKIM-Signature` continues in parallel)
+- Envelope binding: MAIL FROM and all RCPT TO addresses signed into the header
+- Replay prevention: timestamp binding
+- Chain of custody: forwarding MTAs that modify content add their own signature
+
+**What DKIM2-core does NOT require**:
+- New DNS record types (same `selector._domainkey.domain` structure)
+- New key management infrastructure (same keys as DKIM1)
+- Database backends (no new lookup complexity)
+
+**Transition model**: Dual-signing (DKIM1-Signature + DKIM2-Signature on
+every outgoing message) for several years. DKIM2 verifiers ignore
+DKIM-Signature; DKIM1 verifiers ignore DKIM2-Signature. No flag day.
+One program handles both; DKIM2 is an opt-in compile flag initially.
+
+**DKIM2-extended** (body recipes, stateful intermediate signing) is explicitly
+out of scope until the WG resolves the open design issues.
+
+**When to implement**: When `draft-ietf-dkim-dkim2-spec` advances to Proposed
+Standard and has a document shepherd and IESG date. Track the mailing list at
+`ietf-dkim@ietf.org`. See `ai/dkim2-readiness.md`.
+
+### Performance optimization
+
+Tracked in `ai/optimization-roadmap.md`. Three items with clear implementation paths:
+
+1. **Body hash sharing** (highest impact): Share the `EVP_MD_CTX` body hash
+   across multiple signatures on the same message when they use the same
+   canonicalization parameters. Currently each `DKIM_CANON` runs a separate
+   pass. Directly enables efficient dual-signing for both DKIM1 key rotation
+   and the DKIM1+DKIM2 transition period.
+
+2. **`sha_tmpbio` removal** (zero-risk quick win): The debug BIO path in
+   `dkim_canon_write()` runs a pointer load and branch on every body chunk.
+   Wrap in `#ifdef DKIM_DEBUG` or remove entirely.
+
+3. **Pre-sized signature buffer** (trivial): Pre-allocate 512 bytes for
+   `dkim_dstring` when constructing the DKIM-Signature header. Eliminates
+   2–4 reallocs per signed message.
+
+### HTTP/HTTPS/Vault backend
+
+Implementation plan in `ai/backend-extension-plan.md`. Summary:
+- `http:` and `https:` URIs as data set backends, using existing `WITH_CURL`
+  libcurl detection. Synchronous GET, Bearer token auth, 404 = miss.
+- `vault:` URI as a convenience wrapper: translates to `https:`, adds
+  `X-Vault-Token` header, extracts from KVv2 JSON envelope.
+- `pdkim.http_get()` exposed to the Lua sandbox when both `WITH_LUA` and
+  `WITH_CURL` are enabled.
+- Type IDs: `http/https` = 13, `vault` = 14.
+
+### Stats / metrics
+
+If implemented, emit via StatsD or Prometheus, not a proprietary SQL schema.
+Optional at compile time.
+
+### ARC (Authenticated Received Chain)
+
+RFC 8617. Related to but distinct from DKIM. Would be a new subsystem, not
+built on `resign`. Out of scope until DKIM2 is implemented.
+
+### DKIM failure reporting (RFC 6651)
+
+Inherited from upstream and currently compiled in. RFC 6651 has essentially
+zero deployed footprint (DMARC RUF supplanted it). Revisit: decide whether
+to keep the popen/sendmail path, drop only the `SMTPURI` libcurl transport,
+or remove the whole surface.
 
 ---
 
@@ -318,11 +502,27 @@ These rules apply to every Claude Code session on this project.
    changes or subsystem removal in the same session.
 
 8. **Build must be clean at all times.** Every session ends with a clean
-   build and all tests passing.
+   build and all tests passing. The build must be warning-clean under
+   `-Wall -Wextra -Wformat-security`.
 
 9. **Do not invent scope.** If a file or feature is not mentioned in this
    document, ask before touching it.
 
+10. **Security review on every change touching a parsing or buffer path.**
+    Before committing any change to a function that handles externally-supplied
+    data (message headers, DNS responses, config file values, URI parsing,
+    base64 decode), feed the modified function and its callers to an LLM with
+    the security audit prompt from `ai/security-audit-process.md` and address
+    any findings. This is not optional.
+
+11. **No unsafe string functions.** `sprintf`, `strcpy`, `strcat`, `gets` are
+    banned. Use `strlcpy`, `strlcat`, `snprintf` with checked results. New
+    code using a banned function will not be merged.
+
+12. **Check all error paths for leaks.** Every function that allocates on
+    entry must free on every error return. Use Valgrind or ASan to verify
+    before committing.
+
 ---
 
-*Last updated: April 2026. Human review required before any changes.*
+*Last updated: May 2026. Human review required before any changes.*
