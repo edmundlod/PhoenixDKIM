@@ -1294,6 +1294,23 @@ unless an alternate
 is specified.
 
 .TP
+.I VaultField (string)
+The name of the JSON field extracted from a HashiCorp Vault secret by the
+.I vault:
+data set backend.  The default is
+.I private_key.
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
+.I VaultToken (string)
+The token sent as an "X-Vault-Token" header on every request made by the
+.I vault:
+data set backend.  If unset, the
+.I VAULT_TOKEN
+environment variable is used instead.
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
 .I WeakSyntaxChecks (Boolean)
 Requests that the library continue processing messages even if syntax errors
 are discovered early in message analysis.  This means, for example, that
