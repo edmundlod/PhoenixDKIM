@@ -247,6 +247,9 @@ struct dkimf_config
 	struct config *	conf_data;		/* configuration data */
 #ifdef HAVE_LIBCURL
 	char *		conf_smtpuri;		/* outgoing mail URI */
+	char *		conf_httpauthtoken;	/* HTTP backend bearer token */
+	char *		conf_httpauthheader;	/* HTTP backend extra header */
+	long		conf_httptimeout;	/* HTTP backend timeout (sec) */
 #endif /* HAVE_LIBCURL */
 	char *		conf_authservid;	/* authserv-id */
 	char *		conf_keyfile;		/* key file for single key */
@@ -5782,6 +5785,22 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 #ifdef HAVE_LIBCURL
 		(void) config_get(data, "SMTPURI", &conf->conf_smtpuri,
 		                  sizeof conf->conf_smtpuri);
+		(void) config_get(data, "HttpAuthToken",
+		                  &conf->conf_httpauthtoken,
+		                  sizeof conf->conf_httpauthtoken);
+		(void) config_get(data, "HttpAuthHeader",
+		                  &conf->conf_httpauthheader,
+		                  sizeof conf->conf_httpauthheader);
+		{
+			int httptimeout = 5;
+
+			(void) config_get(data, "HttpTimeout", &httptimeout,
+			                  sizeof httptimeout);
+			conf->conf_httptimeout = httptimeout;
+		}
+		dkimf_db_set_http_config(conf->conf_httpauthtoken,
+		                         conf->conf_httpauthheader,
+		                         conf->conf_httptimeout);
 #endif /* HAVE_LIBCURL */
 
 		str = NULL;

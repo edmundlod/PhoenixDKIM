@@ -79,6 +79,9 @@ typedef valkeyReply    redisReply;
 #  include <hiredis/hiredis.h>
 # endif /* USE_LIBVALKEY */
 #endif /* USE_REDIS */
+#ifdef HAVE_LIBCURL
+# include <curl/curl.h>
+#endif /* HAVE_LIBCURL */
 
 /* macros */
 #define	BUFRSZ			1024
@@ -172,6 +175,26 @@ struct dkimf_db_redis
 };
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+/* one easy handle, serialised by db->db_lock; the table is shared by threads */
+struct dkimf_db_http
+{
+	char *			http_uri;	/* URI template, verbatim */
+	long			http_timeout;
+	CURL *			http_curl;
+	struct curl_slist *	http_headers;
+	char			http_err[256];
+	char			http_body[65536];
+};
+
+struct dkimf_db_httpbuf
+{
+	char *			buf;
+	size_t			len;
+	size_t			cap;
+};
+#endif /* HAVE_LIBCURL */
+
 
 /* globals */
 struct dkimf_db_table dbtypes[] =
@@ -188,12 +211,23 @@ struct dkimf_db_table dbtypes[] =
 #ifdef USE_REDIS
 	{ "redis",		DKIMF_DB_TYPE_REDIS },
 #endif /* USE_REDIS */
+#ifdef HAVE_LIBCURL
+	{ "http",		DKIMF_DB_TYPE_HTTP },
+	{ "https",		DKIMF_DB_TYPE_HTTP },
+#endif /* HAVE_LIBCURL */
 	{ NULL,			DKIMF_DB_TYPE_UNKNOWN },
 };
 
 
 /* globals */
 static unsigned int gflags = 0;
+
+#ifdef HAVE_LIBCURL
+/* global HTTP backend parameters, owned by the active configuration */
+static const char *	s_http_token = NULL;
+static const char *	s_http_header = NULL;
+static long		s_http_timeout = 5;
+#endif /* HAVE_LIBCURL */
 
 
 /*
@@ -211,6 +245,239 @@ dkimf_db_flags(unsigned int flags)
 {
 	gflags = flags;
 }
+
+
+#ifdef HAVE_LIBCURL
+/*
+**  DKIMF_DB_SET_HTTP_CONFIG -- record global parameters for HTTP backends
+**
+**  Parameters:
+**  	token -- bearer token, or NULL
+**  	auth_header -- complete "Name: value" header line, or NULL
+**  	timeout_secs -- per-request timeout in seconds
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	The strings are owned by the configuration and must outlive every
+**  	dkimf_db_open() of an http/https backend.  Call before opening any.
+*/
+
+void
+dkimf_db_set_http_config(const char *token, const char *auth_header,
+                         long timeout_secs)
+{
+	s_http_token = token;
+	s_http_header = auth_header;
+	if (timeout_secs > 0)
+		s_http_timeout = timeout_secs;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_WRITE -- libcurl write callback accumulating the response
+**
+**  Parameters:
+**  	ptr -- delivered bytes
+**  	size, nmemb -- block geometry (bytes = size * nmemb)
+**  	userdata -- struct dkimf_db_httpbuf to append into
+**
+**  Return value:
+**  	Bytes consumed; a short return aborts the transfer (overflow guard).
+*/
+
+static size_t
+dkimf_db_http_write(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	size_t n;
+	struct dkimf_db_httpbuf *b = (struct dkimf_db_httpbuf *) userdata;
+
+	if (size != 0 && nmemb > SIZE_MAX / size)
+		return 0;
+	n = size * nmemb;
+
+	/* keep one byte for the NUL appended once the transfer completes */
+	if (b->cap < 1 || b->len > b->cap - 1 || n > b->cap - 1 - b->len)
+		return 0;
+
+	memcpy(b->buf + b->len, ptr, n);
+	b->len += n;
+
+	return n;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_SAFE -- True IFF a value is safe to substitute into a URI
+**
+**  Parameters:
+**  	s -- value
+**  	len -- length of value
+**
+**  Return value:
+**  	TRUE IFF every byte is in the allowlist [A-Za-z0-9._@-].
+*/
+
+static _Bool
+dkimf_db_http_safe(const char *s, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; i++)
+	{
+		char c = s[i];
+
+		if (!(isalnum((unsigned char) c) || c == '.' || c == '_' ||
+		      c == '-' || c == '@'))
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_APPEND -- allowlist-check, percent-encode and append a value
+**
+**  Parameters:
+**  	curl -- easy handle (used for curl_easy_escape())
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**  	pos -- current write offset (updated)
+**  	val -- value to append
+**  	vallen -- length of value
+**
+**  Return value:
+**  	0 on success, -1 on rejected value or insufficient space.
+*/
+
+static int
+dkimf_db_http_append(CURL *curl, char *out, size_t outlen, size_t *pos,
+                     const char *val, size_t vallen)
+{
+	size_t enclen;
+	char *enc;
+
+	if (!dkimf_db_http_safe(val, vallen))
+		return -1;
+
+	enc = curl_easy_escape(curl, val, (int) vallen);
+	if (enc == NULL)
+		return -1;
+
+	enclen = strlen(enc);
+	if (outlen < 1 || *pos > outlen - 1 || enclen > outlen - 1 - *pos)
+	{
+		curl_free(enc);
+		return -1;
+	}
+
+	memcpy(out + *pos, enc, enclen);
+	*pos += enclen;
+	curl_free(enc);
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_BUILDURL -- expand a URI template for a lookup key
+**
+**  Parameters:
+**  	curl -- easy handle (used for percent-encoding)
+**  	tmpl -- URI template, possibly containing {key}, {d}, {s}
+**  	key -- NUL-terminated lookup key
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**
+**  Return value:
+**  	0 on success, -1 on rejected key or insufficient space.
+**
+**  Notes:
+**  	{d} is the part before the first ':' in the key, {s} the part after.
+**  	If no token appears, "?key=<encoded>" is appended.
+*/
+
+static int
+dkimf_db_http_buildurl(CURL *curl, const char *tmpl, const char *key,
+                       char *out, size_t outlen)
+{
+	_Bool subst = FALSE;
+	size_t pos = 0;
+	size_t domlen;
+	size_t sellen;
+	const char *colon;
+	const char *sel;
+	const char *p;
+
+	colon = strchr(key, ':');
+	if (colon != NULL)
+	{
+		domlen = colon - key;
+		sel = colon + 1;
+		sellen = strlen(sel);
+	}
+	else
+	{
+		domlen = strlen(key);
+		sel = key + domlen;
+		sellen = 0;
+	}
+
+	for (p = tmpl; *p != '\0'; )
+	{
+		if (strncmp(p, "{key}", 5) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         key, strlen(key)) != 0)
+				return -1;
+			subst = TRUE;
+			p += 5;
+		}
+		else if (strncmp(p, "{d}", 3) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         key, domlen) != 0)
+				return -1;
+			subst = TRUE;
+			p += 3;
+		}
+		else if (strncmp(p, "{s}", 3) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         sel, sellen) != 0)
+				return -1;
+			subst = TRUE;
+			p += 3;
+		}
+		else
+		{
+			if (outlen < 1 || pos > outlen - 2)
+				return -1;
+			out[pos++] = *p;
+			p++;
+		}
+	}
+
+	if (!subst)
+	{
+		static const char q[] = "?key=";
+
+		if (outlen < 1 || pos > outlen - 1 || sizeof q - 1 > outlen - 1 - pos)
+			return -1;
+		memcpy(out + pos, q, sizeof q - 1);
+		pos += sizeof q - 1;
+		if (dkimf_db_http_append(curl, out, outlen, &pos,
+		                         key, strlen(key)) != 0)
+			return -1;
+	}
+
+	out[pos] = '\0';
+
+	return 0;
+}
+#endif /* HAVE_LIBCURL */
 
 
 
@@ -499,6 +766,14 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 		p++;
 	}
 
+	/*
+	**  Network backends keep a single connection handle that is shared by
+	**  every thread querying this (process-wide) data set, so they must be
+	**  serialised.  Force a lock into existence; dkimf_db_get() takes it.
+	*/
+	if (new->db_type == DKIMF_DB_TYPE_HTTP ||
+	    new->db_type == DKIMF_DB_TYPE_REDIS)
+		new->db_flags |= DKIMF_DB_FLAG_MAKELOCK;
 
 	/* use provided lock, or create a new one if needed */
 	if (lock != NULL)
@@ -1288,6 +1563,126 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	  }
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  {
+		CURL *curl;
+		struct dkimf_db_http *h;
+
+		if (strncasecmp(name, "http://", 7) != 0 &&
+		    strncasecmp(name, "https://", 8) != 0)
+		{
+			free(new);
+			if (err != NULL)
+				*err = "http: URI must begin with http:// or https://";
+			return 1;
+		}
+
+		h = (struct dkimf_db_http *) malloc(sizeof *h);
+		if (h == NULL)
+		{
+			if (err != NULL)
+				*err = strerror(errno);
+			free(new);
+			return -1;
+		}
+		memset(h, '\0', sizeof *h);
+
+		h->http_uri = strdup(name);
+		if (h->http_uri == NULL)
+		{
+			if (err != NULL)
+				*err = strerror(errno);
+			free(h);
+			free(new);
+			return -1;
+		}
+
+		h->http_timeout = s_http_timeout;
+
+		curl = curl_easy_init();
+		if (curl == NULL)
+		{
+			free(h->http_uri);
+			free(h);
+			free(new);
+			if (err != NULL)
+				*err = "http: curl_easy_init() failed";
+			return -1;
+		}
+
+		(void) curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+		(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+		(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+		(void) curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+		(void) curl_easy_setopt(curl, CURLOPT_TIMEOUT, h->http_timeout);
+		(void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+		                        dkimf_db_http_write);
+
+		if (s_http_token != NULL)
+		{
+			char hdr[BUFRSZ + 1];
+			struct curl_slist *l;
+
+			if (snprintf(hdr, sizeof hdr, "Authorization: Bearer %s",
+			             s_http_token) >= (int) sizeof hdr)
+			{
+				curl_easy_cleanup(curl);
+				free(h->http_uri);
+				free(h);
+				free(new);
+				if (err != NULL)
+					*err = "http: bearer token too long";
+				return 1;
+			}
+
+			l = curl_slist_append(h->http_headers, hdr);
+			if (l == NULL)
+			{
+				curl_slist_free_all(h->http_headers);
+				curl_easy_cleanup(curl);
+				free(h->http_uri);
+				free(h);
+				free(new);
+				if (err != NULL)
+					*err = strerror(errno);
+				return -1;
+			}
+			h->http_headers = l;
+		}
+
+		if (s_http_header != NULL)
+		{
+			struct curl_slist *l;
+
+			l = curl_slist_append(h->http_headers, s_http_header);
+			if (l == NULL)
+			{
+				curl_slist_free_all(h->http_headers);
+				curl_easy_cleanup(curl);
+				free(h->http_uri);
+				free(h);
+				free(new);
+				if (err != NULL)
+					*err = strerror(errno);
+				return -1;
+			}
+			h->http_headers = l;
+		}
+
+		if (h->http_headers != NULL)
+			(void) curl_easy_setopt(curl, CURLOPT_HTTPHEADER,
+			                        h->http_headers);
+
+		h->http_curl = curl;
+
+		new->db_data = (void *) h;
+		new->db_handle = (void *) h;
+
+		break;
+	  }
+#endif /* HAVE_LIBCURL */
+
 	}
 
 	*db = new;
@@ -1700,9 +2095,14 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			return -1;
 		}
 
+		/* dkimf_db_open() forces a lock into existence for this type */
+		assert(db->db_lock != NULL);
+		(void) pthread_mutex_lock(db->db_lock);
+
 		reply = (redisReply *) redisCommand(r->redis_ctx, "GET %s", query);
 		if (reply == NULL)
 		{
+			(void) pthread_mutex_unlock(db->db_lock);
 			db->db_status = EIO;
 			return -1;
 		}
@@ -1712,6 +2112,7 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			if (exists != NULL)
 				*exists = FALSE;
 			freeReplyObject(reply);
+			(void) pthread_mutex_unlock(db->db_lock);
 			return 0;
 		}
 
@@ -1724,14 +2125,121 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			                       req, reqnum) != 0)
 			{
 				freeReplyObject(reply);
+				(void) pthread_mutex_unlock(db->db_lock);
 				return -1;
 			}
 		}
 
 		freeReplyObject(reply);
+		(void) pthread_mutex_unlock(db->db_lock);
 		return 0;
 	  }
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  {
+		long code = 0;
+		size_t keylen;
+		char keybuf[BUFRSZ + 1];
+		char url[4096];
+		char emsg[128];
+		CURLcode rc;
+		struct dkimf_db_http *h;
+		struct dkimf_db_httpbuf b;
+
+		h = (struct dkimf_db_http *) db->db_data;
+
+		/* a zero length means the key is NUL-terminated (see callers) */
+		keylen = (buflen == 0) ? strlen((const char *) buf) : buflen;
+
+		if (keylen >= sizeof keybuf)
+		{
+			db->db_status = ENOMEM;
+			return -1;
+		}
+		memcpy(keybuf, buf, keylen);
+		keybuf[keylen] = '\0';
+
+		b.buf = h->http_body;
+		b.len = 0;
+		b.cap = sizeof h->http_body;
+
+		/* dkimf_db_open() forces a lock into existence for this type */
+		assert(db->db_lock != NULL);
+		(void) pthread_mutex_lock(db->db_lock);
+
+		if (dkimf_db_http_buildurl(h->http_curl, h->http_uri, keybuf,
+		                           url, sizeof url) != 0)
+		{
+			(void) strlcpy(h->http_err,
+			               "URI rejected (unsafe key or too long)",
+			               sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EINVAL;
+			syslog(LOG_WARNING, "%s: rejected lookup key", h->http_uri);
+			return -1;
+		}
+
+		(void) curl_easy_setopt(h->http_curl, CURLOPT_URL, url);
+		(void) curl_easy_setopt(h->http_curl, CURLOPT_WRITEDATA, &b);
+
+		rc = curl_easy_perform(h->http_curl);
+		if (rc != CURLE_OK)
+		{
+			(void) strlcpy(h->http_err, curl_easy_strerror(rc),
+			               sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EIO;
+			syslog(LOG_WARNING, "%s: %s", h->http_uri,
+			       curl_easy_strerror(rc));
+			return -1;
+		}
+
+		(void) curl_easy_getinfo(h->http_curl, CURLINFO_RESPONSE_CODE,
+		                         &code);
+
+		if (code == 404)
+		{
+			(void) pthread_mutex_unlock(db->db_lock);
+			if (exists != NULL)
+				*exists = FALSE;
+			return 0;
+		}
+
+		if (code < 200 || code >= 300)
+		{
+			(void) snprintf(emsg, sizeof emsg, "HTTP status %ld",
+			                code);
+			(void) strlcpy(h->http_err, emsg, sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EIO;
+			syslog(LOG_WARNING, "%s: %s", h->http_uri, emsg);
+			return -1;
+		}
+
+		/* NUL-terminate and strip the trailing line ending */
+		b.buf[b.len] = '\0';
+		while (b.len > 0 &&
+		       (b.buf[b.len - 1] == '\n' || b.buf[b.len - 1] == '\r'))
+			b.buf[--b.len] = '\0';
+
+		if (exists != NULL)
+			*exists = TRUE;
+
+		if (reqnum > 0)
+		{
+			if (dkimf_db_datasplit(b.buf, b.len, req, reqnum) != 0)
+			{
+				(void) pthread_mutex_unlock(db->db_lock);
+				return -1;
+			}
+		}
+
+		(void) pthread_mutex_unlock(db->db_lock);
+		return 0;
+	  }
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);
@@ -1849,6 +2357,23 @@ dkimf_db_close(DKIMF_DB db)
 	  }
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  {
+		struct dkimf_db_http *h;
+
+		h = (struct dkimf_db_http *) db->db_data;
+		if (h->http_curl != NULL)
+			curl_easy_cleanup(h->http_curl);
+		if (h->http_headers != NULL)
+			curl_slist_free_all(h->http_headers);
+		free(h->http_uri);
+		free(h);
+		free(db);
+		return 0;
+	  }
+#endif /* HAVE_LIBCURL */
+
 	  default:
 		assert(0);
 		return -1;
@@ -1916,6 +2441,16 @@ dkimf_db_strerror(DKIMF_DB db, char *err, size_t errlen)
 		return strlcpy(err, "Redis error", errlen);
 	  }
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  {
+		struct dkimf_db_http *h;
+
+		h = (struct dkimf_db_http *) db->db_data;
+		return strlcpy(err, h->http_err, errlen);
+	  }
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);
@@ -2054,6 +2589,11 @@ dkimf_db_walk(DKIMF_DB db, _Bool first, void *key, size_t *keylen,
 	  case DKIMF_DB_TYPE_REDIS:
 		return -1;
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+		return -1;
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);
