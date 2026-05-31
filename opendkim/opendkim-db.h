@@ -33,6 +33,7 @@
 #define DKIMF_DB_TYPE_MDB	10
 #define DKIMF_DB_TYPE_REDIS	12
 #define DKIMF_DB_TYPE_HTTP	13
+#define DKIMF_DB_TYPE_VAULT	14
 
 
 /* types */
@@ -70,6 +71,7 @@ extern int dkimf_db_walk(DKIMF_DB, _Bool, void *, size_t *,
 #ifdef HAVE_LIBCURL
 extern void dkimf_db_set_http_config(const char *token, const char *auth_header,
                                      long timeout_secs);
+extern void dkimf_db_set_vault_config(const char *token, const char *field);
 #endif /* HAVE_LIBCURL */
 
 #endif /* _OPENDKIM_DB_H_ */

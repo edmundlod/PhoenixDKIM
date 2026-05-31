@@ -250,6 +250,8 @@ struct dkimf_config
 	char *		conf_httpauthtoken;	/* HTTP backend bearer token */
 	char *		conf_httpauthheader;	/* HTTP backend extra header */
 	long		conf_httptimeout;	/* HTTP backend timeout (sec) */
+	char *		conf_vaulttoken;	/* vault: token (else $VAULT_TOKEN) */
+	char *		conf_vaultfield;	/* vault: JSON field name */
 #endif /* HAVE_LIBCURL */
 	char *		conf_authservid;	/* authserv-id */
 	char *		conf_keyfile;		/* key file for single key */
@@ -5801,6 +5803,13 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		dkimf_db_set_http_config(conf->conf_httpauthtoken,
 		                         conf->conf_httpauthheader,
 		                         conf->conf_httptimeout);
+
+		(void) config_get(data, "VaultToken", &conf->conf_vaulttoken,
+		                  sizeof conf->conf_vaulttoken);
+		(void) config_get(data, "VaultField", &conf->conf_vaultfield,
+		                  sizeof conf->conf_vaultfield);
+		dkimf_db_set_vault_config(conf->conf_vaulttoken,
+		                          conf->conf_vaultfield);
 #endif /* HAVE_LIBCURL */
 
 		str = NULL;

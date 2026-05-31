@@ -124,6 +124,22 @@ options described in
 (Requires libcurl; enabled with -DWITH_CURL=ON.)
 .TP
 .I h)
+If the string begins with "vault:", the remainder is treated as a URI to a
+HashiCorp Vault KV secrets engine: the "vault:" scheme is rewritten to "https:",
+an "X-Vault-Token" header is added (see
+.I VaultToken
+in
+.I opendkim.conf(5),
+or the
+.I VAULT_TOKEN
+environment variable), and the requested field (see
+.I VaultField,
+default "private_key") is extracted from the JSON envelope of both KVv1 and KVv2
+responses.  Token substitution, status handling, and the timeout are otherwise
+identical to the "http:" backend.
+(Requires libcurl; enabled with -DWITH_CURL=ON.)
+.TP
+.I i)
 In any other case, the string is presumed to be a comma-separated list.
 Elements in the list are either simple data elements that are part of the
 set or, in the case of an entry of the form "x=y", are stored as key-value

@@ -153,6 +153,10 @@ struct configdef dkimf_config[] =
 	{ "UnprotectedKey",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_UNBOUND */
 	{ "UserID",			CONFIG_TYPE_STRING,	FALSE },
+#ifdef HAVE_LIBCURL
+	{ "VaultField",			CONFIG_TYPE_STRING,	FALSE },
+	{ "VaultToken",			CONFIG_TYPE_STRING,	FALSE },
+#endif /* HAVE_LIBCURL */
 	{ "WeakSyntaxChecks",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "X-Header",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ NULL,				(u_int) -1,		FALSE }

@@ -80,9 +80,10 @@ if(WITH_REDIS)
 endif()
 
 # ── libcurl (optional, default OFF) ───────────────────────────────────────────
-# Enables SMTP report delivery (SMTPURI) and the http:/https: data set backends.
+# Enables SMTP report delivery (SMTPURI), the http:/https:/vault: data set
+# backends, and pdkim.http_get() in the Lua sandbox.
 
-option(WITH_CURL "Enable libcurl: SMTP reports (SMTPURI) and http/https data set backends" OFF)
+option(WITH_CURL "Enable libcurl: SMTP reports (SMTPURI), http/https/vault data set backends, pdkim.http_get()" OFF)
 
 if(WITH_CURL)
     find_package(CURL REQUIRED)
