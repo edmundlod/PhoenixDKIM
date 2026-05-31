@@ -344,6 +344,35 @@ body canonicalization, anticipating that an MTA somewhere before delivery
 will do that conversion anyway.  The default is to leave them as-is.
 
 .TP
+.I HttpAuthHeader (string)
+A complete header field, in "Name: value" form, added to every request made by
+the
+.I http:
+and
+.I https:
+data set backends.  Use it to present an API key or other custom credential.
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
+.I HttpAuthToken (string)
+A bearer token sent as an "Authorization: Bearer" header on every request made
+by the
+.I http:
+and
+.I https:
+data set backends.
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
+.I HttpTimeout (integer)
+The maximum time, in seconds, allowed for each HTTP request made by the
+.I http:
+and
+.I https:
+data set backends.  The default is 5.
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
 .I IdentityHeader (string)
 This specifies the header field where an identity is stored.
 

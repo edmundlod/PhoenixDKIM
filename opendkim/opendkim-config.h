@@ -59,6 +59,11 @@ struct configdef dkimf_config[] =
 	{ "FinalPolicyScript",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_LUA */
 	{ "FixCRLF",			CONFIG_TYPE_BOOLEAN,	FALSE },
+#ifdef HAVE_LIBCURL
+	{ "HttpAuthHeader",		CONFIG_TYPE_STRING,	FALSE },
+	{ "HttpAuthToken",		CONFIG_TYPE_STRING,	FALSE },
+	{ "HttpTimeout",		CONFIG_TYPE_INTEGER,	FALSE },
+#endif /* HAVE_LIBCURL */
 	{ "IdentityHeader",		CONFIG_TYPE_STRING,     FALSE },
 	{ "IdentityHeaderRemove",	CONFIG_TYPE_BOOLEAN,    FALSE },
 	{ "IgnoreMalformedMail",	CONFIG_TYPE_BOOLEAN,	FALSE },

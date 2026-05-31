@@ -80,9 +80,9 @@ if(WITH_REDIS)
 endif()
 
 # ── libcurl (optional, default OFF) ───────────────────────────────────────────
-# Enables SMTP report delivery via the SMTPURI config option.
+# Enables SMTP report delivery (SMTPURI) and the http:/https: data set backends.
 
-option(WITH_CURL "Enable libcurl SMTP report delivery (SMTPURI config option)" OFF)
+option(WITH_CURL "Enable libcurl: SMTP reports (SMTPURI) and http/https data set backends" OFF)
 
 if(WITH_CURL)
     find_package(CURL REQUIRED)
