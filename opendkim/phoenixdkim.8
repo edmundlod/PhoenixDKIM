@@ -3,7 +3,7 @@
 .B phoenixdkim
 \- DKIM signing and verifying filter for MTAs
 .SH SYNOPSIS
-.B opendkim
+.B phoenixdkim
 [\-A]
 [\-b modes]
 [\-c canon]
@@ -32,12 +32,12 @@
 [\-x configfile]
 [\-X]
 .SH DESCRIPTION
-.B opendkim
+.B phoenixdkim
 implements the
 .B DKIM
 standard for signing and verifying e-mail messages on a per-domain basis.
 
-.B opendkim
+.B phoenixdkim
 uses the
 .I milter
 interface, originally distributed as part of version 8.11 of
@@ -118,7 +118,7 @@ fails instantly after it starts, this can cause a tight
 .I fork(2)
 loop.  This can be mitigated using some values in the configuration file
 to limit restarting.  See
-.I opendkim.conf(5).
+.I phoenixdkim.conf(5).
 .TP
 .I \-b modes
 Selects operating modes.
@@ -164,7 +164,7 @@ from the configuration file (if any).
 .TP
 .I \-f
 Normally
-.I opendkim
+.I phoenixdkim
 forks and exits immediately, leaving the service running in the background.
 This flag suppresses that behaviour so that it runs in the foreground.
 .TP
@@ -179,7 +179,7 @@ also used in conjunction with
 .I \-g
 Skip walking the SigningTable for any missing keys in the KeyTable.
 This overrides the config option CheckSigningTable in
-.I opendkim.conf(5).
+.I phoenixdkim.conf(5).
 .TP
 .I \-G
 Force walking the SigningTable for missing keys in the KeyTable on
@@ -279,7 +279,7 @@ specification for details.
 .TP
 .I \-S signalg
 Selects the signing algorithm to use when generating signatures.
-Use 'opendkim \-V' to see the list of supported algorithms.
+Use 'phoenixdkim \-V' to see the list of supported algorithms.
 Valid signing algorithms are
 .I rsa-sha256
 and
@@ -340,12 +340,12 @@ for general operation.
 .TP
 .I \-x configfile
 Read the named configuration file.  See the
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 man page for details.  Values in the configuration file are overridden
 when their equivalents are provided on the command line until a configuration
 reload occurs.  The OPERATION section describes how reloads are triggered.
 The default is to read a configuration file from
-.I /etc/opendkim/opendkim.conf
+.I /etc/phoenixdkim/phoenixdkim.conf
 if one exists, or otherwise to apply defaults to all values.
 .TP
 .I \-X
@@ -385,7 +385,7 @@ documentation for details.
 
 For (1) above, other header fields may be selected using the SenderHeaders
 configuration file setting.  See
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 for more information.
 
 When signing a message, a
@@ -422,7 +422,7 @@ UMask,
 UserID (\-u).  The filter does not automatically check the configuration
 file for changes and reload.
 .SH MTA MACROS
-.B opendkim
+.B phoenixdkim
 makes use of three MTA-provided macros, plus any demanded by configuration.
 The basic three are: "i" (the envelope ID, also known as the job ID or the
 queue ID), which is used for logging; "daemon_name" (the symbolic name given
@@ -430,7 +430,7 @@ to the MTA instance that accepted the connection), which is used when
 performing tests against any "MTAs" setting used; and "auth_type", which is
 used to determine whether or not the SMTP client authenticated to the MTA.
 If the MTA does not provide them to
-.B opendkim
+.B phoenixdkim
 then it is not able to apply their corresponding tests or do useful logging.
 Consult your MTA documentation to determine how to adjust your its
 configuration if some or all of these are not available.
@@ -483,7 +483,7 @@ proposal, and Cisco's
 (IIM) proposal.
 .SH VERSION
 This man page covers version 3.0.0 of
-.I opendkim.
+.I phoenixdkim.
 .SH COPYRIGHT
 Copyright (c) 2007, 2008, Sendmail, Inc. and its suppliers.
 .br
@@ -493,7 +493,7 @@ Copyright (c) 2026, PhoenixDKIM contributors.
 .br
 All rights reserved.
 .SH SEE ALSO
-.I opendkim.conf(5), sendmail(8)
+.I phoenixdkim.conf(5), sendmail(8)
 .P
 Sendmail Operations Guide
 .P

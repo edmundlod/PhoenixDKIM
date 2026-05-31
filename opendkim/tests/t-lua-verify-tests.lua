@@ -16,7 +16,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-lua-verify-tests.conf",
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-lua-verify-tests.conf",
                "-p", sock)
 
 -- try to connect to it

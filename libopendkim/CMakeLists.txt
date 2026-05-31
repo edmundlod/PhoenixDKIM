@@ -225,7 +225,7 @@ check_type_size("useconds_t" USECONDS_T)
 # ── Daemon-specific configuration ────────────────────────────────────────────
 # Package version
 set(SENDMAIL_PATH "/usr/sbin/sendmail" CACHE STRING "Path to sendmail binary")
-set(CONFIG_BASE "/etc/opendkim" CACHE STRING "Base path for config files")
+set(CONFIG_BASE "/etc/phoenixdkim" CACHE STRING "Base path for config files")
 
 # Check for smfi_version (milter version reporting)
 # 1. Dynamically find the header and library paths

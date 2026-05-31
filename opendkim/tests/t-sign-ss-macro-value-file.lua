@@ -20,7 +20,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-sign-ss-macro-value-file.conf",
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-sign-ss-macro-value-file.conf",
                "-p", sock)
 
 -- try to connect to it

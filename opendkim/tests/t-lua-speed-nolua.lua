@@ -19,7 +19,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-lua-speed-nolua.conf",
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-lua-speed-nolua.conf",
                "-p", sock)
 
 for x = 1, 1000 do

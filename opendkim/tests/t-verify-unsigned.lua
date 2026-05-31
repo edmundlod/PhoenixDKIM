@@ -19,7 +19,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-verify-unsigned.conf",
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-verify-unsigned.conf",
                "-p", sock)
 
 -- try to connect to it

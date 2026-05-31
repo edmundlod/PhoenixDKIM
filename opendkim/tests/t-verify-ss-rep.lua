@@ -18,7 +18,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-verify-ss-rep.conf",
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-verify-ss-rep.conf",
                "-p", sock)
 
 --- CONNECTION #1, MESSAGE #1

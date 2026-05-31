@@ -343,35 +343,14 @@ function(configure_daemon_target tgt)
     endif()
 endfunction()
 
-# ── Backward-compatible legacy "opendkim*" names ──────────────────────────────
-# The on-disk binaries are renamed to phoenixdkim* (ai/rename-plan.md, step 3),
-# with the old name kept as a deprecation-windowed symlink.  The symlink is
-# created in two places:
-#   * the build tree, so the frozen t-*.lua integration tests -- which launch
-#     "<OPENDKIM_BINPATH>/opendkim" and must not be edited (Process Rule 1) --
-#     keep resolving the daemon;
-#   * the install sbindir, so existing operator config (smtpd_milters paths,
-#     init scripts, monitoring) keeps working during the migration window.
-function(add_legacy_name tgt legacy)
-    add_custom_command(TARGET ${tgt} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink
-                "$<TARGET_FILE_NAME:${tgt}>"
-                "$<TARGET_FILE_DIR:${tgt}>/${legacy}"
-        VERBATIM
-    )
-    install(CODE
-        "file(CREATE_LINK \"$<TARGET_FILE_NAME:${tgt}>\"
-              \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_SBINDIR}/${legacy}\" SYMBOLIC)"
-    )
-endfunction()
-
 # ── opendkim daemon ───────────────────────────────────────────────────────────
 # Source list from opendkim/Makefile.am opendkim_SOURCES.
 #
 # CMake target name is opendkim_daemon because the shared library in
 # libopendkim/ already owns the "opendkim" target name.  OUTPUT_NAME sets the
-# installed binary to "phoenixdkim" (the legacy "opendkim" name is kept as a
-# symlink via add_legacy_name; see ai/rename-plan.md step 3).
+# installed binary to "phoenixdkim".  No legacy "opendkim" symlink is created:
+# PhoenixDKIM installs a clean phoenixdkim-only footprint so it can coexist
+# with an installed OpenDKIM without colliding (SCOPE "Naming and Compatibility").
 
 add_executable(opendkim_daemon
     opendkim.c
@@ -412,7 +391,6 @@ endif()
 install(TARGETS opendkim_daemon
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
-add_legacy_name(opendkim_daemon opendkim)
 
 # ── systemd unit (generated to match the build) ───────────────────────────────
 # Type/WatchdogSec follow what was actually compiled: a build without sd_notify
@@ -469,7 +447,6 @@ endif()
 install(TARGETS opendkim-testkey
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
-add_legacy_name(opendkim-testkey opendkim-testkey)
 
 # ── opendkim-genzone ──────────────────────────────────────────────────────────
 # Source list from opendkim/Makefile.am opendkim_genzone_SOURCES.
@@ -491,7 +468,6 @@ apply_sanitizers(opendkim-genzone)
 install(TARGETS opendkim-genzone
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
-add_legacy_name(opendkim-genzone opendkim-genzone)
 
 # ── opendkim-testmsg ──────────────────────────────────────────────────────────
 # Source list from opendkim/Makefile.am opendkim_testmsg_SOURCES.
@@ -509,7 +485,6 @@ apply_sanitizers(opendkim-testmsg)
 install(TARGETS opendkim-testmsg
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
-add_legacy_name(opendkim-testmsg opendkim-testmsg)
 
 # ── opendkim-genkey (Perl script) ─────────────────────────────────────────────
 # Listed in Makefile.am as dist_sbin_SCRIPTS — it is a Perl script generated
@@ -526,11 +501,6 @@ configure_file(
     @ONLY
 )
 
-# Build-tree legacy name (configure-time; the genkey script is not a build
-# target, so add_legacy_name's TARGET_FILE genex cannot be used here).
-file(CREATE_LINK phoenixdkim-genkey
-     ${CMAKE_CURRENT_BINARY_DIR}/opendkim-genkey SYMBOLIC)
-
 add_custom_target(opendkim-genkey
     COMMENT "phoenixdkim-genkey Perl script (generated at configure time)"
 )
@@ -538,35 +508,21 @@ add_custom_target(opendkim-genkey
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim-genkey
     DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
-install(CODE
-    "file(CREATE_LINK \"phoenixdkim-genkey\"
-          \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_SBINDIR}/opendkim-genkey\" SYMBOLIC)"
-)
 
 # ── Man pages ─────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
-# Primary man pages, plus deprecation-windowed ".so" redirect stubs under the
-# legacy opendkim* names so "man opendkim" still resolves (ai/rename-plan.md
-# step 3).  opendkim.conf.5 is renamed together with the config path (step 4).
+# Only phoenixdkim* man pages are installed -- no legacy opendkim* stubs, so the
+# install never collides with an OpenDKIM install's pages (SCOPE coexistence).
 install(FILES
     phoenixdkim.8
     phoenixdkim-genkey.8
     phoenixdkim-genzone.8
     phoenixdkim-testkey.8
     phoenixdkim-testmsg.8
-    opendkim.8
-    opendkim-genkey.8
-    opendkim-genzone.8
-    opendkim-testkey.8
-    opendkim-testmsg.8
     DESTINATION ${CMAKE_INSTALL_MANDIR}/man8
 )
-install(FILES opendkim.conf.5 DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
-install(FILES
-    phoenixdkim-lua.3
-    opendkim-lua.3
-    DESTINATION ${CMAKE_INSTALL_MANDIR}/man3
-)
+install(FILES phoenixdkim.conf.5 DESTINATION ${CMAKE_INSTALL_MANDIR}/man5)
+install(FILES phoenixdkim-lua.3 DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 

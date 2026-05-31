@@ -1,6 +1,6 @@
-# opendkim Integration Tests
+# phoenixdkim Integration Tests
 
-This directory contains integration tests for the opendkim filter daemon.
+This directory contains integration tests for the phoenixdkim filter daemon.
 Tests are written in Lua and executed via the `miltertest` tool.
 
 ## Running
@@ -12,7 +12,7 @@ standard test suite:
 ctest --test-dir build
 ```
 
-To run only the opendkim integration tests:
+To run only the phoenixdkim integration tests:
 
 ```
 ctest --test-dir build -R t-

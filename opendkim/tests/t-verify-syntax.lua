@@ -16,7 +16,7 @@ binpath = os.getenv("OPENDKIM_BINPATH") or (mt.getcwd() .. "/..")
 if os.getenv("srcdir") ~= nil then
 	mt.chdir(os.getenv("srcdir"))
 end
-mt.startfilter(binpath .. "/opendkim", "-x", "t-verify-syntax.conf", "-p", sock)
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-verify-syntax.conf", "-p", sock)
 
 -- try to connect to it
 conn = mt.connect(sock, 40, 0.25)

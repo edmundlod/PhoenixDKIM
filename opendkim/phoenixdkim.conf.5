@@ -1,14 +1,14 @@
-.TH opendkim.conf 5 "PhoenixDKIM"
+.TH phoenixdkim.conf 5 "PhoenixDKIM"
 
 .SH NAME
-.B opendkim.conf
-\- Configuration file for opendkim
+.B phoenixdkim.conf
+\- Configuration file for phoenixdkim
 
 .SH LOCATION
-.I /etc/opendkim/opendkim.conf
+.I /etc/phoenixdkim/phoenixdkim.conf
 
 .SH DESCRIPTION
-.I opendkim(8)
+.I phoenixdkim(8)
 implements the
 .B DKIM
 specification for signing and verifying e-mail messages on a per-domain
@@ -28,20 +28,20 @@ the value is processed.  For positive values, the following are accepted:
 
 Many, but not all, of these parameters are also available as command
 line options to
-.I opendkim(8).
+.I phoenixdkim(8).
 However, new parameters are generally not added as command line options
 so the complete set of options is available here, and thus use of the
 configuration file is encouraged.  In some future release, the
 set of available command line options is likely to get trimmed.
 
 See the 
-.I opendkim(8)
+.I phoenixdkim(8)
 man page for details about how and when the configuration file contents
 are reloaded.
 
 Some of these parameters are listed as having a type of "dataset".
 See the
-.I opendkim(8)
+.I phoenixdkim(8)
 man page for a description of such parameters.
 
 Unless otherwise stated, Boolean values default to "false", integer values
@@ -49,7 +49,7 @@ default to 0, and string and dataset values default to being undefined.
 
 .SH DEPRECATED OPTIONS
 The following configuration options have been removed and must not appear in
-.I opendkim.conf.
+.I phoenixdkim.conf.
 Their presence may prevent the filter from starting.
 
 .SS "Removed in 2.10.0"
@@ -154,7 +154,7 @@ is no default, meaning restart rate is not limited.
 .TP
 .I Background (Boolean)
 Causes
-.I opendkim
+.I phoenixdkim
 to fork and exits immediately, leaving the service running in the background.
 The default is "true".
 
@@ -170,7 +170,7 @@ a specific location.
 .TP
 .I BodyLengthDB (dataset)
 Requests that
-.I opendkim
+.I phoenixdkim
 include a "l=" body length tag when the set contains any of the envelope
 recipient addresses.  The addresses presented are tested against the database
 in various forms as described under the
@@ -260,7 +260,7 @@ are not generated.
 .I DisableCryptoInit (Boolean)
 If set, skips initialization of the SSL library initialization steps, which
 are normally required in multi-threaded environments.  This assumes some other
-library opendkim is using will do the required initialization and shutdown.
+library phoenixdkim is using will do the required initialization and shutdown.
 
 .TP
 .I DNSConnect (Boolean)
@@ -334,7 +334,7 @@ has been received.  This can be used to enact local policy decisions such
 as message rejection, quarantine, rerouting, etc. based on signatures
 found on the message, the results of attempts to verify them, and other
 properties of the message or signatures.  See
-.I opendkim-lua(3)
+.I phoenixdkim-lua(3)
 for details. (Requires Lua 5.4; enabled with -DWITH_LUA=ON.)
 
 .TP
@@ -466,14 +466,14 @@ For example:
 
 .nf
 # KeyTable (file or inline dataset)
-rsa-key     %:rsa2024:/etc/opendkim/keys/%.rsa.private
-ed-key      %:ed2024:/etc/opendkim/keys/%.ed25519.private
+rsa-key     %:rsa2024:/etc/phoenixdkim/keys/%.rsa.private
+ed-key      %:ed2024:/etc/phoenixdkim/keys/%.ed25519.private
 
 # SigningTable
 *@example.com    rsa-key
 *@example.com    ed-key
 
-# opendkim.conf
+# phoenixdkim.conf
 MultipleSignatures    yes
 .fi
 
@@ -530,7 +530,7 @@ decision to either sign a message or verify it.  The logic behind the
 decision is non-trivial and can be confusing to administrators not familiar
 with its operation.  A description of how the decision is made can be found
 in the OPERATIONS section of the
-.I opendkim(8)
+.I phoenixdkim(8)
 man page.  This causes a large increase in the amount of log data generated
 for each message, so it should be limited to debugging use and not enabled
 for general operation.
@@ -631,7 +631,7 @@ indicate which mode(s) of operation are desired.  Valid modes are
 (verifier).  The default is
 .I sv
 except in test mode (see the
-.I opendkim(8)
+.I phoenixdkim(8)
 man page)
 in which case the default is
 .I v.
@@ -866,7 +866,7 @@ square brackets; both forms (with and without) will be checked.
 
 .B Note:
 IPv6 addresses cannot be specified inline in
-.I opendkim.conf
+.I phoenixdkim.conf
 because the colons in an IPv6 address (e.g. "fd00:368::/40") are
 indistinguishable from the "type:" prefix used to identify dataset types
 (e.g. "file:", "db:").  IPv6 entries must be placed in a separate file
@@ -875,7 +875,7 @@ and referenced with the
 prefix, for example:
 
 .nf
-    PeerList file:/etc/opendkim/peerlist.txt
+    PeerList file:/etc/phoenixdkim/peerlist.txt
 .fi
 
 where
@@ -990,7 +990,7 @@ after all DKIM signatures have been detected and initial evaluation has
 been done.  The script has access to all of the header fields and connection
 information and can direct that certain signatures be ignored based on that
 information.  See
-.I opendkim-lua(3)
+.I phoenixdkim-lua(3)
 for details. (Requires Lua 5.4; enabled with -DWITH_LUA=ON.)
 
 .TP
@@ -1044,13 +1044,13 @@ Gives the name of a Lua script that should be run once all header fields
 for a message have arrived.  The script has access to all of the header fields
 and connection information and can request DKIM verification or signing
 based on that information.  See
-.I opendkim-lua(3)
+.I phoenixdkim-lua(3)
 for details. (Requires Lua 5.4; enabled with -DWITH_LUA=ON.)
 
 .TP
 .I SignatureAlgorithm (string)
 Selects the signing algorithm to use when generating signatures.
-Use 'opendkim \-V' to see the list of supported algorithms.
+Use 'phoenixdkim \-V' to see the list of supported algorithms.
 Supported signing algorithms are
 .I rsa-sha256
 and
@@ -1161,7 +1161,7 @@ on the command line.
 .TP
 .I SoftwareHeader (Boolean)
 Causes
-.I opendkim
+.I phoenixdkim
 to add an "DKIM-Filter" header field indicating the presence of this filter in
 the path of the message from injection to delivery.  The product's name,
 version, and the job ID are included in the header field's contents.  Note
@@ -1182,7 +1182,7 @@ header field count does not conform to RFC5322 Section 3.6.
 Selects strict CRLF mode during testing (see the
 .I -t
 command line flag in the
-.I opendkim(8)
+.I phoenixdkim(8)
 man page); messages for which all header fields and body lines are not
 CRLF-terminated are considered malformed and will produce an error.
 
@@ -1212,7 +1212,7 @@ The default is "mail".
 Log via calls to
 .I syslog(3)
 using that name.  That way one could distinguish multiple instances.
-The default is the name of the executable, normally "opendkim".
+The default is the name of the executable, normally "phoenixdkim".
 
 .TP
 .I SyslogSuccess (Boolean)
@@ -1365,11 +1365,11 @@ way that function handles the non-trivial cases (for example, "192.0.2/24"
 and "192.0.2.0/24" are not the same thing).
 .SH FILES
 .TP
-.I /etc/opendkim/opendkim.conf
+.I /etc/phoenixdkim/phoenixdkim.conf
 Default location of this file.
 .SH VERSION
 This man page covers version 3.0.0 of
-.I opendkim.
+.I phoenixdkim.
 
 .SH COPYRIGHT
 Copyright (c) 2007, 2008, Sendmail, Inc. and its suppliers.
@@ -1380,7 +1380,7 @@ Copyright (c) 2026, PhoenixDKIM contributors.
 .br
 All rights reserved.
 .SH SEE ALSO
-.I opendkim(8), opendkim-lua(3), sendmail(8)
+.I phoenixdkim(8), phoenixdkim-lua(3), sendmail(8)
 .P
 RFC5451 - Message Header Field for Indicating Message Authentication Status
 .P

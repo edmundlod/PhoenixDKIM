@@ -5,4 +5,4 @@
 -- sample "setup" hook script that issues a single signing request
 
 -- make the signing request
-odkim.sign(ctx, "testkey", "signer@example.com")
+pdkim.sign(ctx, "testkey", "signer@example.com")

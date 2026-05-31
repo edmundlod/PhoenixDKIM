@@ -3,13 +3,13 @@
 .B phoenixdkim-testmsg
 \- DKIM message test tool
 .SH SYNOPSIS
-.B opendkim-testmsg
+.B phoenixdkim-testmsg
 [\-C] [\-d domain] [\-K] [\-k keypath] [\-s selector] [\-t path]
 .SH DESCRIPTION
-.B opendkim-testmsg
+.B phoenixdkim-testmsg
 signs or verifies an input message.  This is similar to the test mode
 for
-.I opendkim(8)
+.I phoenixdkim(8)
 except that it does not use the same configuration system or milter
 interface.  Rather, it is a direct access to the DKIM library with
 those functions out of the way.
@@ -58,7 +58,7 @@ The default is
 .I /tmp.
 .SH VERSION
 This man page covers the version of
-.I opendkim-testmsg
+.I phoenixdkim-testmsg
 that shipped with version 3.0.0 of
 .I OpenDKIM.
 .SH COPYRIGHT
@@ -68,9 +68,9 @@ Copyright (c) 2026, PhoenixDKIM contributors.
 .br
 All rights reserved.
 .SH SEE ALSO
-.I opendkim(8),
-.I opendkim-genkey(8),
-.I opendkim-testkey(8)
+.I phoenixdkim(8),
+.I phoenixdkim-genkey(8),
+.I phoenixdkim-testkey(8)
 .P
 RFC 6376 - DomainKeys Identified Mail
 .P
