@@ -52,7 +52,7 @@
 
 /* macros */
 #define	CMDLINEOPTS	"d:k:s:vx:"
-#define	DEFCONFFILE	CONFIG_BASE "/opendkim.conf"
+#define	DEFCONFFILE	CONFIG_BASE "/phoenixdkim.conf"
 #define	MAXBUFRSZ	65536
 #define	BUFRSZ		2048
 

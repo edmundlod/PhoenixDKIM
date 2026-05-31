@@ -16,7 +16,7 @@ if os.getenv("srcdir") ~= nil then
 end
 
 -- try to start the filter
-mt.startfilter(binpath .. "/opendkim", "-x", "t-peer.conf", "-p", sock)
+mt.startfilter(binpath .. "/phoenixdkim", "-x", "t-peer.conf", "-p", sock)
 
 -- Those in the peer list should have SMFIR_ACCEPT as the result
 -- to prevent any verification or signing practices

@@ -90,7 +90,7 @@ If
 .I icase
 is provided and is "true", then queries into the database will be
 case-insensitive.  See the
-.I opendkim(8)
+.I phoenixdkim(8)
 man page for information on specifying a data set.  On success, returns a
 handle that can be passed to
 .B pdkim.db_check();
@@ -251,7 +251,7 @@ using the specified
 .I keyname.
 The key name will be translated into an actual domain, selector and private
 key via a query to the KeyTable (see the
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 page for details).  The
 .I keyname
 may be omitted if the KeyTable is not defined, meaning the single signing
@@ -499,7 +499,7 @@ Copyright (c) 2026 PhoenixDKIM contributors.
 .br
 All rights reserved.
 .SH SEE ALSO
-.I opendkim(8),
-.I opendkim.conf(5)
+.I phoenixdkim(8),
+.I phoenixdkim.conf(5)
 .P
 Lua -- http://www.lua.org

@@ -404,30 +404,49 @@ and verifying are dropped, sub-2048-bit keys are rejected, and several config
 keywords and backends are gone. A binary named `opendkim` therefore misrepresents
 the compatibility contract. The on-disk surface is renamed to `phoenixdkim`.
 
-**Full rename, with backward-compatible aliases.** Every *primary* name becomes
-`phoenixdkim`; legacy `opendkim` names are retained as deprecation-windowed
-aliases so existing deployments and operator scripts keep working, and so that
-frozen test files (Process Rule 1) are not edited.
+**Clean rename, no legacy on-disk footprint.** Because PhoenixDKIM is a distinct
+product — not a drop-in — it must be able to sit *alongside* an existing
+OpenDKIM install that an operator is keeping for comparison, without trampling
+it. Backward-compatible `opendkim` aliases would do exactly that damage: an
+install-time `opendkim` binary symlink, an `opendkim.8` man stub, an
+`opendkim.service` unit alias, or an `/etc/opendkim` config fallback would each
+collide with, overwrite, or hijack the other daemon's files and configuration.
+Therefore **everything PhoenixDKIM installs or reads is named `phoenixdkim`, and
+nothing it installs is named `opendkim`.**
 
-| Surface | Primary name | Backward-compat alias (deprecation window) |
+| Surface | Primary name | Legacy `opendkim` compatibility |
 |---|---|---|
-| Daemon + tool binaries | `phoenixdkim`, `phoenixdkim-testkey`, `phoenixdkim-genzone`, `phoenixdkim-testmsg`, `phoenixdkim-genkey` | `opendkim*` install-time symlinks |
-| Man pages | `phoenixdkim*.{8,5,3}` | `.so`-redirect stubs under the old names |
-| Config file | `/etc/phoenixdkim.conf` | `/etc/opendkim.conf` read as a fallback with a one-shot `LOG_WARNING` |
-| systemd unit | `phoenixdkim.service` | `Alias=opendkim.service` in `[Install]` |
-| Lua API namespace | `pdkim.*` | `odkim` registered as an alias table to the same C functions |
+| Daemon + tool binaries | `phoenixdkim`, `phoenixdkim-testkey`, `phoenixdkim-genzone`, `phoenixdkim-testmsg`, `phoenixdkim-genkey` | **none** — no `opendkim*` symlinks installed |
+| Man pages | `phoenixdkim*.{8,5,3}` | **none** — no `.so` redirect stubs installed |
+| Config | `/etc/phoenixdkim/phoenixdkim.conf` — all PhoenixDKIM files (conf, keys, tables) live under `/etc/phoenixdkim/` | **none** — `/etc/opendkim` is never read |
+| systemd unit | `phoenixdkim.service` | **none** — no `Alias=opendkim.service` |
+| Lua API namespace | `pdkim.*` | `odkim` alias table to the same C functions — the **one** retained legacy name |
+
+The Lua `odkim` alias is the sole exception, and a deliberate one: it is
+in-process only (a table name inside PhoenixDKIM's own sandbox), collides with
+nothing on disk, and lets external operator policy scripts written for `odkim.*`
+keep working. It is a deprecation-windowed courtesy, not a compatibility
+contract.
+
+**Coexistence model.** An operator evaluating PhoenixDKIM leaves their OpenDKIM
+install completely intact (binary, `/etc/opendkim`, man pages,
+`opendkim.service`) and simply disables it. PhoenixDKIM installs a wholly
+separate `phoenixdkim` footprint: no shared file, no overwritten path, no
+config read across the boundary. Migrating *from* OpenDKIM is a documented,
+operator-driven copy of config and keys into `/etc/phoenixdkim/` — never
+something the package does automatically.
 
 **Explicitly NOT renamed:** config *keywords* (`KeyFile`, `Domain`, etc.) stay
 as-is — renaming them breaks every deployment for no benefit.
 
 **Deferred sub-decisions** (each its own future session, not part of the initial
 rename): the `libopendkim` → `libphoenixdkim` SONAME rename (real ABI weight —
-staged last), and the `opendkim/` / `libopendkim/` source-directory rename (pure
-churn; defer until in-flight work such as the HTTP/Vault backend has landed).
+staged last; the installed `include/opendkim/` header directory and the
+`opendkim.pc` pkg-config name move with it), and the `opendkim/` /
+`libopendkim/` source-directory rename (pure churn; defer until in-flight work
+such as the HTTP/Vault backend has landed).
 
-The aliases are a migration aid, not a permanent contract. Their removal is a
-separate, later, human-approved step once packaging and documentation have
-migrated. Implementation staging is tracked in `ai/rename-plan.md`.
+Implementation staging is tracked in `ai/rename-plan.md`.
 
 ---
 
@@ -536,6 +555,17 @@ Inherited from upstream and currently compiled in. RFC 6651 has essentially
 zero deployed footprint (DMARC RUF supplanted it). Revisit: decide whether
 to keep the popen/sendmail path, drop only the `SMTPURI` libcurl transport,
 or remove the whole surface.
+
+### miltertest provenance
+
+`miltertest` is currently built in-tree and used as the Lua-driven integration
+harness. Upstream OpenDKIM has since **moved `miltertest` out of the OpenDKIM
+repository into its own project** (see
+https://github.com/trusteddomainproject/OpenDKIM/issues/100). Decide later
+whether PhoenixDKIM should: (a) keep maintaining its in-tree copy — which has
+accumulated fixes the standalone upstream may not have; (b) track and build the
+standalone upstream `miltertest`; or (c) fold our fixes back upstream and depend
+on it. Out of scope for the rename work; recorded here so it is not lost.
 
 ---
 

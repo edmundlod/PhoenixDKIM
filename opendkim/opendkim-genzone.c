@@ -47,7 +47,7 @@
 /* definitions */
 #define	BUFRSZ		1024
 #define	CMDLINEOPTS	"C:d:DE:Fo:N:r:R:sSt:T:uvx:"
-#define	DEFCONFFILE	CONFIG_BASE "/opendkim.conf"
+#define	DEFCONFFILE	CONFIG_BASE "/phoenixdkim.conf"
 #define	DEFEXPIRE	604800
 #define	DEFREFRESH	10800
 #define	DEFRETRY	1800

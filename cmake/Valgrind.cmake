@@ -14,10 +14,10 @@
 #      directly through Valgrind.
 #
 #   2. Generate a thin shell wrapper
-#         ${CMAKE_BINARY_DIR}/valgrind-bin/opendkim
+#         ${CMAKE_BINARY_DIR}/valgrind-bin/phoenixdkim
 #      and set OPENDKIM_VALGRIND_BIN_DIR so that opendkim/tests/CMakeLists.txt
 #      can point OPENDKIM_BINPATH there.  The miltertest Lua scripts call
-#         binpath .. "/opendkim"
+#         binpath .. "/phoenixdkim"
 #      so the daemon itself then runs under Valgrind without touching the
 #      Lua scripts at all.
 #
@@ -126,12 +126,12 @@ endif()
 
 # ── Generate integration-test wrapper script ──────────────────────────────────
 # The Lua test drivers call:
-#   os.getenv("OPENDKIM_BINPATH") .. "/opendkim"
+#   os.getenv("OPENDKIM_BINPATH") .. "/phoenixdkim"
 # We generate a wrapper script at that path that execs the real daemon under
 # Valgrind, so the daemon is instrumented even though miltertest itself is not.
 
 set(OPENDKIM_VALGRIND_BIN_DIR "${CMAKE_BINARY_DIR}/valgrind-bin")
-set(_real_bin                 "${CMAKE_BINARY_DIR}/opendkim/opendkim")
+set(_real_bin                 "${CMAKE_BINARY_DIR}/opendkim/phoenixdkim")
 
 # Build a properly-quoted exec line for the shell wrapper.
 # Each argument goes on its own line for readability.
@@ -149,10 +149,10 @@ set(VALGRIND_TOOL_NAME         "${_vg_tool}")
 file(MAKE_DIRECTORY "${OPENDKIM_VALGRIND_BIN_DIR}")
 configure_file(
     "${CMAKE_SOURCE_DIR}/cmake/valgrind-wrapper.sh.in"
-    "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
+    "${OPENDKIM_VALGRIND_BIN_DIR}/phoenixdkim"
     @ONLY
 )
-file(CHMOD "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
+file(CHMOD "${OPENDKIM_VALGRIND_BIN_DIR}/phoenixdkim"
     PERMISSIONS
         OWNER_READ OWNER_WRITE OWNER_EXECUTE
         GROUP_READ GROUP_EXECUTE
@@ -161,4 +161,4 @@ file(CHMOD "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
 
 message(STATUS
     "Valgrind ${_vg_tool}: integration-test wrapper → "
-    "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim")
+    "${OPENDKIM_VALGRIND_BIN_DIR}/phoenixdkim")

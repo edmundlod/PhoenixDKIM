@@ -3,13 +3,13 @@
 .B phoenixdkim-testkey
 \- DKIM filter installation test
 .SH SYNOPSIS
-.B opendkim-testkey
+.B phoenixdkim-testkey
 [\-d domain] [\-s selector] [\-k keypath] [\-v] [\-x configfile]
 .SH DESCRIPTION
-.B opendkim-testkey
+.B phoenixdkim-testkey
 verifies the setup of signing and verifying (private and public) keys for use
 with
-.I opendkim(8).
+.I phoenixdkim(8).
 
 The test program will read a domain name and selector from the command
 line, configuration file or a key table, then query and parse the resulting
@@ -27,7 +27,7 @@ Names the domain in which signing is to be done.  More specifically,
 names the domain in which the public key matching the provided private
 key will be found.  This parameter must be provided either explicitly,
 in the configuration file, or via a KeyTable (see
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 for details).
 .TP
 .I \-k keypath
@@ -39,7 +39,7 @@ Names the selector within the specified domain whose public key should
 be retrieved and tested, comparing it to the private key if provided.
 This parameter must be provided either explicitly, in the configuration
 file, or via a KeyTable (see
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 for details).
 .TP
 .I \-v
@@ -47,10 +47,10 @@ Increases verbosity.  May be specified multiple times.
 .TP
 .I \-x conffile
 Names a configuration file to be parsed.  See
-.I opendkim.conf(5)
+.I phoenixdkim.conf(5)
 for details.  The values used are Domain, Selector, KeyFile, KeyTable,
 TrustAnchorFile and ResolverConfig.  The default is
-.I /etc/opendkim/opendkim.conf.
+.I /etc/phoenixdkim/phoenixdkim.conf.
 .SH NOTES
 The test program will also complain if a private key file is readable
 by anyone other than the user executing the program.
@@ -58,7 +58,7 @@ by anyone other than the user executing the program.
 Both RSA and Ed25519 private keys are supported.
 .SH VERSION
 This man page covers the version of
-.I opendkim-testkey
+.I phoenixdkim-testkey
 that shipped with version 3.0.0 of
 .I OpenDKIM.
 .SH COPYRIGHT
@@ -70,9 +70,9 @@ Copyright (c) 2026, PhoenixDKIM contributors.
 .br
 All rights reserved.
 .SH SEE ALSO
-.I opendkim(8),
-.I opendkim-genkey(8),
-.I opendkim.conf(5)
+.I phoenixdkim(8),
+.I phoenixdkim-genkey(8),
+.I phoenixdkim.conf(5)
 .P
 RFC 6376 - DomainKeys Identified Mail
 .P

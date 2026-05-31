@@ -13,19 +13,19 @@ fi
 
 if ../../miltertest/miltertest -s $srcdir/t-conf-check.lua > /dev/null 2>&1
 then
-	echo ERROR: opendkim started with a faulty configuration
+	echo ERROR: phoenixdkim started with a faulty configuration
 	exit 1
 fi
 
 if ../../miltertest/miltertest -s $srcdir/t-conf-check2.lua > /dev/null 2>&1
 then
-	echo ERROR: opendkim started with a faulty configuration
+	echo ERROR: phoenixdkim started with a faulty configuration
 	exit 1
 fi
 
-if ! ../opendkim -n -x $srcdir/t-largecomment.conf > /dev/null 2>&1
+if ! ../phoenixdkim -n -x $srcdir/t-largecomment.conf > /dev/null 2>&1
 then 
-	echo ERROR: opendkim failed using a configuration file with a large comment
+	echo ERROR: phoenixdkim failed using a configuration file with a large comment
 	exit 1
 fi
 

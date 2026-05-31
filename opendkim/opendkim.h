@@ -48,7 +48,7 @@
 #define	BUFRSZ		1024
 #define	CACHESTATSINT	300
 #define	CBINTERVAL	3
-#define	DEFCONFFILE	CONFIG_BASE "/opendkim.conf"
+#define	DEFCONFFILE	CONFIG_BASE "/phoenixdkim.conf"
 #define	DEFFLOWDATATTL	86400
 #define	DEFINTERNAL	"csl:127.0.0.1,::1"
 #define	DEFMAXHDRSZ	65536
