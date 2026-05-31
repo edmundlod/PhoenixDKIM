@@ -27,8 +27,10 @@ decisions.
    rewriting begins.
 8. **Security**: Treat memory safety as a first-class concern throughout.
    Proactively audit the codebase for exploitable defects using both static
-   analysis and LLM-assisted review on a regular cadence. See the Security
-   section and `ai/security-audit-process.md`.
+   analysis and LLM-assisted review on a regular cadence. Migrate the
+   highest-risk parsing surfaces to memory-safe Rust over a C ABI (not a full
+   rewrite). See the Security section, `ai/security-audit-process.md`, and
+   `ai/rust-parsers-plan.md`.
 9. **Performance**: Optimise the signing and verification hot paths so that
    PhoenixDKIM performs well at high mail volumes and is not a bottleneck
    when DKIM2's higher per-message CPU requirements arrive. See the
@@ -280,6 +282,39 @@ in `ai/security-audit-process.md` and includes:
 - Signed/unsigned comparisons in bounds checks use the guarded-subtraction
   form: `buflen < N || (size_t)n > buflen - N`, never `(size_t)n + N > buflen`.
 
+**Memory-safety strategy — targeted Rust parsers:**
+
+A full rewrite in a memory-safe language is **rejected**: it would discard the
+conformance test suite and corpus (Goal 7, Process Rule 3), contradict the
+C-shaped scope already executed, lose the deliberately-dynamic system-OpenSSL
+linkage (FIPS / `update-crypto-policies`), and still require C FFI for libmilter
+and OpenSSL. Instead, the highest-risk *parsing* surfaces — pure data-in /
+structured-data-out code with no crypto, milter, or threading entanglement — are
+migrated to a memory-safe Rust static library exposed over a stable C ABI. This
+is the incremental-Rust pattern (cf. librsvg, curl), not a rewrite.
+
+- **Scope of the Rust crate:** DKIM-Signature header parsing, DNS TXT record
+  parsing, base64 decode, and the `opendkim-db` URI parser. Body
+  canonicalisation is a *later, profile-gated* candidate. Crypto stays C on the
+  system OpenSSL by design — the Rust crate performs no crypto.
+- **Build option `-DWITH_RUST_PARSERS` (default OFF).** The pure-C parser path
+  remains in-tree and fully functional as the fallback for platforms without a
+  Rust toolchain. The default flips only once the Rust path is proven on all
+  target platforms (Linux, FreeBSD 13+, OpenBSD 7+).
+- **No new runtime dependency for operators:** the crate links as a `staticlib`;
+  system OpenSSL stays dynamically linked exactly as before.
+- **FFI safety:** `panic = abort`, no unwinding across the boundary; the C side
+  owns all buffers; no Rust-allocated pointer is returned without a paired free.
+- **Testing:** the existing C conformance suite is the differential oracle — both
+  parser paths must produce bit-identical results before the default flips, and
+  no frozen test file is modified (Process Rule 1). Each ported parser gains a
+  `cargo fuzz` target, differential-fuzzed against the C parser.
+
+A future, independent **Rust-native, spec-derived test suite** may grow
+alongside the parser crates as a second reference oracle; it does not replace
+the frozen C/Lua suite while C is the shipping core. Full plan in
+`ai/rust-parsers-plan.md`.
+
 ### FFR features — selected subset promoted to supported
 
 These were previously gated behind `#ifdef _FFR_*`. They are now promoted
@@ -362,6 +397,40 @@ once they are written and passing.
 
 ---
 
+## Naming and Compatibility
+
+PhoenixDKIM is no longer a drop-in replacement for OpenDKIM. RSA-SHA1 signing
+and verifying are dropped, sub-2048-bit keys are rejected, and several config
+keywords and backends are gone. A binary named `opendkim` therefore misrepresents
+the compatibility contract. The on-disk surface is renamed to `phoenixdkim`.
+
+**Full rename, with backward-compatible aliases.** Every *primary* name becomes
+`phoenixdkim`; legacy `opendkim` names are retained as deprecation-windowed
+aliases so existing deployments and operator scripts keep working, and so that
+frozen test files (Process Rule 1) are not edited.
+
+| Surface | Primary name | Backward-compat alias (deprecation window) |
+|---|---|---|
+| Daemon + tool binaries | `phoenixdkim`, `phoenixdkim-testkey`, `phoenixdkim-genzone`, `phoenixdkim-testmsg`, `phoenixdkim-genkey` | `opendkim*` install-time symlinks |
+| Man pages | `phoenixdkim*.{8,5,3}` | `.so`-redirect stubs under the old names |
+| Config file | `/etc/phoenixdkim.conf` | `/etc/opendkim.conf` read as a fallback with a one-shot `LOG_WARNING` |
+| systemd unit | `phoenixdkim.service` | `Alias=opendkim.service` in `[Install]` |
+| Lua API namespace | `pdkim.*` | `odkim` registered as an alias table to the same C functions |
+
+**Explicitly NOT renamed:** config *keywords* (`KeyFile`, `Domain`, etc.) stay
+as-is — renaming them breaks every deployment for no benefit.
+
+**Deferred sub-decisions** (each its own future session, not part of the initial
+rename): the `libopendkim` → `libphoenixdkim` SONAME rename (real ABI weight —
+staged last), and the `opendkim/` / `libopendkim/` source-directory rename (pure
+churn; defer until in-flight work such as the HTTP/Vault backend has landed).
+
+The aliases are a migration aid, not a permanent contract. Their removal is a
+separate, later, human-approved step once packaging and documentation have
+migrated. Implementation staging is tracked in `ai/rename-plan.md`.
+
+---
+
 ## Dependencies — Final List
 
 | Dependency | Required / Optional | Notes |
@@ -374,6 +443,7 @@ once they are written and passing.
 | libcurl | Optional (`-DWITH_CURL=ON`) | Enables two features: (1) SMTP delivery for RFC 6651 failure reports (`SMTPURI`); (2) HTTP/HTTPS/Vault data set backends and `pdkim.http_get()` in the Lua sandbox. Minimum 7.20.0. Default OFF. |
 | libbsd | Optional, auto-detected | Provides `strlcpy`/`strlcat` on older Linux. Not needed on FreeBSD/OpenBSD (in libc) or glibc 2.38+. |
 | pthreads | Required | Thread support. |
+| Rust toolchain | Optional (`-DWITH_RUST_PARSERS=ON`) | Builds the memory-safe parser crate. Pinned via `rust-toolchain.toml`. Default OFF; pure-C parser path is the fallback. See Security section. |
 
 ### libbsd / strlcpy detection order (CMake)
 
