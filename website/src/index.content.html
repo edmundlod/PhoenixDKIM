@@ -2,26 +2,50 @@
 
 <p> Welcome the PhoenixDKIM project, and thank you for your interest. </p>
 
-<p> What is PhoenixDKIM? It is a mail filter for DKIM verifying and
-signing, with a focus on security, correctness, and compatibility with
-current platforms. It aims (for now) to be a drop-in replacement for
-existing OpenDKIM deployments, but note: A lot of features and db backends
-have been removed / replaced, so if you run a bit of a more exotic setup,
-please do check the <a href="/removed-features.html">Removed Features</a> page. </p>
+<p> What is PhoenixDKIM? It is a mail filter for DKIM signing and
+verifying, with a focus on security, correctness, and performance on
+current platforms. </p>
+
+<p> <strong>PhoenixDKIM is not a drop-in replacement for OpenDKIM.</strong>
+It began as a modernisation fork, but it has since become a standalone
+project with its own direction. RSA-SHA1 signing and verifying have been
+dropped, weak keys are rejected, and a number of legacy features and
+database backends have been removed or replaced. If you are migrating an
+existing OpenDKIM deployment, please read the
+<a href="/removed-features.html">Removed Features</a> page first — your
+configuration may need changes. </p>
+
+<p> Where the project is heading: </p>
+
+<ul>
+  <li> <strong>Security first.</strong> As an Internet-facing daemon
+  handling untrusted data from external networks, memory safety is treated
+  as a first-class concern. The codebase is audited on a regular cadence. I
+  am also considering porting the highest-risk parsing code to memory-safe
+  Rust at some point. </li>
+  <li> <strong>Performance.</strong> The signing and verification hot paths
+  are optimised so PhoenixDKIM is not a bottleneck at high mail volumes. </li>
+  <li> <strong>Modern crypto only.</strong> RSA-SHA256 (2048-bit minimum) and
+  Ed25519, via the OpenSSL 3 / LibreSSL EVP APIs. </li>
+  <li> <strong>DKIM2 readiness.</strong> Tracking the emerging DKIM2
+  specification so support can land when the RFC matures. </li>
+  <li> <strong>Flexible key storage.</strong> Flat-file, LMDB, Lua, and
+  optional HTTP / Vault backends. The native SQL and LDAP drivers have been
+  retired, but those systems are still reachable: point the HTTP backend at a
+  small custom bridge (in any language) that wraps your SQL or LDAP store, and
+  PhoenixDKIM queries it over HTTP. </li>
+</ul>
 
 <p> PhoenixDKIM was forked from
-<a href="https://github.com/trusteddomainproject/OpenDKIM">OpenDKIM</a> 
-early 2026 as a personal project to bring the seemingly abandonned
-OpenDKIM up to date, so that I could keep using it, rather than switch
-to another DKIM solution. </p>
+<a href="https://github.com/trusteddomainproject/OpenDKIM">OpenDKIM</a>
+in early 2026, originally to bring a long-quiet codebase up to date. With
+thanks to the OpenDKIM authors for the foundation, the project has since
+grown its own goals and is increasingly its own software — over time the
+tools, configuration, and identity are moving to the PhoenixDKIM name. </p>
 
 <p style="font-style: italic;">As of 24 May 2026, upstream OpenDKIM has
-received updates to the develop branch. Keep an eye on the original
-project in case they bring it fully up to date. </p>
-
-<p> As an Internet facing daemon, handling raw data directly from external
-networks, it is critical that it be kept up to date, and is as secure and
-correct as possible. </p>
+received updates to its develop branch. It remains worth following the
+original project. </p>
 
 <h2> About this website </h2>
 
