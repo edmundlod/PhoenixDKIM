@@ -69,7 +69,7 @@
 # include <openssl/err.h>
 # include <openssl/sha.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-internal.h"
 #include "dkim-types.h"
 #include "dkim-tables.h"
@@ -5342,7 +5342,7 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 
 	/*
 	**  RFC 8301: the rsa-sha1 algorithm is deprecated.  If the caller set
-	**  DKIM_LIBFLAGS_NOSHA1VERIFY (opendkim does so unless On-WeakAlgorithm
+	**  DKIM_LIBFLAGS_NOSHA1VERIFY (phoenixdkim does so unless On-WeakAlgorithm
 	**  is "accept"), reject any rsa-sha1 signature here without performing
 	**  a DNS lookup or any signature crypto.  The decision is based on the
 	**  declared algorithm (a=rsa-sha1), which is known from parse time, not
@@ -6532,7 +6532,7 @@ dkim_getsiglist(DKIM *dkim, DKIM_SIGINFO ***sigs, int *nsigs)
 **  	dkim -- DKIM handle
 **
 **  Return value:
-**  	Pointer to a DKIM_SIGINFO handle which is the one libopendkim will
+**  	Pointer to a DKIM_SIGINFO handle which is the one libphoenixdkim will
 **  	use to return a "final" result; NULL if none could be determined.
 */
 
@@ -6839,7 +6839,7 @@ dkim_getsighdr_d(DKIM *dkim, size_t initial, u_char **buf, size_t *buflen)
 **  DKIM_GETSIGHDR -- retrieve signature header into a user-provided buffer
 **
 **  Parameters:
-**  	dkim -- libopendkim handle
+**  	dkim -- libphoenixdkim handle
 **  	buf -- buffer into which to write
 **  	buflen -- bytes available at "buf"
 **  	initial -- width already consumed for the first line
@@ -7599,7 +7599,7 @@ dkim_getresultstr(DKIM_STAT result)
 **  DKIM_SET_DNS_CALLBACK -- set the DNS wait callback
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call; should take an opaque context pointer
 **  	interval -- how often to call back
 **
@@ -7610,16 +7610,16 @@ dkim_getresultstr(DKIM_STAT result)
 */
 
 DKIM_STAT
-dkim_set_dns_callback(DKIM_LIB *libopendkim, void (*func)(const void *context),
+dkim_set_dns_callback(DKIM_LIB *libphoenixdkim, void (*func)(const void *context),
                       unsigned int interval)
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
 	if (func != NULL && interval == 0)
 		return DKIM_STAT_INVALID;
 
-	libopendkim->dkiml_dns_callback = func;
-	libopendkim->dkiml_callback_int = interval;
+	libphoenixdkim->dkiml_dns_callback = func;
+	libphoenixdkim->dkiml_callback_int = interval;
 
 	return DKIM_STAT_OK;
 }
@@ -7722,7 +7722,7 @@ dkim_getuser(DKIM *dkim)
 **  DKIM_SET_KEY_LOOKUP -- set the key lookup function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7730,13 +7730,13 @@ dkim_getuser(DKIM *dkim)
 */
 
 DKIM_STAT
-dkim_set_key_lookup(DKIM_LIB *libopendkim,
+dkim_set_key_lookup(DKIM_LIB *libphoenixdkim,
                     DKIM_STAT (*func)(DKIM *dkim, DKIM_SIGINFO *sig,
                                       u_char *buf, size_t buflen))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_key_lookup = func;
+	libphoenixdkim->dkiml_key_lookup = func;
 
 	return DKIM_STAT_OK;
 }
@@ -7745,7 +7745,7 @@ dkim_set_key_lookup(DKIM_LIB *libopendkim,
 **  DKIM_SET_SIGNATURE_HANDLE -- set the user handle allocation function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7753,11 +7753,11 @@ dkim_set_key_lookup(DKIM_LIB *libopendkim,
 */
 
 DKIM_STAT
-dkim_set_signature_handle(DKIM_LIB *libopendkim, void * (*func)(void *closure))
+dkim_set_signature_handle(DKIM_LIB *libphoenixdkim, void * (*func)(void *closure))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_sig_handle = func;
+	libphoenixdkim->dkiml_sig_handle = func;
 
 	return DKIM_STAT_OK;
 }
@@ -7766,7 +7766,7 @@ dkim_set_signature_handle(DKIM_LIB *libopendkim, void * (*func)(void *closure))
 **  DKIM_SET_SIGNATURE_HANDLE_FREE -- set the user handle deallocation function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7774,12 +7774,12 @@ dkim_set_signature_handle(DKIM_LIB *libopendkim, void * (*func)(void *closure))
 */
 
 DKIM_STAT
-dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
+dkim_set_signature_handle_free(DKIM_LIB *libphoenixdkim,
                                void (*func)(void *closure, void *user))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_sig_handle_free = func;
+	libphoenixdkim->dkiml_sig_handle_free = func;
 
 	return DKIM_STAT_OK;
 }
@@ -7788,7 +7788,7 @@ dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
 **  DKIM_SET_SIGNATURE_TAGVALUES -- set the user handle population function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7796,14 +7796,14 @@ dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
 */
 
 DKIM_STAT
-dkim_set_signature_tagvalues(DKIM_LIB *libopendkim, void (*func)(void *user,
+dkim_set_signature_tagvalues(DKIM_LIB *libphoenixdkim, void (*func)(void *user,
                                                                  dkim_param_t pcode,
                                                                  const u_char *param,
                                                                  const u_char *value))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_sig_tagvalues = func;
+	libphoenixdkim->dkiml_sig_tagvalues = func;
 
 	return DKIM_STAT_OK;
 }
@@ -7812,7 +7812,7 @@ dkim_set_signature_tagvalues(DKIM_LIB *libopendkim, void (*func)(void *user,
 **  DKIM_SET_PRESCREEN -- set the user prescreen function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7820,13 +7820,13 @@ dkim_set_signature_tagvalues(DKIM_LIB *libopendkim, void (*func)(void *user,
 */
 
 DKIM_STAT
-dkim_set_prescreen(DKIM_LIB *libopendkim, DKIM_CBSTAT (*func)(DKIM *dkim,
+dkim_set_prescreen(DKIM_LIB *libphoenixdkim, DKIM_CBSTAT (*func)(DKIM *dkim,
                                                               DKIM_SIGINFO **sigs,
                                                               int nsigs))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_prescreen = func;
+	libphoenixdkim->dkiml_prescreen = func;
 
 	return DKIM_STAT_OK;
 }
@@ -7835,7 +7835,7 @@ dkim_set_prescreen(DKIM_LIB *libopendkim, DKIM_CBSTAT (*func)(DKIM *dkim,
 **  DKIM_SET_FINAL -- set the user final scan function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
@@ -7843,13 +7843,13 @@ dkim_set_prescreen(DKIM_LIB *libopendkim, DKIM_CBSTAT (*func)(DKIM *dkim,
 */
 
 DKIM_STAT
-dkim_set_final(DKIM_LIB *libopendkim, DKIM_CBSTAT (*func)(DKIM *dkim,
+dkim_set_final(DKIM_LIB *libphoenixdkim, DKIM_CBSTAT (*func)(DKIM *dkim,
                                                           DKIM_SIGINFO **sigs,
                                                           int nsigs))
 {
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 
-	libopendkim->dkiml_final = func;
+	libphoenixdkim->dkiml_final = func;
 
 	return DKIM_STAT_OK;
 }
@@ -8149,7 +8149,7 @@ dkim_libfeature(DKIM_LIB *lib, u_int fc)
 }
 
 /*
-**  DKIM_LIBVERSION -- return version of libopendkim at runtime
+**  DKIM_LIBVERSION -- return version of libphoenixdkim at runtime
 **
 **  Parameters:
 **  	None.

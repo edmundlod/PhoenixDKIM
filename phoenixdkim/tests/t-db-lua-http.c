@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* opendkim-db API */
+/* phoenixdkim-db API */
 #include "phoenixdkim-db.h"
 
 #ifndef FALSE

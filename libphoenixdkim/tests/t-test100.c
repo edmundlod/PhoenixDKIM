@@ -19,7 +19,7 @@
 #include <limits.h>
 
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim.h"
 #include "t-testdata.h"
 

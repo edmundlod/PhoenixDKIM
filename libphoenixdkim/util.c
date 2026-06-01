@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-internal.h"
 #include "util.h"
 

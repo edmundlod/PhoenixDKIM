@@ -8,7 +8,7 @@ then
 	srcdir=`pwd`
 fi
 
-export TMPFILE=`mktemp /tmp/opendkim-XXXXXXXXX`
+export TMPFILE=`mktemp /tmp/phoenixdkim-XXXXXXXXX`
 
 ../../miltertest/miltertest $MILTERTESTFLAGS -s $srcdir/t-verify-report.lua || exit 1
 # ignore version differences in useragent and arrival date

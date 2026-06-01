@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <assert.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "base64.h"
 
 /* base64 alphabet — byte-indexed only, not NUL-terminated */

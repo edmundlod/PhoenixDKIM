@@ -12,12 +12,12 @@
 <pre>
 #include &lt;dkim.h&gt;
 <tt>int</tt> dkim_dns_set_config(
-	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libopendkim,
+	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libphoenixdkim,
         <tt>int</tt> (*func)(<tt>void *</tt>, <tt>const char *</tt>)
 );
 
 </pre>
-Declares the function to be used by a libopendkim instance when it needs to
+Declares the function to be used by a libphoenixdkim instance when it needs to
 pass arbitrary configuration information to an active DNS resolver.
 <p>
 
@@ -58,7 +58,7 @@ and a query is ready to be started. </td>
 <tr><th valign="top" align=left>ARGUMENTS</th><td>
     <table border="1" cellspacing=0>
     <tr bgcolor="#dddddd"><th>Argument</th><th>Description</th></tr>
-    <tr valign="top"><td>libopendkim</td>
+    <tr valign="top"><td>libphoenixdkim</td>
 	<td>The library instantiation handle, returned by
         <a href="dkim_init.html"><tt>dkim_init()</tt></a>.
 	</td></tr>

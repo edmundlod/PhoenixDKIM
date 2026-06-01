@@ -7,13 +7,13 @@
 ##
 ## Copyright (c) 2026, PhoenixDKIM contributors. All rights reserved.
 ##
-## opendkim-genkey -- generate a key and/or TXT record for DKIM service
+## phoenixdkim-genkey -- generate a key and/or TXT record for DKIM service
 ##
 ## The output of this script includes two files based on the
 ## selector name:
 ##
 ## 	<selector>.private	PEM-formatted private key, for use by
-## 				opendkim when signing messages
+## 				phoenixdkim when signing messages
 ##
 ## 	<selector>.txt		A DNS TXT record suitable for insertion
 ## 				into or inclusion by a DNS zone file

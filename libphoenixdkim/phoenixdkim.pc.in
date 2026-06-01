@@ -3,13 +3,13 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@
-includedir=@includedir@/opendkim
+includedir=@includedir@/phoenixdkim
 
-Name: OpenDKIM Library
+Name: PhoenixDKIM Library
 Description: Library for performing DKIM signing and verification
 URL: https://github.com/edmundlod/PhoenixDKIM
 Version: @VERSION@
-Libs: -L${libdir} @PTHREAD_CFLAGS@ -lopendkim
-Libs.private: @LIBOPENDKIM_LIBS_PKG@ @PTHREAD_LIBS@
+Libs: -L${libdir} @PTHREAD_CFLAGS@ -lphoenixdkim
+Libs.private: @LIBPHOENIXDKIM_LIBS_PKG@ @PTHREAD_LIBS@
 Cflags: -I${includedir} @PTHREAD_CFLAGS@
 

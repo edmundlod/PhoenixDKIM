@@ -17,7 +17,7 @@
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 
 #define	DKIM_HASHBUFSIZE	4096

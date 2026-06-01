@@ -30,7 +30,7 @@
 #cmakedefine HAVE_INET_NTOP 1
 #cmakedefine HAVE_GETADDRINFO 1
 
-/* Path-resolution helpers (opendkim secure-file check) */
+/* Path-resolution helpers (phoenixdkim secure-file check) */
 #cmakedefine HAVE_REALPATH 1
 #cmakedefine HAVE_STRSEP 1
 
@@ -57,7 +57,7 @@
 #cmakedefine USE_BSD_H 1
 #cmakedefine USE_STRL_H 1
 
-/* Sendmail path (used by opendkim daemon) */
+/* Sendmail path (used by phoenixdkim daemon) */
 #define SENDMAIL_PATH "@SENDMAIL_PATH@"
 
 /* Default config file base path */

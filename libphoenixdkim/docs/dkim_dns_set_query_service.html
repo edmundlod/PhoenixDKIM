@@ -12,13 +12,13 @@
 <pre>
 #include &lt;dkim.h&gt;
 <tt>void</tt> dkim_dns_set_query_service(
-	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libopendkim,
+	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libphoenixdkim,
         <tt>void</tt> *service
 );
 
 </pre>
 Specifies an opaque handle referring to the DNS service to be used by
-libopendkim.  This handle will be passed to the DNS functions declared
+libphoenixdkim.  This handle will be passed to the DNS functions declared
 using
 <a href="dkim_dns_set_query_start.html"><tt>dkim_dns_set_query_start()</tt></a>, 
 <a href="dkim_dns_set_query_cancel.html"><tt>dkim_dns_set_query_cancel()</tt></a>,
@@ -41,7 +41,7 @@ during <a href="dkim_eoh.html"><tt>dkim_eoh()</tt></a> when verifying.  </td>
 <tr><th valign="top" align=left>ARGUMENTS</th><td>
     <table border="1" cellspacing=0>
     <tr bgcolor="#dddddd"><th>Argument</th><th>Description</th></tr>
-    <tr valign="top"><td>libopendkim</td>
+    <tr valign="top"><td>libphoenixdkim</td>
 	<td>The library instantiation handle, returned by
         <a href="dkim_init.html"><tt>dkim_init()</tt></a>.
 	</td></tr>

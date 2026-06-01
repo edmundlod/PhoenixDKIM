@@ -29,7 +29,7 @@
 /* openssl includes */
 #include <openssl/err.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 #include <dkim-test.h>
 
@@ -43,7 +43,7 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-db.h"
 #include "phoenixdkim-dns.h"
 #include "config.h"
@@ -335,7 +335,7 @@ main(int argc, char **argv)
 		**  tested as the matching key type.  Absent this, the test
 		**  defaults to RSA and would misjudge an Ed25519 key.  The
 		**  accepted names mirror the daemon's SignatureAlgorithm
-		**  values (see dkimf_sign[] in opendkim.c).
+		**  values (see dkimf_sign[] in phoenixdkim.c).
 		*/
 		p = NULL;
 		(void) config_get(cfg, "SignatureAlgorithm", &p, sizeof p);

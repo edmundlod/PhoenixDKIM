@@ -17,13 +17,13 @@
 **  + dkimf_db_vault_selectors() -- exactly as dkimf_add_signrequest_vault()
 **  does in the daemon.  Each kept selector is then signed with the daemon's
 **  *default* algorithm (DKIM_SIGN_DEFAULT == rsa-sha256), the same single
-**  global signalg dkimf_eom() uses; libopendkim derives the real algorithm
+**  global signalg dkimf_eom() uses; libphoenixdkim derives the real algorithm
 **  from the key material, so the Ed25519 selectors must still produce
 **  ed25519-sha256.  Every signature is verified offline (DKIM_QUERY_FILE)
 **  against its matching public record.
 **
 **  Skips (exit 77) if the openssl CLI is unavailable, a loopback socket
-**  cannot be created, or libopendkim lacks the SHA256/Ed25519 features.
+**  cannot be created, or libphoenixdkim lacks the SHA256/Ed25519 features.
 **  Gated on WITH_CURL.
 */
 
@@ -47,7 +47,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-/* opendkim-db API + libopendkim sign/verify */
+/* phoenixdkim-db API + libphoenixdkim sign/verify */
 #include "phoenixdkim-db.h"
 #include <dkim.h>
 
@@ -64,7 +64,7 @@
 #define T_SIGNTIME	((uint64_t) 2000)
 
 /* mutable copies so the strict daemon flags (-Wwrite-strings/-Wcast-qual)
-** stay happy when these are handed to libopendkim's u_char* parameters */
+** stay happy when these are handed to libphoenixdkim's u_char* parameters */
 static char t_jobid[] = T_JOBID;
 static char t_domain[] = T_DOMAIN;
 static char h_from[] = "From: Joe <joe@example.com>";
@@ -268,7 +268,7 @@ run_tls_server(int lfd, const char *cert, const char *key)
 	SSL_CTX_free(ctx);
 }
 
-/* ── libopendkim sign + offline verify of one selector ──────────────────── */
+/* ── libphoenixdkim sign + offline verify of one selector ──────────────────── */
 
 static void
 feed_headers(DKIM *d)
@@ -282,7 +282,7 @@ feed_headers(DKIM *d)
 
 /*
 **  Sign a standard message with one selector's key using the daemon default
-**  algorithm, verify the result offline, and report the algorithm libopendkim
+**  algorithm, verify the result offline, and report the algorithm libphoenixdkim
 **  actually chose.  Returns 1 on a clean verified round-trip.
 */
 
@@ -325,7 +325,7 @@ sign_verify(DKIM_LIB *lib, struct dkimf_vault_selector *sel,
 	}
 	(void) dkim_free(sd);
 
-	/* record the algorithm libopendkim chose from the key material */
+	/* record the algorithm libphoenixdkim chose from the key material */
 	alg_out[0] = '\0';
 	a = strstr((char *) hdr, "a=");
 	if (a != NULL)
@@ -642,7 +642,7 @@ main(void)
 	   )
 	{
 		dkim_close(lib);
-		fprintf(stderr, "*** SKIP: required libopendkim feature missing\n");
+		fprintf(stderr, "*** SKIP: required libphoenixdkim feature missing\n");
 		free(sels);
 		(void) unlink(certpath);
 		(void) unlink(keypath);

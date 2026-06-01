@@ -1,12 +1,12 @@
-# opendkim Filter — Configuration Guide
+# PhoenixDKIM Filter — Configuration Guide
 
-This document walks through configuring and activating the opendkim filter
+This document walks through configuring and activating the phoenixdkim filter
 after it has been compiled and installed. See the root-level `INSTALL` for
 build and installation instructions.
 
 ## Overview
 
-Setting up opendkim for signing involves:
+Setting up phoenixdkim for signing involves:
 
 1. Choosing a selector name
 2. Generating a signing keypair
@@ -21,14 +21,14 @@ For verification-only deployments (no signing), start at step 5.
 
 ## Socket Selection
 
-The MTA and the opendkim filter communicate over a socket. Two types are
+The MTA and the phoenixdkim filter communicate over a socket. Two types are
 supported:
 
 **UNIX domain socket** — secured via filesystem permissions; cannot be
 reached from remote hosts. Recommended for single-server setups.
 
 **TCP socket** — accessible from remote hosts. Required if multiple MTAs
-share one opendkim instance. Ensure your packet filter permits traffic on
+share one phoenixdkim instance. Ensure your packet filter permits traffic on
 the chosen port. For SELinux systems:
 
 ```
@@ -37,7 +37,7 @@ semanage port -a -t milter_port_t -p tcp <port>
 
 ---
 
-## Configuring opendkim
+## Configuring phoenixdkim
 
 ### 1. Choose a selector name
 
@@ -47,16 +47,16 @@ signing server, or the current month and year (e.g. `2026-01`).
 
 ### 2. Generate a signing keypair
 
-Use `opendkim-genkey`. For an RSA key:
+Use `phoenixdkim-genkey`. For an RSA key:
 
 ```
-opendkim-genkey -b 4096 -d example.com -s SELECTOR
+phoenixdkim-genkey -b 4096 -d example.com -s SELECTOR
 ```
 
 For an Ed25519 key (RFC 8463, shorter key, faster operations):
 
 ```
-opendkim-genkey -t ed25519 -d example.com -s SELECTOR
+phoenixdkim-genkey -t ed25519 -d example.com -s SELECTOR
 ```
 
 Both commands produce:
@@ -88,7 +88,7 @@ dig TXT SELECTOR._domainkey.DOMAIN @NAMESERVER
 Then validate it against your private key:
 
 ```
-opendkim-testkey -d DOMAIN -s SELECTOR -k SELECTOR.private
+phoenixdkim-testkey -d DOMAIN -s SELECTOR -k SELECTOR.private
 ```
 
 ### 4. Store the private key
@@ -96,16 +96,16 @@ opendkim-testkey -d DOMAIN -s SELECTOR -k SELECTOR.private
 Place the private key in a secure location, for example:
 
 ```
-/etc/opendkim/keys/SELECTOR.private
+/etc/phoenixdkim/keys/SELECTOR.private
 ```
 
-The key file should be owned by the user that runs opendkim and have mode
+The key file should be owned by the user that runs phoenixdkim and have mode
 `0600`. The directory should be mode `0700`.
 
 ### 5. Configure the filter
 
 A sample configuration file is installed at
-`/etc/opendkim/opendkim.conf.sample`. Copy it to `/etc/opendkim/opendkim.conf`
+`/etc/phoenixdkim/phoenixdkim.conf.sample`. Copy it to `/etc/phoenixdkim/phoenixdkim.conf`
 and edit it.
 
 For a simple single-domain setup with one key:
@@ -113,8 +113,8 @@ For a simple single-domain setup with one key:
 ```
 Domain          example.com
 Selector        SELECTOR
-KeyFile         /etc/opendkim/keys/SELECTOR.private
-Socket          local:/run/opendkim/opendkim.sock
+KeyFile         /etc/phoenixdkim/keys/SELECTOR.private
+Socket          local:/run/phoenixdkim/phoenixdkim.sock
 Syslog          yes
 ```
 
@@ -126,14 +126,14 @@ For more complex setups with multiple domains or keys, use `KeyTable` and
 Using systemd (recommended):
 
 ```
-systemctl enable opendkim
-systemctl start opendkim
+systemctl enable phoenixdkim
+systemctl start phoenixdkim
 ```
 
 Or manually:
 
 ```
-opendkim -x /etc/opendkim/opendkim.conf
+phoenixdkim -x /etc/phoenixdkim/phoenixdkim.conf
 ```
 
 ### 7. Configure your MTA
@@ -141,8 +141,8 @@ opendkim -x /etc/opendkim/opendkim.conf
 **Postfix** — add to `main.cf`:
 
 ```
-smtpd_milters        = local:/run/opendkim/opendkim.sock
-non_smtpd_milters    = local:/run/opendkim/opendkim.sock
+smtpd_milters        = local:/run/phoenixdkim/phoenixdkim.sock
+non_smtpd_milters    = local:/run/phoenixdkim/phoenixdkim.sock
 milter_default_action = accept
 ```
 
@@ -153,7 +153,7 @@ smtpd entry to avoid double-signing.
 **Sendmail** — add to `sendmail.mc`:
 
 ```
-INPUT_MAIL_FILTER(`opendkim', `S=local:/run/opendkim/opendkim.sock')
+INPUT_MAIL_FILTER(`phoenixdkim', `S=local:/run/phoenixdkim/phoenixdkim.sock')
 ```
 
 Rebuild `sendmail.cf` in the usual way.
@@ -179,9 +179,9 @@ keys.
 **KeyTable** maps arbitrary key names to `domain:selector:keyfile` triples:
 
 ```
-preskey   example.com:foo:/etc/opendkim/keys/president.private
-comkey    example.com:bar:/etc/opendkim/keys/excom.private
-netkey    example.net:baz:/etc/opendkim/keys/exnet.private
+preskey   example.com:foo:/etc/phoenixdkim/keys/president.private
+comkey    example.com:bar:/etc/phoenixdkim/keys/excom.private
+netkey    example.net:baz:/etc/phoenixdkim/keys/exnet.private
 ```
 
 **SigningTable** maps sender addresses (or patterns) to key names from
@@ -193,11 +193,11 @@ president@example.com   preskey
 *@example.net           netkey
 ```
 
-Reference both in `opendkim.conf`:
+Reference both in `phoenixdkim.conf`:
 
 ```
-KeyTable      /etc/opendkim/keytable
-SigningTable  refile:/etc/opendkim/signingtable
+KeyTable      /etc/phoenixdkim/keytable
+SigningTable  refile:/etc/phoenixdkim/signingtable
 ```
 
 ---
@@ -212,7 +212,7 @@ column is matched exactly (or by the lookup rules described in the man
 page for each option). This is the default if the value starts with `/`.
 
 ```
-KeyTable    /etc/opendkim/keytable
+KeyTable    /etc/phoenixdkim/keytable
 ```
 
 **refile:** — like `file:`, but the key column is a glob pattern where
@@ -220,7 +220,7 @@ KeyTable    /etc/opendkim/keytable
 `SigningTable`.
 
 ```
-SigningTable  refile:/etc/opendkim/signingtable
+SigningTable  refile:/etc/phoenixdkim/signingtable
 ```
 
 **csl:** — comma-separated inline list in the configuration file itself.
@@ -230,10 +230,10 @@ ExemptDomains  csl:example.com,test.example.com
 ```
 
 **lmdb:** — LMDB database file. Faster lookups for large tables. Use
-`opendkim-genzone` or an external tool to build the LMDB database.
+`phoenixdkim-genzone` or an external tool to build the LMDB database.
 
 ```
-KeyTable  lmdb:/etc/opendkim/keytable.lmdb
+KeyTable  lmdb:/etc/phoenixdkim/keytable.lmdb
 ```
 
 **lua:** — Lua script called for each lookup. The script receives the
@@ -242,7 +242,7 @@ Requires `-DWITH_LUA=ON`. Useful for secrets-manager integrations or
 dynamically computed lookup tables.
 
 ```
-KeyTable  lua:/etc/opendkim/keylookup.lua
+KeyTable  lua:/etc/phoenixdkim/keylookup.lua
 ```
 
 For multi-field values (e.g. KeyTable entries), colon-separated fields
@@ -258,7 +258,7 @@ keyname   domain.com:selector:/path/to/key.private
 
 Most mailing list software (Mailman, etc.) modifies messages in ways that
 break existing DKIM signatures — adding footers, changing headers, etc.
-If you run a mailing list, configure opendkim to sign list-generated mail:
+If you run a mailing list, configure phoenixdkim to sign list-generated mail:
 
 1. If the list is on a subdomain (e.g. `lists.example.org`), generate a
    key for that domain and add it to the KeyTable.
@@ -271,7 +271,7 @@ If you run a mailing list, configure opendkim to sign list-generated mail:
    lists.example.org   listkey
    ```
 
-3. Set `SenderHeaders Sender,From` in `opendkim.conf` so opendkim uses
+3. Set `SenderHeaders Sender,From` in `phoenixdkim.conf` so phoenixdkim uses
    the `Sender:` field (which mailing list software sets to the bounce
    address) rather than the `From:` field for signing table lookups.
 
@@ -309,7 +309,7 @@ message between signing and delivery.
 
 TXT records in DNS consist of strings not exceeding 255 bytes each. Large
 RSA public keys (4096 bits and above) must be split across multiple strings
-in the zone file. `opendkim-genkey` produces a correctly formatted
+in the zone file. `phoenixdkim-genkey` produces a correctly formatted
 multi-string record in the `.txt` file it generates. If you are formatting
 a record manually:
 
@@ -326,7 +326,7 @@ Ed25519 keys are 32 bytes and always fit within a single 255-byte string.
 
 ## Manually Creating DKIM Keys
 
-`opendkim-genkey` is the recommended tool. If you need to generate keys
+`phoenixdkim-genkey` is the recommended tool. If you need to generate keys
 manually with openssl:
 
 **RSA (minimum 2048 bits; 4096 recommended):**

@@ -232,7 +232,7 @@ function(apply_hardening tgt)
     # ── Optional warnings — =N level flags (explicit) ─────────────────────────
     #
     # -Wformat-truncation=2: snprintf output truncation (GCC). Known instance at
-    #   opendkim.c:12408; this flag makes it visible on every build.
+    #   phoenixdkim.c:12408; this flag makes it visible on every build.
     # -Wformat-overflow=2: format string writing past its destination (GCC).
     #   Complements -Wformat-truncation; both catch bounds errors in *printf calls.
     # -Wstringop-overflow=4: memcpy/snprintf writing past the destination (GCC).

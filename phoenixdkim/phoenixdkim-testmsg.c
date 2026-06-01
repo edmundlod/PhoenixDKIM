@@ -17,7 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
 /* macros */

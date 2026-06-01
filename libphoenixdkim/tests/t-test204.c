@@ -18,7 +18,7 @@
 # include <gnutls/gnutls.h>
 #endif /* USE_GNUTLS */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim.h"
 #include "t-testdata.h"
 

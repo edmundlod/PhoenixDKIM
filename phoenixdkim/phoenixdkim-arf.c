@@ -14,7 +14,7 @@
 #include <assert.h>
 #include <string.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-arf.h"
 
 /*

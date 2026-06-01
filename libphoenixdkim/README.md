@@ -1,17 +1,17 @@
-# libopendkim
+# libphoenixdkim
 
 C library implementing the DKIM specification (RFC 6376) including signing,
 verification, canonicalisation, and key parsing.
 
 ## Crypto
 
-libopendkim uses **OpenSSL 3** exclusively, via the EVP high-level API
+libphoenixdkim uses **OpenSSL 3** exclusively, via the EVP high-level API
 (`EVP_DigestSign*`, `EVP_DigestVerify*`, `EVP_PKEY_*`). GnuTLS support
 has been removed. There is no compile-time choice of crypto backend.
 
 OpenSSL is dynamically linked against the system library. This means
 security patches to OpenSSL are applied via the OS package manager
-without rebuilding libopendkim.
+without rebuilding libphoenixdkim.
 
 **Supported algorithms:**
 
@@ -23,7 +23,7 @@ compatibility with legacy signed mail.
 
 ## Initialisation
 
-libopendkim does not initialise the crypto library for you. The calling
+libphoenixdkim does not initialise the crypto library for you. The calling
 application must call `OPENSSL_init_crypto()` (or otherwise initialise
 OpenSSL) before any DKIM signing or verification operation.
 
@@ -44,7 +44,7 @@ ctest --test-dir build
 To run only library tests:
 
 ```
-ctest --test-dir build -R libopendkim
+ctest --test-dir build -R libphoenixdkim
 ```
 
 ## API Documentation

@@ -6,7 +6,7 @@
 #ifndef _DKIM_DNS_H_
 #define _DKIM_DNS_H_
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 
 /* prototypes */

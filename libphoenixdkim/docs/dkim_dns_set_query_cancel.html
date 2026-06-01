@@ -12,12 +12,12 @@
 <pre>
 #include &lt;dkim.h&gt;
 <tt>void</tt> dkim_dns_set_query_cancel(
-	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libopendkim,
+	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libphoenixdkim,
         <tt>int</tt> (*func)(<tt>void *, void *</tt>)
 );
 
 </pre>
-Declares the function to be used by a libopendkim instance when it needs to
+Declares the function to be used by a libphoenixdkim instance when it needs to
 cancel a DNS query already in progress.  By default, a stub function that
 does nothing is set, since there is no way to cancel a query in the standard
 UNIX resolver library. <p>
@@ -54,7 +54,7 @@ during <a href="dkim_eoh.html"><tt>dkim_eoh()</tt></a> when verifying.  </td>
 <tr><th valign="top" align=left>ARGUMENTS</th><td>
     <table border="1" cellspacing=0>
     <tr bgcolor="#dddddd"><th>Argument</th><th>Description</th></tr>
-    <tr valign="top"><td>libopendkim</td>
+    <tr valign="top"><td>libphoenixdkim</td>
 	<td>The library instantiation handle, returned by
         <a href="dkim_init.html"><tt>dkim_init()</tt></a>.
 	</td></tr>

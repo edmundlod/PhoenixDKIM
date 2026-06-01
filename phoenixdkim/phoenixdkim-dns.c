@@ -36,7 +36,7 @@
 #include <errno.h>
 #include <syslog.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
 #ifdef USE_UNBOUND
@@ -46,7 +46,7 @@
 
 
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-dns.h"
 #include "phoenixdkim-db.h"
 #include "util.h"
@@ -459,7 +459,7 @@ dkimf_ub_config(void *srv, const char *file)
 }
 
 /*
-**  DKIMF_UB_CANCEL -- function passed to libopendkim to handle cancel requests
+**  DKIMF_UB_CANCEL -- function passed to libphoenixdkim to handle cancel requests
 **
 **  Parameters:
 **  	srv -- service handle
@@ -489,7 +489,7 @@ dkimf_ub_cancel(void *srv, void *q)
 }
 
 /*
-**  DKIMF_UB_QUERY -- function passed to libopendkim to handle new requests
+**  DKIMF_UB_QUERY -- function passed to libphoenixdkim to handle new requests
 **
 **  Parameters:
 **  	srv -- service handle
@@ -532,7 +532,7 @@ dkimf_ub_query(void *srv, int type, unsigned char *query,
 }
 
 /*
-**  DKIMF_UB_WAITREPLY -- function passed to libopendkim to handle
+**  DKIMF_UB_WAITREPLY -- function passed to libphoenixdkim to handle
 **                        wait requests
 **
 **  Parameters:
@@ -723,10 +723,10 @@ dkimf_ub_nslist(void *srv, const char *nslist)
 
 
 /*
-**  DKIMF_UNBOUND_SETUP -- connect libunbound to libopendkim
+**  DKIMF_UNBOUND_SETUP -- connect libunbound to libphoenixdkim
 **
 **  Parameters:
-**  	lib -- libopendkim handle
+**  	lib -- libphoenixdkim handle
 **  	ub -- dkimf_unbound handle to use
 **
 **  Return value:
@@ -752,7 +752,7 @@ dkimf_unbound_setup(DKIM_LIB *lib)
 #endif /* USE_UNBOUND */
 
 /*
-**  DKIMF_FILEDNS_QUERY -- function passed to libopendkim to handle new
+**  DKIMF_FILEDNS_QUERY -- function passed to libphoenixdkim to handle new
 **                         requests
 **
 **  Parameters:
@@ -800,7 +800,7 @@ dkimf_filedns_query(void *srv, int type, unsigned char *query,
 }
 
 /*
-**  DKIMF_FILEDNS_CANCEL -- function passed to libopendkim to handle cancel
+**  DKIMF_FILEDNS_CANCEL -- function passed to libphoenixdkim to handle cancel
 **                          requests
 **
 **  Parameters:
@@ -828,7 +828,7 @@ dkimf_filedns_cancel(void *srv, void *q)
 }
 
 /*
-**  DKIMF_FILEDNS_WAITREPLY -- function passed to libopendkim to handle
+**  DKIMF_FILEDNS_WAITREPLY -- function passed to libphoenixdkim to handle
 **                             wait requests
 **
 **  Parameters:
@@ -1005,10 +1005,10 @@ dkimf_filedns_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 }
 
 /*
-**  DKIMF_FILEDNS_SETUP -- connect a file DNS to libopendkim
+**  DKIMF_FILEDNS_SETUP -- connect a file DNS to libphoenixdkim
 **
 **  Parameters:
-**  	lib -- libopendkim handle
+**  	lib -- libphoenixdkim handle
 **  	db -- data set from which to read
 **
 **  Return value:

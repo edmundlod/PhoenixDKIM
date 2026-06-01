@@ -17,7 +17,7 @@
 #include <ctype.h>
 #include <netdb.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 #include "dkim-report.h"
 #include "dkim-internal.h"

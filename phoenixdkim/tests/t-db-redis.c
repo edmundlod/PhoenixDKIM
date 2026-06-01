@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* redis/valkey client — same shim as opendkim-db.c */
+/* redis/valkey client — same shim as phoenixdkim-db.c */
 #ifdef USE_LIBVALKEY
 # include <valkey/valkey.h>
 typedef valkeyContext  redisContext;
@@ -32,12 +32,12 @@ typedef valkeyReply    redisReply;
 # include <hiredis/hiredis.h>
 #endif
 
-/* opendkim-db API */
+/* phoenixdkim-db API */
 #include "phoenixdkim-db.h"
 
 #define HOST  "127.0.0.1"
 #define PORT  6379
-#define PFX   "__opendkim_test__:"
+#define PFX   "__phoenixdkim_test__:"
 
 /* ── helpers ────────────────────────────────────────────────────────────────── */
 

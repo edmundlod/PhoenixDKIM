@@ -87,7 +87,7 @@
 #endif /* USE_LUA */
 
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 
 /* libbsd if found */
@@ -100,7 +100,7 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "config.h"
 #include "phoenixdkim-db.h"
 #include "phoenixdkim-config.h"
@@ -4365,7 +4365,7 @@ dkimf_loadkey(char *buf, size_t *buflen, _Bool *insecure, char *error,
 **
 **  Notes:
 **  	Used only to validate an optional KeyTable signing-algorithm field
-**  	against the actual key.  libopendkim independently derives the signing
+**  	against the actual key.  libphoenixdkim independently derives the signing
 **  	algorithm from the key material at signing time, and that remains
 **  	authoritative; this is a configuration sanity check, not key loading.
 */
@@ -4515,7 +4515,7 @@ dkimf_signreq_append(struct msgctx *dfc, const char *domain,
 **
 **  Notes:
 **  	Emit-all-valid: one secret with N selectors valid "now" raises N sign
-**  	requests (rotation overlap + algorithm diversity).  libopendkim derives
+**  	requests (rotation overlap + algorithm diversity).  libphoenixdkim derives
 **  	each signature's algorithm from its key material, so RSA and Ed25519
 **  	selectors yield RSA and Ed25519 signatures with no per-request alg.  A
 **  	selector with an unparseable key is skipped, not fatal.
@@ -4811,7 +4811,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		**  An optional fourth KeyTable field may name a signing
 		**  algorithm (for compatibility with configs written for
 		**  upstream OpenDKIM).  We do not use it to select the
-		**  algorithm -- libopendkim derives that from the key material
+		**  algorithm -- libphoenixdkim derives that from the key material
 		**  itself, which is authoritative -- but if it is present and
 		**  contradicts the actual key, warn so the admin can fix the
 		**  table.  Signing still proceeds with the key-derived
@@ -8510,7 +8510,7 @@ dkimf_miltercode(SMFICTX *ctx, int dmc, char *str)
 }
 
 /*
-**  DKIMF_LIBSTATUS -- process a final status returned from libopendkim
+**  DKIMF_LIBSTATUS -- process a final status returned from libphoenixdkim
 **
 **  Parameters:
 **  	ctx -- milter context
@@ -11872,7 +11872,7 @@ mlfi_eoh(SMFICTX *ctx)
 	if (ms != SMFIS_CONTINUE)
 		return ms;
 
-	/* signal end of headers to libopendkim */
+	/* signal end of headers to libphoenixdkim */
 	lastdkim = NULL;
 	status = DKIM_STAT_OK;
 	if (dfc->mctx_srhead != NULL && !dfc->mctx_resign)

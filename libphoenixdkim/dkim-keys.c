@@ -21,7 +21,7 @@
 
 #include "build-config.h"
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-internal.h"
 #include "dkim-types.h"
 #include "dkim-keys.h"
@@ -411,7 +411,7 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 ** 
 **  		<selector>._domainkey.<domain> <space> key-data
 **
-**  	Case matching on the left is case-sensitive, but libopendkim already
+**  	Case matching on the left is case-sensitive, but libphoenixdkim already
 **  	wraps the domain name to lowercase.
 */
 

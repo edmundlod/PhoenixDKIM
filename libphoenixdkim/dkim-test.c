@@ -43,7 +43,7 @@
 # include <openssl/rsa.h>
 # include <openssl/evp.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-internal.h"
 #include "dkim-types.h"
 #include "dkim-keys.h"

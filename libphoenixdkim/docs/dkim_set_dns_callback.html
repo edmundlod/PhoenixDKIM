@@ -12,14 +12,14 @@
 <pre>
 #include &lt;dkim.h&gt;
 <a href="dkim_stat.html"><tt>DKIM_STAT</tt></a> dkim_set_dns_callback(
-	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libopendkim,
+	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libphoenixdkim,
         void (*func)(const void *context),
         unsigned int interval);
 );
 </pre>
 Define a function which should be called from time to time while waiting
 for a DNS response to become available.  This is particularly meant for
-use when libopendkim is being used by an application which is timeout-sensitive
+use when libphoenixdkim is being used by an application which is timeout-sensitive
 where a heartbeat ("still alive, operation in progress") message is
 desirable. <p>
 
@@ -43,7 +43,7 @@ function (if any) as the parameter to that function.
 <tr><th valign="top" align=left>ARGUMENTS</th><td>
     <table border="1" cellspacing=0>
     <tr bgcolor="#dddddd"><th>Argument</th><th>Description</th></tr>
-    <tr valign="top"><td>libopendkim</td>
+    <tr valign="top"><td>libphoenixdkim</td>
 	<td>Library-specific handle, returned by
         <a href="dkim_init.html"><tt>dkim_init()</tt></a>.
 	</td></tr>

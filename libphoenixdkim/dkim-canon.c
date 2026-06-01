@@ -40,7 +40,7 @@
 # include <regex.h>
 #endif /* USE_TRE */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-internal.h"
 #include "dkim-types.h"
 #include "dkim-canon.h"
