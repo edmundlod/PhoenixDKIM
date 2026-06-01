@@ -91,6 +91,22 @@ cp  /etc/opendkim/opendkim.conf  /etc/phoenixdkim/phoenixdkim.conf
 cp  /etc/opendkim/KeyTable /etc/opendkim/SigningTable  /etc/phoenixdkim/
 cp -a /etc/opendkim/keys  /etc/phoenixdkim/keys     # or point KeyTable at the existing path</pre>
 
+<p><strong>Permissions and ownership.</strong> PhoenixDKIM runs as its own
+<tt>phoenixdkim</tt> user, so it must be able to <em>read</em> the private keys —
+and by default (<tt>RequireSafeKeys</tt>) it will <em>refuse</em> a key file that
+is readable or writable by anyone other than its owner or a group the process
+belongs to. OpenDKIM's keys are typically owned by the <tt>opendkim</tt> user, so
+after copying them (or if you point at the originals in place) give them to
+<tt>phoenixdkim</tt> and keep them owner-only:</p>
+
+<pre>chown -R phoenixdkim:phoenixdkim /etc/phoenixdkim/keys
+chmod 600 /etc/phoenixdkim/keys/*.private</pre>
+
+<p>A key PhoenixDKIM cannot securely read is skipped rather than used, so check
+the log on first start if a domain is unexpectedly going unsigned. (Setting
+<tt>RequireSafeKeys&nbsp;false</tt> downgrades the refusal to a warning, but
+fixing ownership is the right answer.)</p>
+
 <p>2. In <tt>phoenixdkim.conf</tt>, give it a distinct socket and remove any
 keywords for the dropped subsystems:</p>
 
@@ -201,6 +217,17 @@ Canonicalization  relaxed/relaxed
 KeyTable          vault://vault.example.com:8200/v1/secret/data/dkim/{d}
 SigningTable      refile:/etc/phoenixdkim/signingtable
 VaultToken        hvs.CAES...</pre>
+
+<p><strong>Permissions and ownership.</strong> With the shared Vault store the
+keys themselves live in Vault, but the <tt>VaultToken</tt> must be reachable by
+the <tt>phoenixdkim</tt> user — if you keep it in a file or reuse Rspamd's token,
+make sure that file is owned by and readable only by <tt>phoenixdkim</tt> (and
+that the token's Vault policy allows the read). If instead you sign from local
+key files exported from Rspamd, the same rule as the OpenDKIM section applies:
+<tt>chown</tt> them to <tt>phoenixdkim</tt> and keep them owner-only, since
+<tt>RequireSafeKeys</tt> refuses loosely-permissioned keys by default. Rspamd
+usually runs as the <tt>_rspamd</tt> user, so files carried over from it will not
+be readable by <tt>phoenixdkim</tt> until you re-own them.</p>
 
 <p>2. Disable Rspamd's signing so only PhoenixDKIM signs. In
 <tt>local.d/dkim_signing.conf</tt>:</p>
