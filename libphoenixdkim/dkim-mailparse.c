@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-mailparse.h"
 
 /* types */

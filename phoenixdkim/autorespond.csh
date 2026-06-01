@@ -7,7 +7,7 @@
 ## Copyright (c) 2009, 2012, The Trusted Domain Project.  All rights reserved.
 ##
 ## autorespond.csh -- accept a message and reply to it to test signing and
-## verifying of opendkim
+## verifying of phoenixdkim
 
 ## Setup
 set infile=/tmp/ari.$$

@@ -34,7 +34,7 @@
 # include <openssl/evp.h>
 # include "openssl-compat.h"
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 #include "dkim-internal.h"
 

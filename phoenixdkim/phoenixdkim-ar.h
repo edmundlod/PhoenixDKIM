@@ -13,7 +13,7 @@
 /* system includes */
 #include <sys/types.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim.h"
 
 /* limits */

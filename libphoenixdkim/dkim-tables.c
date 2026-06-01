@@ -13,7 +13,7 @@
 #include <string.h>
 #include <assert.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim-tables.h"
 #include "dkim-internal.h"
 

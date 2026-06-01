@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
 /* libbsd if found */
@@ -32,7 +32,7 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "config.h"
 
 /* limits */

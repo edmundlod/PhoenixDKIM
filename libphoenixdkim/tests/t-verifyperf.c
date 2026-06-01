@@ -18,7 +18,7 @@
 #include <unistd.h>
 #include <sysexits.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim.h"
 #include "t-testdata.h"
 

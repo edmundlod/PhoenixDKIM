@@ -17,7 +17,7 @@
 #include <time.h>
 #include <assert.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "build-config.h"
 #include <dkim.h>
 
@@ -34,7 +34,7 @@
 /* libmilter includes */
 #include <libmilter/mfapi.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #define DKIMF_MILTER_PROTOTYPES
 #include "test.h"
 #include "phoenixdkim.h"
@@ -370,7 +370,7 @@ dkimf_test_getsymval(void *ctx, const char *sym)
 **  DKIMF_TESTFILE -- read a message and test it
 **
 **  Parameters:
-**  	libopendkim -- DKIM_LIB handle
+**  	libphoenixdkim -- DKIM_LIB handle
 **  	file -- input file path
 **  	fixedtime -- time to use on signatures (or -1)
 **  	strict -- strict CRLF mode?
@@ -380,7 +380,7 @@ dkimf_test_getsymval(void *ctx, const char *sym)
 */
 
 static int
-dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
+dkimf_testfile(DKIM_LIB *libphoenixdkim, struct test_context *tctx,
                FILE *f, const char *file, _Bool strict)
 {
 	bool inheaders = TRUE;
@@ -398,8 +398,8 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 	char buf[MAXBUFRSZ];
 	char line[MAXBUFRSZ];
 
-	(void) libopendkim;
-	assert(libopendkim != NULL);
+	(void) libphoenixdkim;
+	assert(libphoenixdkim != NULL);
 	assert(tctx != NULL);
 	assert(f != NULL);
 
@@ -844,7 +844,7 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 **  DKIMF_TESTFILES -- test one or more input messages
 **
 **  Parameters:
-**  	libopendkim -- DKIM_LIB handle
+**  	libphoenixdkim -- DKIM_LIB handle
 **  	flist -- input file list
 **  	fixedtime -- time to use on signatures (or -1)
 **  	strict -- strict CRLF mode?
@@ -855,7 +855,7 @@ dkimf_testfile(DKIM_LIB *libopendkim, struct test_context *tctx,
 */
 
 int
-dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
+dkimf_testfiles(DKIM_LIB *libphoenixdkim, char *flist, uint64_t fixedtime,
                 bool strict, int verbose)
 {
 	const char *file;
@@ -866,7 +866,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	struct test_context *tctx;
 	struct sockaddr_in sin;
 
-	assert(libopendkim != NULL);
+	assert(libphoenixdkim != NULL);
 	assert(flist != NULL);
 
 	tverbose = verbose;
@@ -874,7 +874,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 	/* pass fixed signing time to the library */
 	if (fixedtime != (uint64_t) -1)
 	{
-		(void) dkim_setopt(libopendkim,
+		(void) dkim_setopt(libphoenixdkim,
 		                    DKIM_OPTS_FIXEDTIME,
 		                    &fixedtime, sizeof fixedtime);
 	}
@@ -933,7 +933,7 @@ dkimf_testfiles(DKIM_LIB *libopendkim, char *flist, uint64_t fixedtime,
 			}
 		}
 
-		status = dkimf_testfile(libopendkim, tctx, f, file, strict);
+		status = dkimf_testfile(libphoenixdkim, tctx, f, file, strict);
 
 		FCLOSE(f);
 

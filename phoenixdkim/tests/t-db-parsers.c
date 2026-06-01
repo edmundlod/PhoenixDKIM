@@ -4,7 +4,7 @@
 **  t-db-parsers.c -- offline unit tests for the curl-backend parsers:
 **  dkimf_db_vault_extract(), dkimf_db_http_buildurl(), dkimf_db_http_safe().
 **
-**  These functions are static in opendkim-db.c, so we #include the
+**  These functions are static in phoenixdkim-db.c, so we #include the
 **  translation unit directly instead of linking it.
 */
 

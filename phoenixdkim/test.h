@@ -16,7 +16,7 @@
 /* libmilter includes */
 #include <libmilter/mfapi.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 
 /* PROTOTYPES */

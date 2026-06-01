@@ -25,10 +25,10 @@
 # include <curl/curl.h>
 #endif /* HAVE_LIBCURL */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #define DKIMF_LUA_PROTOTYPES
 #define DKIMF_MILTER_PROTOTYPES
 #include "phoenixdkim-lua.h"
@@ -631,7 +631,7 @@ pdkim_http_get(lua_State *l)
 /*
 **  DKIMF_LUA_SANDBOX -- remove dangerous globals exposed by luaL_openlibs()
 **
-**  Policy scripts run with the privileges of the opendkim daemon and have
+**  Policy scripts run with the privileges of the phoenixdkim daemon and have
 **  read access to private signing keys.  The default Lua standard library
 **  set (loaded by luaL_openlibs) includes os, io, debug, and package, which
 **  provide process execution, arbitrary file I/O, introspection, and native
@@ -688,7 +688,7 @@ dkimf_lua_sandbox(lua_State *l)
 **  DKIMF_LUA_SETUP_HOOK -- hook to Lua for handling a message during setup
 **
 **  Parameters:
-**  	ctx -- session context, for making calls back to opendkim.c
+**  	ctx -- session context, for making calls back to phoenixdkim.c
 **  	script -- script to run
 **  	scriptlen -- length of script; if 0, use strlen()
 **  	name -- name of the script (for logging)
@@ -869,7 +869,7 @@ dkimf_lua_setup_hook(void *ctx, const char *script, size_t scriptlen,
 **                           have been fed to it
 **
 **  Parameters:
-**  	ctx -- session context, for making calls back to opendkim.c
+**  	ctx -- session context, for making calls back to phoenixdkim.c
 **  	script -- script to run
 **  	scriptlen -- length of script; if 0, use strlen()
 **  	name -- name of the script (for logging)
@@ -1030,7 +1030,7 @@ dkimf_lua_screen_hook(void *ctx, const char *script, size_t scriptlen,
 **                          signing and verifying has been done
 **
 **  Parameters:
-**  	ctx -- session context, for making calls back to opendkim.c
+**  	ctx -- session context, for making calls back to phoenixdkim.c
 **  	script -- script to run
 **  	scriptlen -- length of script; if 0, use strlen()
 **  	name -- name of the script (for logging)

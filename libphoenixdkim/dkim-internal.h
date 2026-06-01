@@ -8,7 +8,7 @@
 #ifndef _DKIM_INTERNAL_H_
 #define _DKIM_INTERNAL_H_
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 
 /* the basics */

@@ -26,7 +26,7 @@
 # include <libmilter/mfapi.h>
 #endif /* DKIMF_MILTER_PROTOTYPES */
 
-/* libopendkim */
+/* libphoenixdkim */
 #include "dkim.h"
 
 #ifdef USE_LUA

@@ -34,7 +34,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-/* opendkim-db API */
+/* phoenixdkim-db API */
 #include "phoenixdkim-db.h"
 
 #ifndef FALSE

@@ -36,10 +36,10 @@
 # define MIN(x,y)	((x) < (y) ? (x) : (y))
 #endif /* ! MIN */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-db.h"
 #include "config.h"
 #include "phoenixdkim-config.h"

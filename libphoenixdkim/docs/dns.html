@@ -9,7 +9,7 @@
 <h1>DNS Callback Overview</h1>
 <p align="right"><a href="index.html">[back to index]</a></p>
 
-<p>By default, libopendkim will use the standard UNIX resolver for
+<p>By default, libphoenixdkim will use the standard UNIX resolver for
 retrieving keys and policies that are stored in the DNS.  Where an application
 has some need for use of a resolver other than the standard one, a mechanism
 is provided for instructing the library to make use of that other
@@ -21,12 +21,12 @@ and getting answers. </p>
 
 <ol>
  <li> <a href="dkim_dns_set_query_service.html"><tt>dkim_dns_set_query_service()</tt></a> --
-      Provides libopendkim with a handle representing the DNS resolver package
+      Provides libphoenixdkim with a handle representing the DNS resolver package
       to be used, such as a handle to an instantiation of a library
  <li> <a href="dkim_dns_set_query_start.html"><tt>dkim_dns_set_query_start()</tt></a> --
-      Provides libopendkim with a function that it should call when it
+      Provides libphoenixdkim with a function that it should call when it
       wishes to make a request of the DNS.  This function should expect to
-      receive from libopendkim the handle provided above, the name and type
+      receive from libphoenixdkim the handle provided above, the name and type
       to be requested from the DNS, a buffer into which to write the
       answer once it arrives and the length of that buffer.  The function
       should return zero on success or non-zero on failure, and will also
@@ -38,18 +38,18 @@ and getting answers. </p>
       See the page link for this function to view the actual function
       prototype.
  <li> <a href="dkim_dns_set_query_cancel.html"><tt>dkim_dns_set_query_cancel()</tt></a> --
-      Provides libopendkim with a function that it should call when it
+      Provides libphoenixdkim with a function that it should call when it
       wishes to cancel a request of the DNS previously initiated by the
       previous function.  This function should expect to receive from
-      libopendkim the service handle provided above and the handle that
+      libphoenixdkim the service handle provided above and the handle that
       represents the query to be canceled.  This function will be called
       for all queries exactly once, including completed queries, to give
       the libraries a chance to deallocate memory.  See the page link for
       this function to view the actual function prototype.
  <li> <a href="dkim_dns_set_query_waitreply.html"><tt>dkim_dns_set_query_waitreply()</tt></a> --
-      Provides libopendkim with a function that it should call when it
+      Provides libphoenixdkim with a function that it should call when it
       wishes to check for or wait on a reply to a previously initiated
-      DNS query.  This function should expect to receive from libopendkim
+      DNS query.  This function should expect to receive from libphoenixdkim
       the service handle provided above, the handle that represents the query
       of interest, an optional timeout via a pointer to a
       <tt>struct timeval</tt>, an optional pointer to a <tt>size_t</tt> that
@@ -81,7 +81,7 @@ and getting answers. </p>
       prototype.
 </ol> </p>
 
-<p> For the purposes of illustration, libopendkim includes a set of the above
+<p> For the purposes of illustration, libphoenixdkim includes a set of the above
 as defaults that point to the standard UNIX resolver.  They are:
 
 <ol>
@@ -100,7 +100,7 @@ as defaults that point to the standard UNIX resolver.  They are:
       <tt>DKIM_DNS_SUCCESS</tt> immediately.
 </ol> </p>
 
-<p> So from libopendkim's perspective, it starts a query and then asks for a
+<p> So from libphoenixdkim's perspective, it starts a query and then asks for a
 reply, but the reply has actually already completed so the wait stage is
 almost a no-op except to get the length of the reply. </p>
 
@@ -124,9 +124,9 @@ with libar:
 <p> In this case, operation is fairly straightforward until the wait operation.
 If libar has a reply available, the wait function above would get
 <tt>AR_STAT_SUCCESS</tt> back immediately, and can thus return
-<tt>DKIM_DNS_SUCCESS</tt> to libopendkim immediately.  If the reply is
-still pending, libopendkim will get <tt>DKIM_DNS_NOREPLY</tt> back and can
-do other work while libar is still waiting.  If libopendkim wishes to wait,
+<tt>DKIM_DNS_SUCCESS</tt> to libphoenixdkim immediately.  If the reply is
+still pending, libphoenixdkim will get <tt>DKIM_DNS_NOREPLY</tt> back and can
+do other work while libar is still waiting.  If libphoenixdkim wishes to wait,
 the timeout it provides is turned into a POSIX condition wait and the libar
 dispatcher thread will signal it when a reply arrives. </p>
 

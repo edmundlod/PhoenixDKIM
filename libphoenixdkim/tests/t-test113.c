@@ -21,7 +21,7 @@
 
 struct dkim_dstring;
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim-internal.h"
 #include "../dkim-util.h"
 

@@ -31,7 +31,7 @@ cmake_push_check_state(RESET)
 set(CMAKE_REQUIRED_LIBRARIES    ${OPENSSL_LIBRARIES})
 set(CMAKE_REQUIRED_INCLUDES     ${OPENSSL_INCLUDE_DIR})
 
-# The test key is the RSA-1024 public key used by the libopendkim test suite,
+# The test key is the RSA-1024 public key used by the libphoenixdkim test suite,
 # DER-encoded (SubjectPublicKeyInfo, 162 bytes).  Embedding it avoids any
 # dependency on key files that may not exist at configure time.
 check_c_source_runs([[
@@ -112,7 +112,7 @@ if(NOT PHOENIXDKIM_SHA1_VERIFY_OK)
         "for interoperability with legacy DKIM-signed mail; this is not a build "
         "defect.\n\n"
         "Consequences:\n"
-        "  - Approximately 26 libopendkim tests that verify SHA1-signed test "
+        "  - Approximately 26 libphoenixdkim tests that verify SHA1-signed test "
         "messages will FAIL.\n"
         "  - In production, incoming mail signed with RSA-SHA1 will be reported "
         "as having a key-decode error rather than a bad signature.\n\n"

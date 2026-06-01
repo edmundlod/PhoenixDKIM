@@ -17,7 +17,7 @@
 #include <regex.h>
 #include <stdio.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "build-config.h"
 #include "phoenixdkim-db.h"
 

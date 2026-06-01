@@ -36,8 +36,7 @@ extern "C" {
 **
 **      PHOENIXDKIM_LIB_VERSION is the ABI version (the libtool
 **      current:revision:age triple, also the source of the SONAME) -- NOT the
-**      product/release version.  It is injected via libopendkim/CMakeLists.txt.
-**      (Old autotools-era spelling: OPENDKIM_LIB_VERSION 0x01020000.)
+**      product/release version.  It is injected via libphoenixdkim/CMakeLists.txt.
 */
 
 
@@ -617,7 +616,7 @@ extern DKIM_STAT dkim_getsiglist(DKIM *dkim, DKIM_SIGINFO ***sigs,
 **  	dkim -- DKIM handle
 **
 **  Return value:
-**  	Pointer to a DKIM_SIGINFO handle which is the one libopendkim will
+**  	Pointer to a DKIM_SIGINFO handle which is the one libphoenixdkim will
 **  	use to return a "final" result; NULL if none could be determined.
 */
 
@@ -1026,7 +1025,7 @@ extern DKIM_STAT dkim_set_signer(DKIM *dkim, const u_char *signer);
 **  DKIM_SET_DNS_CALLBACK -- set the DNS wait callback
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call; should take an opaque context pointer
 **  	interval -- how often to call back
 **
@@ -1036,7 +1035,7 @@ extern DKIM_STAT dkim_set_signer(DKIM *dkim, const u_char *signer);
 **  	DKIM_STAT_NOTIMPLEMENT -- underlying resolver doesn't support callbacks
 */
 
-extern DKIM_STAT dkim_set_dns_callback(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_dns_callback(DKIM_LIB *libphoenixdkim,
                                             void (*func)(const void *context),
                                             unsigned int interval);
 
@@ -1044,14 +1043,14 @@ extern DKIM_STAT dkim_set_dns_callback(DKIM_LIB *libopendkim,
 **  DKIM_SET_KEY_LOOKUP -- set the key lookup function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_key_lookup(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_key_lookup(DKIM_LIB *libphoenixdkim,
                                           DKIM_CBSTAT (*func)(DKIM *dkim,
                                                               DKIM_SIGINFO *sig,
                                                               u_char *buf,
@@ -1061,14 +1060,14 @@ extern DKIM_STAT dkim_set_key_lookup(DKIM_LIB *libopendkim,
 **  DKIM_SET_SIGNATURE_HANDLE -- set the signature handle creator function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	Pointer to the user-side handle thus created, or NULL.
 */
 
-extern DKIM_STAT dkim_set_signature_handle(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_signature_handle(DKIM_LIB *libphoenixdkim,
                                                 void * (*func)(void *closure));
 
 /*
@@ -1076,14 +1075,14 @@ extern DKIM_STAT dkim_set_signature_handle(DKIM_LIB *libopendkim,
 **                                    function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	None.
 */
 
-extern DKIM_STAT dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_signature_handle_free(DKIM_LIB *libphoenixdkim,
                                                      void (*func)(void *closure,
                                                                   void *user));
 
@@ -1091,14 +1090,14 @@ extern DKIM_STAT dkim_set_signature_handle_free(DKIM_LIB *libopendkim,
 **  DKIM_SET_SIGNATURE_TAGVALUES -- set the signature handle populator function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_signature_tagvalues(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_signature_tagvalues(DKIM_LIB *libphoenixdkim,
                                                    void (*func)(void *user,
                                                                 dkim_param_t pcode,
                                                                 const u_char *param,
@@ -1108,14 +1107,14 @@ extern DKIM_STAT dkim_set_signature_tagvalues(DKIM_LIB *libopendkim,
 **  DKIM_SET_PRESCREEN -- set the prescreen function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_prescreen(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_prescreen(DKIM_LIB *libphoenixdkim,
                                          DKIM_CBSTAT (*func)(DKIM *dkim,
                                                              DKIM_SIGINFO **sigs,
                                                              int nsigs));
@@ -1124,14 +1123,14 @@ extern DKIM_STAT dkim_set_prescreen(DKIM_LIB *libopendkim,
 **  DKIM_SET_FINAL -- set the final processing function
 **
 **  Parameters:
-**  	libopendkim -- DKIM library handle
+**  	libphoenixdkim -- DKIM library handle
 **  	func -- function to call
 **
 **  Return value:
 **  	DKIM_STAT_OK
 */
 
-extern DKIM_STAT dkim_set_final(DKIM_LIB *libopendkim,
+extern DKIM_STAT dkim_set_final(DKIM_LIB *libphoenixdkim,
                                      DKIM_CBSTAT (*func)(DKIM *dkim,
                                                          DKIM_SIGINFO **sigs,
                                                          int nsigs));
@@ -1389,7 +1388,7 @@ extern _Bool dkim_libfeature(DKIM_LIB *lib, u_int fc);
 
 
 /*
-**  DKIM_LIBVERSION -- return version of libopendkim at runtime
+**  DKIM_LIBVERSION -- return version of libphoenixdkim at runtime
 **
 **  Parameters:
 **  	None.

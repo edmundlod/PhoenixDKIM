@@ -31,7 +31,7 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-ar.h"
 
 /* macros */

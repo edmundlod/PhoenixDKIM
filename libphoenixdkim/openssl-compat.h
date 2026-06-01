@@ -42,7 +42,7 @@
 /*
 **  DKIMF_SSL_VERSION_NUMBER -- the crypto provider's own version constant.
 **
-**  Used to verify that the libopendkim shared object and the opendkim binary
+**  Used to verify that the libphoenixdkim shared object and the phoenixdkim binary
 **  were built against the same crypto ABI.  Under LibreSSL the OpenSSL-compat
 **  OPENSSL_VERSION_NUMBER is a frozen sentinel (0x2000000fL today) that says
 **  nothing about the actual LibreSSL release and could be changed upstream,

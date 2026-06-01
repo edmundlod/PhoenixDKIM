@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "t-testdata.h"
 
 /*

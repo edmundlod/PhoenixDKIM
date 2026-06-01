@@ -28,7 +28,7 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim.h"
 #include "t-testdata.h"
 

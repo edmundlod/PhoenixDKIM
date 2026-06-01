@@ -23,7 +23,7 @@
 #include <string.h>
 #include <limits.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "../dkim.h"
 #include "../dkim-test.h"
 #include "t-testdata.h"
@@ -2621,7 +2621,7 @@ main(int argc, char **argv)
 	int i;
 	int failed = 0;
 
-	printf("*** OpenDKIM DKIM Conformance Test Suite (RFC 6376 + RFC 8463)\n");
+	printf("*** PhoenixDKIM DKIM Conformance Test Suite (RFC 6376 + RFC 8463)\n");
 
 	for (i = 0; all_tests[i].name != NULL; i++)
 	{

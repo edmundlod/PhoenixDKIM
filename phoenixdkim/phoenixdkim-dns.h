@@ -11,10 +11,10 @@
 /* system includes */
 #include <sys/types.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-db.h"
 
 

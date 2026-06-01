@@ -31,24 +31,24 @@ following calls:
       </ul>
  <li> <tt>stat = <a href="dkim_header.html">dkim_header(dkim, ...)</a>;</tt>
       <ul>
-       <li> pass a header field to <tt>libopendkim</tt>
+       <li> pass a header field to <tt>libphoenixdkim</tt>
        <li> this should be done once for each header field that should be
             included in computation of the signature 
       </ul>
  <li> <tt>stat = <a href="dkim_eoh.html">dkim_eoh(dkim)</a>;</tt>
       <ul>
-       <li> notify <tt>libopendkim</tt> that the end of this message's header
+       <li> notify <tt>libphoenixdkim</tt> that the end of this message's header
             has been reached
       </ul>
  <li> <tt>stat = <a href="dkim_body.html">dkim_body(dkim, ...)</a>;</tt>
       <ul>
-       <li> pass to <tt>libopendkim</tt> a chunk of the body that should be
+       <li> pass to <tt>libphoenixdkim</tt> a chunk of the body that should be
             included in computation of the signature (currently all of it)
        <li> repeat for each body chunk that arrives
       </ul>
  <li> <tt>stat = <a href="dkim_eom.html">dkim_eom(dkim)</a>;</tt>
       <ul>
-       <li> notify <tt>libopendkim</tt> that the end of this message has been
+       <li> notify <tt>libphoenixdkim</tt> that the end of this message has been
             reached
       </ul>
  <li> <tt>stat = <a href="dkim_getsighdr.html">dkim_getsighdr(dkim, ...)</a>;</tt>
@@ -91,25 +91,25 @@ To verify a message under <b>DKIM</b>, make the following calls:
       </ul>
  <li> <tt>stat = <a href="dkim_header.html">dkim_header(dkim, ...)</a>;</tt>
       <ul>
-       <li> pass a header field to <tt>libopendkim</tt>
+       <li> pass a header field to <tt>libphoenixdkim</tt>
        <li> this should be done once for each header field that should be
             included in computation of the digest to be verified (currently
             all of them)
       </ul>
  <li> <tt>stat = <a href="dkim_eoh.html">dkim_eoh(dkim)</a>;</tt>
       <ul>
-       <li> notify <tt>libopendkim</tt> that the end of this message's header
+       <li> notify <tt>libphoenixdkim</tt> that the end of this message's header
             has been reached
       </ul>
  <li> <tt>stat = <a href="dkim_body.html">dkim_body(dkim, ...)</a>;</tt>
       <ul>
-       <li> pass to <tt>libopendkim</tt> a chunk of the body that should be
+       <li> pass to <tt>libphoenixdkim</tt> a chunk of the body that should be
             included in computation of the digest to be verified (currently
             all of it)
       </ul>
  <li> <tt>stat = <a href="dkim_eom.html">dkim_eom(dkim)</a>;</tt>
       <ul>
-       <li> notify <tt>libopendkim</tt> that the end of this message has been
+       <li> notify <tt>libphoenixdkim</tt> that the end of this message has been
             reached
        <li> see if <tt>stat</tt> is <tt>DKIM_STAT_OK</tt> (verification OK)
             or <tt>DKIM_STAT_BADSIG</tt> (verification failed)

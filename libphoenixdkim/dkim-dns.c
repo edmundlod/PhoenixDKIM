@@ -37,11 +37,11 @@
 #include <errno.h>
 #include <pthread.h>
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include "dkim.h"
 #include "dkim-dns.h"
 
-/* OpenDKIM includes */
+/* PhoenixDKIM includes */
 #include "build-config.h"
 
 /* macros, limits, etc. */

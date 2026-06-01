@@ -16,7 +16,7 @@
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H */
 
-/* opendkim includes */
+/* phoenixdkim includes */
 #include "phoenixdkim-crypto.h"
 #include "phoenixdkim.h"
 

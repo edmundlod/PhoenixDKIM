@@ -12,7 +12,7 @@
 <pre>
 #include &lt;dkim.h&gt;
 <a href="dkim_stat.html"><tt>DKIM_STAT</tt></a> dkim_set_prescreen(
-	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libopendkim,
+	<a href="dkim_lib.html"><tt>DKIM_LIB</tt></a> *libphoenixdkim,
         <a href="dkim_cbstat.html">DKIM_CBSTAT</a> (*func)(<a href="dkim.html">DKIM</a> *dkim, <a href="dkim_siginfo.html">DKIM_SIGINFO</a> **sigs, int nsigs));
 );
 </pre>
@@ -61,7 +61,7 @@ of <tt>DKIM_STAT_CBINVALID</tt>. <p>
 <tr><th valign="top" align=left>ARGUMENTS</th><td>
     <table border="1" cellspacing=0>
     <tr bgcolor="#dddddd"><th>Argument</th><th>Description</th></tr>
-    <tr valign="top"><td>libopendkim</td>
+    <tr valign="top"><td>libphoenixdkim</td>
 	<td>The library instantiation handle, returned by
         <a href="dkim_init.html"><tt>dkim_init()</tt></a>.
 	</td></tr>

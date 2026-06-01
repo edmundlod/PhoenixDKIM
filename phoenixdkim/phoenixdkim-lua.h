@@ -18,7 +18,7 @@
 **  lrs_error is a tagged-union pointer.  It is either:
 **    - NULL,
 **    - a heap string strdup'd from lua_tostring() (set by the hooks
-**      in opendkim-lua.c), which the consumer must free, OR
+**      in phoenixdkim-lua.c), which the consumer must free, OR
 **    - a string literal assigned by the consumer when the hook left
 **      it NULL (in which case the consumer sets a local dofree=FALSE
 **      flag to skip free()).
