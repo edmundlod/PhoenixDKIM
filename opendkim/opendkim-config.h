@@ -155,6 +155,7 @@ struct configdef dkimf_config[] =
 	{ "UserID",			CONFIG_TYPE_STRING,	FALSE },
 #ifdef HAVE_LIBCURL
 	{ "VaultField",			CONFIG_TYPE_STRING,	FALSE },
+	{ "VaultSelectorsField",	CONFIG_TYPE_STRING,	FALSE },
 	{ "VaultToken",			CONFIG_TYPE_STRING,	FALSE },
 #endif /* HAVE_LIBCURL */
 	{ "WeakSyntaxChecks",		CONFIG_TYPE_BOOLEAN,	FALSE },

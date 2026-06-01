@@ -137,6 +137,19 @@ environment variable), and the requested field (see
 default "private_key") is extracted from the JSON envelope of both KVv1 and KVv2
 responses.  Token substitution, status handling, and the timeout are otherwise
 identical to the "http:" backend.
+Alternatively, when the secret carries a selectors array (see
+.I VaultSelectorsField
+in
+.I opendkim.conf(5)),
+a single
+.I KeyTable
+lookup may raise
+.B multiple
+signing requests: the filter emits one DKIM signature for every selector whose
+validity window contains the current time.  This signs with an old and a new
+selector concurrently during a key rotation (so a verifier passes against
+whichever DNS record it has yet propagated) and, where selectors of different
+algorithms are valid, produces both an RSA and an Ed25519 signature.
 (Requires libcurl; enabled with -DWITH_CURL=ON.)
 .TP
 .I i)
