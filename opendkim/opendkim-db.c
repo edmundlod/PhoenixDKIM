@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <regex.h>
 #include <netdb.h>
+#include <time.h>
 
 /* libopendkim includes */
 #include <dkim.h>
@@ -184,6 +185,7 @@ struct dkimf_db_http
 	_Bool			http_vault;	/* vault: wrapper active */
 	char *			http_uri;	/* URI template, verbatim */
 	char *			http_vfield;	/* vault: JSON field to extract */
+	char *			http_vselfield;	/* vault: selectors array field */
 	char *			http_vval;	/* vault: extracted-value scratch */
 	long			http_timeout;
 	CURL *			http_curl;
@@ -236,6 +238,7 @@ static long		s_http_timeout = 5;
 static const char *	s_http_cainfo = NULL;
 static const char *	s_vault_token = NULL;
 static const char *	s_vault_field = NULL;
+static const char *	s_vault_selfield = NULL;
 #endif /* HAVE_LIBCURL */
 
 
@@ -304,6 +307,27 @@ dkimf_db_set_vault_config(const char *token, const char *field)
 {
 	s_vault_token = token;
 	s_vault_field = field;
+}
+
+
+/*
+**  DKIMF_DB_SET_VAULT_SELECTORS_FIELD -- record the vault: selectors array name
+**
+**  Parameters:
+**  	field -- JSON array field name, or NULL for "selectors"
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	The string is owned by the configuration and must outlive every
+**  	dkimf_db_open() of a vault backend.  Call before opening any.
+*/
+
+void
+dkimf_db_set_vault_selectors_field(const char *field)
+{
+	s_vault_selfield = field;
 }
 
 
@@ -535,48 +559,49 @@ dkimf_db_http_buildurl(CURL *curl, const char *tmpl, const char *key,
 }
 
 
+/* maximum object/array nesting the bounded JSON scanner will descend */
+#define DKIMF_DB_JSON_MAXDEPTH	32
+
 /*
-**  DKIMF_DB_VAULT_EXTRACT -- pull a string field from a Vault KV JSON envelope
+**  DKIMF_DB_JSON_WS -- advance past JSON insignificant whitespace
+*/
+
+static const char *
+dkimf_db_json_ws(const char *p)
+{
+	while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')
+		p++;
+
+	return p;
+}
+
+
+/*
+**  DKIMF_DB_JSON_STRING -- copy an unescaped JSON string value
 **
 **  Parameters:
-**  	json -- NUL-terminated response body
-**  	field -- JSON field name to extract
+**  	p -- pointer at the opening quote of the string
 **  	out -- output buffer
 **  	outlen -- size of output buffer
+**  	endp -- if non-NULL, set past the closing quote on success
 **
 **  Return value:
-**  	0 on success, -1 if the field was not found or did not fit.
+**  	0 on success, -1 on malformed input or output overflow.
 **
 **  Notes:
-**  	No JSON library.  Vault emits compact JSON: KVv2 is
-**  	{"data":{"data":{...}}}, KVv1 is {"data":{...}}.  We anchor on the inner
-**  	data object, find "<field>":", and copy the string value, unescaping the
-**  	JSON escapes a PEM key carries (\n \r \t \" \\ \/ and \b \f); a \uXXXX is
-**  	skipped since no PEM/selector value contains one.
+**  	Unescapes the JSON escapes a PEM key carries (\n \r \t \" \\ \/ and
+**  	\b \f); a \uXXXX is skipped since no PEM/selector value contains one.
 */
 
 static int
-dkimf_db_vault_extract(const char *json, const char *field,
-                       char *out, size_t outlen)
+dkimf_db_json_string(const char *p, char *out, size_t outlen,
+                     const char **endp)
 {
 	size_t pos = 0;
-	const char *inner;
-	const char *p;
-	char needle[BUFRSZ + 1];
 
-	if (snprintf(needle, sizeof needle, "\"%s\":\"", field) >= (int) sizeof needle)
+	if (*p != '"')
 		return -1;
-
-	inner = strstr(json, "\"data\":{\"data\":{");
-	if (inner == NULL)
-		inner = strstr(json, "\"data\":{");
-	if (inner == NULL)
-		return -1;
-
-	p = strstr(inner, needle);
-	if (p == NULL)
-		return -1;
-	p += strlen(needle);
+	p++;
 
 	while (*p != '\0' && *p != '"')
 	{
@@ -620,8 +645,425 @@ dkimf_db_vault_extract(const char *json, const char *field,
 
 	if (*p != '"')
 		return -1;
+	if (outlen < 1)
+		return -1;
 
 	out[pos] = '\0';
+	if (endp != NULL)
+		*endp = p + 1;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_JSON_INT -- parse a JSON integer value
+**
+**  Parameters:
+**  	p -- pointer at the first character of the number
+**  	val -- parsed value (output)
+**  	endp -- if non-NULL, set past the number on success
+**
+**  Return value:
+**  	0 on success, -1 on overflow, missing digits or a fractional/exponent
+**  	form (epoch-second bounds are integers).
+*/
+
+static int
+dkimf_db_json_int(const char *p, long long *val, const char **endp)
+{
+	char *end;
+	long long v;
+
+	if (*p != '-' && !isdigit((unsigned char) *p))
+		return -1;
+
+	errno = 0;
+	v = strtoll(p, &end, 10);
+	if (end == p || errno == ERANGE)
+		return -1;
+	if (*end == '.' || *end == 'e' || *end == 'E')
+		return -1;
+
+	*val = v;
+	if (endp != NULL)
+		*endp = end;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_JSON_SKIP -- advance past one complete JSON value
+**
+**  Parameters:
+**  	p -- pointer at (optional whitespace then) the value
+**  	depth -- current nesting depth
+**
+**  Return value:
+**  	Pointer just past the value, or NULL on malformed input or if the
+**  	nesting limit is exceeded.
+**
+**  Notes:
+**  	Used to skip unrecognised fields and to bound a selector object so a
+**  	single malformed entry can be discarded without losing resync.
+*/
+
+static const char *
+dkimf_db_json_skip(const char *p, int depth)
+{
+	if (depth > DKIMF_DB_JSON_MAXDEPTH)
+		return NULL;
+
+	p = dkimf_db_json_ws(p);
+
+	switch (*p)
+	{
+	  case '"':
+		p++;
+		while (*p != '\0' && *p != '"')
+		{
+			if (*p == '\\')
+			{
+				if (p[1] == '\0')
+					return NULL;
+				p += 2;
+			}
+			else
+			{
+				p++;
+			}
+		}
+		if (*p != '"')
+			return NULL;
+		return p + 1;
+
+	  case '{':
+	  case '[':
+	  {
+		char close = (*p == '{') ? '}' : ']';
+		_Bool object = (*p == '{');
+
+		p++;
+		for (;;)
+		{
+			p = dkimf_db_json_ws(p);
+			if (*p == '\0')
+				return NULL;
+			if (*p == close)
+				return p + 1;
+			if (*p == ',')
+			{
+				p++;
+				continue;
+			}
+
+			if (object)
+			{
+				if (*p != '"')
+					return NULL;
+				p = dkimf_db_json_skip(p, depth + 1);
+				if (p == NULL)
+					return NULL;
+				p = dkimf_db_json_ws(p);
+				if (*p != ':')
+					return NULL;
+				p++;
+			}
+
+			p = dkimf_db_json_skip(p, depth + 1);
+			if (p == NULL)
+				return NULL;
+		}
+	  }
+
+	  case 't':
+		return (strncmp(p, "true", 4) == 0) ? p + 4 : NULL;
+	  case 'f':
+		return (strncmp(p, "false", 5) == 0) ? p + 5 : NULL;
+	  case 'n':
+		return (strncmp(p, "null", 4) == 0) ? p + 4 : NULL;
+
+	  default:
+		if (*p == '-' || isdigit((unsigned char) *p))
+		{
+			p++;
+			while (*p == '.' || *p == '-' || *p == '+' ||
+			       *p == 'e' || *p == 'E' ||
+			       isdigit((unsigned char) *p))
+				p++;
+			return p;
+		}
+		return NULL;
+	}
+}
+
+
+/*
+**  DKIMF_DB_VAULT_INNER -- locate the inner data object of a Vault KV envelope
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**
+**  Return value:
+**  	Pointer into json at the inner object, or NULL if no envelope is found.
+**
+**  Notes:
+**  	KVv2 is {"data":{"data":{...}}}, KVv1 is {"data":{...}}.
+*/
+
+static const char *
+dkimf_db_vault_inner(const char *json)
+{
+	const char *inner;
+
+	inner = strstr(json, "\"data\":{\"data\":{");
+	if (inner == NULL)
+		inner = strstr(json, "\"data\":{");
+
+	return inner;
+}
+
+
+/*
+**  DKIMF_DB_VAULT_EXTRACT -- pull a string field from a Vault KV JSON envelope
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**  	field -- JSON field name to extract
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**
+**  Return value:
+**  	0 on success, -1 if the field was not found or did not fit.
+*/
+
+static int
+dkimf_db_vault_extract(const char *json, const char *field,
+                       char *out, size_t outlen)
+{
+	const char *inner;
+	const char *p;
+	char needle[BUFRSZ + 1];
+
+	if (snprintf(needle, sizeof needle, "\"%s\":\"", field) >= (int) sizeof needle)
+		return -1;
+
+	inner = dkimf_db_vault_inner(json);
+	if (inner == NULL)
+		return -1;
+
+	p = strstr(inner, needle);
+	if (p == NULL)
+		return -1;
+	/* back up to the opening quote that dkimf_db_json_string expects */
+	p += strlen(needle) - 1;
+
+	return dkimf_db_json_string(p, out, outlen, NULL);
+}
+
+
+/*
+**  DKIMF_DB_VAULT_PARSE_ENTRY -- parse and window-filter one selector object
+**
+**  Parameters:
+**  	p -- pointer at the '{' of a (caller-bounded, balanced) selector object
+**  	now -- reference time for the validity window (injectable test seam)
+**  	out -- selector to populate
+**
+**  Return value:
+**  	0 -- entry is well-formed and valid "now" (kept)
+**  	1 -- entry is malformed, missing a required field, or out of window
+**  	     (skip it; never fatal -- a bad selector must not wedge a domain)
+**
+**  Notes:
+**  	Window (rspamd is_selector_valid, verbatim): keep iff
+**  	(no valid_start OR now >= valid_start) AND
+**  	(no valid_end OR now < valid_end).  valid_end is exclusive.
+*/
+
+static int
+dkimf_db_vault_parse_entry(const char *p, time_t now,
+                           struct dkimf_vault_selector *out)
+{
+	_Bool have_start = FALSE;
+	_Bool have_end = FALSE;
+	long long vstart = 0;
+	long long vend = 0;
+
+	memset(out, '\0', sizeof *out);
+
+	p = dkimf_db_json_ws(p + 1);
+
+	while (*p != '\0' && *p != '}')
+	{
+		char kbuf[64];
+		const char *e;
+
+		if (*p != '"')
+			return 1;
+		if (dkimf_db_json_string(p, kbuf, sizeof kbuf, &e) != 0)
+			return 1;
+
+		p = dkimf_db_json_ws(e);
+		if (*p != ':')
+			return 1;
+		p = dkimf_db_json_ws(p + 1);
+
+		if (strcmp(kbuf, "selector") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_selector,
+			                         sizeof out->vs_selector, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "key") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_key,
+			                         sizeof out->vs_key, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "domain") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_domain,
+			                         sizeof out->vs_domain, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "alg") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_alg,
+			                         sizeof out->vs_alg, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "valid_start") == 0)
+		{
+			if (dkimf_db_json_int(p, &vstart, &e) != 0)
+				return 1;
+			have_start = TRUE;
+			p = e;
+		}
+		else if (strcmp(kbuf, "valid_end") == 0)
+		{
+			if (dkimf_db_json_int(p, &vend, &e) != 0)
+				return 1;
+			have_end = TRUE;
+			p = e;
+		}
+		else
+		{
+			p = dkimf_db_json_skip(p, 0);
+			if (p == NULL)
+				return 1;
+		}
+
+		p = dkimf_db_json_ws(p);
+		if (*p == ',')
+			p = dkimf_db_json_ws(p + 1);
+		else if (*p != '}')
+			return 1;
+	}
+
+	if (out->vs_key[0] == '\0' || out->vs_selector[0] == '\0')
+		return 1;
+
+	if (have_start && (long long) now < vstart)
+		return 1;
+	if (have_end && (long long) now >= vend)
+		return 1;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_VAULT_PARSE_SELECTORS -- parse a Vault secret's selectors array
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**  	field -- selectors array field name
+**  	now -- reference time for the validity window
+**  	out -- caller-provided array to populate with kept selectors
+**  	maxout -- capacity of out
+**  	nout -- number of kept selectors written (output)
+**
+**  Return value:
+**  	0 -- a selectors array was present; *nout entries were kept (>= 0)
+**  	1 -- no selectors array (caller should use the single-key path)
+**  	-1 -- the envelope or array structure is malformed
+**
+**  Notes:
+**  	Malformed or out-of-window entries are skipped and logged, never fatal.
+*/
+
+static int
+dkimf_db_vault_parse_selectors(const char *json, const char *field,
+                               time_t now,
+                               struct dkimf_vault_selector *out,
+                               unsigned int maxout, unsigned int *nout)
+{
+	const char *inner;
+	const char *p;
+	char needle[BUFRSZ + 1];
+	unsigned int n = 0;
+
+	*nout = 0;
+
+	inner = dkimf_db_vault_inner(json);
+	if (inner == NULL)
+		return 1;
+
+	if (snprintf(needle, sizeof needle, "\"%s\":", field) >= (int) sizeof needle)
+		return -1;
+
+	p = strstr(inner, needle);
+	if (p == NULL)
+		return 1;
+	p = dkimf_db_json_ws(p + strlen(needle));
+	if (*p != '[')
+		return 1;
+	p++;
+
+	for (;;)
+	{
+		const char *elemend;
+
+		p = dkimf_db_json_ws(p);
+		if (*p == ']')
+			break;
+		if (*p == ',')
+		{
+			p++;
+			continue;
+		}
+		if (*p != '{')
+			return -1;
+
+		elemend = dkimf_db_json_skip(p, 0);
+		if (elemend == NULL)
+			return -1;
+
+		if (n < maxout)
+		{
+			if (dkimf_db_vault_parse_entry(p, now, &out[n]) == 0)
+				n++;
+			else
+				syslog(LOG_WARNING,
+				       "vault: skipping invalid or out-of-window selector");
+		}
+		else
+		{
+			syslog(LOG_WARNING,
+			       "vault: more than %u selectors; ignoring extras",
+			       maxout);
+		}
+
+		p = elemend;
+	}
+
+	*nout = n;
 
 	return 0;
 }
@@ -1862,13 +2304,18 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 		{
 			const char *f = (s_vault_field != NULL) ? s_vault_field
 			                                        : "private_key";
+			const char *sf = (s_vault_selfield != NULL) ? s_vault_selfield
+			                                            : "selectors";
 
 			h->http_vault = TRUE;
 			h->http_vfield = strdup(f);
+			h->http_vselfield = strdup(sf);
 			h->http_vval = (char *) malloc(DKIMF_DB_HTTP_BODYMAX);
-			if (h->http_vfield == NULL || h->http_vval == NULL)
+			if (h->http_vfield == NULL || h->http_vselfield == NULL ||
+			    h->http_vval == NULL)
 			{
 				free(h->http_vfield);
+				free(h->http_vselfield);
 				free(h->http_vval);
 				curl_slist_free_all(h->http_headers);
 				curl_easy_cleanup(curl);
@@ -2491,6 +2938,143 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 	/* NOTREACHED */
 }
 
+#ifdef HAVE_LIBCURL
+/*
+**  DKIMF_DB_VAULT_SELECTORS -- enumerate the currently-valid selectors of a
+**                              vault: secret
+**
+**  Parameters:
+**  	db -- vault: DB handle
+**  	buf -- lookup key
+**  	buflen -- length of the key, or 0 if NUL-terminated
+**  	now -- reference time for the validity window (injectable test seam)
+**  	out -- receives a malloc'd array of kept selectors (caller frees)
+**  	nout -- number of kept selectors (output)
+**
+**  Return value:
+**  	0 -- a selectors array was present; *out holds *nout entries (>= 0)
+**  	1 -- the secret carries no selectors array (use the single-key path),
+**  	     or the key was not found (404)
+**  	-1 -- transport, HTTP, or parse error
+**
+**  Notes:
+**  	The emit-all-valid path: one secret -> N signatures.  The transport is
+**  	the Phase-2 vault GET, serialised on db->db_lock like dkimf_db_get().
+*/
+
+int
+dkimf_db_vault_selectors(DKIMF_DB db, const void *buf, size_t buflen,
+                         time_t now, struct dkimf_vault_selector **out,
+                         unsigned int *nout)
+{
+	long code = 0;
+	size_t keylen;
+	int pr;
+	CURLcode rc;
+	struct dkimf_db_http *h;
+	struct dkimf_db_httpbuf b;
+	struct dkimf_vault_selector *arr;
+	char keybuf[BUFRSZ + 1];
+	char url[4096];
+
+	assert(db != NULL);
+	assert(out != NULL);
+	assert(nout != NULL);
+
+	*out = NULL;
+	*nout = 0;
+
+	if (db->db_type != DKIMF_DB_TYPE_VAULT)
+		return 1;
+
+	h = (struct dkimf_db_http *) db->db_data;
+
+	keylen = (buflen == 0) ? strlen((const char *) buf) : buflen;
+	if (keylen >= sizeof keybuf)
+	{
+		db->db_status = ENOMEM;
+		return -1;
+	}
+	memcpy(keybuf, buf, keylen);
+	keybuf[keylen] = '\0';
+
+	b.buf = h->http_body;
+	b.len = 0;
+	b.cap = sizeof h->http_body;
+
+	assert(db->db_lock != NULL);
+	(void) pthread_mutex_lock(db->db_lock);
+
+	if (dkimf_db_http_buildurl(h->http_curl, h->http_uri, keybuf,
+	                           url, sizeof url) != 0)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EINVAL;
+		syslog(LOG_WARNING, "%s: rejected lookup key", h->http_uri);
+		return -1;
+	}
+
+	(void) curl_easy_setopt(h->http_curl, CURLOPT_URL, url);
+	(void) curl_easy_setopt(h->http_curl, CURLOPT_WRITEDATA, &b);
+
+	rc = curl_easy_perform(h->http_curl);
+	if (rc != CURLE_OK)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EIO;
+		syslog(LOG_WARNING, "%s: %s", h->http_uri,
+		       curl_easy_strerror(rc));
+		return -1;
+	}
+
+	(void) curl_easy_getinfo(h->http_curl, CURLINFO_RESPONSE_CODE, &code);
+
+	if (code == 404)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		return 1;
+	}
+	if (code < 200 || code >= 300)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EIO;
+		syslog(LOG_WARNING, "%s: HTTP status %ld", h->http_uri, code);
+		return -1;
+	}
+
+	b.buf[b.len] = '\0';
+
+	arr = (struct dkimf_vault_selector *)
+	      calloc(DKIMF_DB_VAULT_MAXSELECTORS, sizeof *arr);
+	if (arr == NULL)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = ENOMEM;
+		return -1;
+	}
+
+	pr = dkimf_db_vault_parse_selectors(b.buf,
+	                                    (h->http_vselfield != NULL)
+	                                        ? h->http_vselfield
+	                                        : "selectors",
+	                                    now, arr,
+	                                    DKIMF_DB_VAULT_MAXSELECTORS, nout);
+
+	(void) pthread_mutex_unlock(db->db_lock);
+
+	if (pr != 0)
+	{
+		free(arr);
+		*nout = 0;
+		return pr;
+	}
+
+	*out = arr;
+
+	return 0;
+}
+#endif /* HAVE_LIBCURL */
+
 /*
 **  DKIMF_DB_CLOSE -- close a DB handle
 **
@@ -2612,6 +3196,7 @@ dkimf_db_close(DKIMF_DB db)
 			curl_slist_free_all(h->http_headers);
 		free(h->http_uri);
 		free(h->http_vfield);
+		free(h->http_vselfield);
 		free(h->http_vval);
 		free(h);
 		free(db);

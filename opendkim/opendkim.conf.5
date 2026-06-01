@@ -1302,6 +1302,37 @@ data set backend.  The default is
 Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
 
 .TP
+.I VaultSelectorsField (string)
+The name of the JSON array field that, when present in a HashiCorp Vault
+secret read through the
+.I vault:
+data set backend, holds one or more signing selectors.  The default is
+.I selectors.
+Each array entry is an object with the required keys
+.I selector
+and
+.I key
+(a PEM private key) and the optional keys
+.I domain,
+.I alg,
+.I valid_start,
+and
+.I valid_end
+(the last two being Unix timestamps).  When the array is present, the filter
+emits one DKIM signature for every selector whose validity window contains the
+current time \(em
+.I valid_start
+inclusive,
+.I valid_end
+exclusive, an absent bound meaning unbounded \(em so an old and a new selector
+overlap during a key rotation, and an RSA and an Ed25519 selector each produce a
+signature in their native algorithm.  A malformed or out-of-window entry is
+skipped, never fatal.  A secret carrying a single
+.I VaultField
+value and no selectors array behaves exactly as before (one signature).
+Only meaningful when the filter is built with libcurl (-DWITH_CURL=ON).
+
+.TP
 .I VaultToken (string)
 The token sent as an "X-Vault-Token" header on every request made by the
 .I vault:

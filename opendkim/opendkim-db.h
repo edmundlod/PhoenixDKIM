@@ -12,6 +12,7 @@
 /* system includes */
 #include <sys/types.h>
 #include <pthread.h>
+#include <time.h>
 
 /* macros */
 #define	DKIMF_DB_FLAG_READONLY	0x0001
@@ -35,10 +36,29 @@
 #define DKIMF_DB_TYPE_HTTP	13
 #define DKIMF_DB_TYPE_VAULT	14
 
+/* vault: selectors array (emit-all-valid) bounds */
+#define DKIMF_DB_VAULT_MAXSELECTORS	16
+#define DKIMF_DB_VAULT_SELLEN		256
+#define DKIMF_DB_VAULT_DOMLEN		256
+#define DKIMF_DB_VAULT_ALGLEN		64
+#define DKIMF_DB_VAULT_KEYLEN		8192
+
 
 /* types */
 struct dkimf_db;
 typedef struct dkimf_db * DKIMF_DB;
+
+/*
+**  One currently-valid selector pulled from a vault: secret's "selectors"
+**  array.  vs_domain/vs_alg are empty strings when the entry omits them.
+*/
+struct dkimf_vault_selector
+{
+	char	vs_selector[DKIMF_DB_VAULT_SELLEN];
+	char	vs_domain[DKIMF_DB_VAULT_DOMLEN];
+	char	vs_alg[DKIMF_DB_VAULT_ALGLEN];
+	char	vs_key[DKIMF_DB_VAULT_KEYLEN];
+};
 
 struct dkimf_db_data
 {
@@ -72,7 +92,11 @@ extern int dkimf_db_walk(DKIMF_DB, _Bool, void *, size_t *,
 extern void dkimf_db_set_http_config(const char *token, const char *auth_header,
                                      long timeout_secs);
 extern void dkimf_db_set_vault_config(const char *token, const char *field);
+extern void dkimf_db_set_vault_selectors_field(const char *field);
 extern void dkimf_db_set_http_cabundle(const char *path);
+extern int dkimf_db_vault_selectors(DKIMF_DB, const void *, size_t, time_t,
+                                    struct dkimf_vault_selector **,
+                                    unsigned int *);
 #endif /* HAVE_LIBCURL */
 
 #endif /* _OPENDKIM_DB_H_ */

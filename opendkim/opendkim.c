@@ -252,6 +252,7 @@ struct dkimf_config
 	long		conf_httptimeout;	/* HTTP backend timeout (sec) */
 	char *		conf_vaulttoken;	/* vault: token (else $VAULT_TOKEN) */
 	char *		conf_vaultfield;	/* vault: JSON field name */
+	char *		conf_vaultselfield;	/* vault: selectors array field */
 #endif /* HAVE_LIBCURL */
 	char *		conf_authservid;	/* authserv-id */
 	char *		conf_keyfile;		/* key file for single key */
@@ -4419,6 +4420,188 @@ dkimf_keytype(const char *keydata, size_t keylen)
 }
 
 /*
+**  DKIMF_SIGNREQ_APPEND -- allocate a signreq and append it to the message
+**
+**  Parameters:
+**  	dfc -- message context
+**  	domain -- signing domain (resolved; NULL for the default-key case)
+**  	selector -- selector (NULL for the default-key case)
+**  	keydata -- key material (NULL for the default-key case)
+**  	keydatalen -- length of key material
+**  	signer -- signer identity to use, or NULL
+**  	signlen -- signature length
+**
+**  Return value:
+**  	0 on success, -1 on allocation failure (nothing is appended).
+**
+**  Notes:
+**  	domain/selector/keydata are either all set (KeyTable / vault selector)
+**  	or all NULL (the configured default key, resolved at signing time).
+*/
+
+static int
+dkimf_signreq_append(struct msgctx *dfc, const char *domain,
+                     const char *selector, const void *keydata,
+                     size_t keydatalen, const char *signer, ssize_t signlen)
+{
+	struct signreq *new;
+
+	new = malloc(sizeof *new);
+	if (new == NULL)
+		return -1;
+
+	new->srq_next = NULL;
+	new->srq_dkim = NULL;
+	new->srq_domain = NULL;
+	new->srq_selector = NULL;
+	new->srq_keydata = NULL;
+	new->srq_keydatalen = 0;
+	new->srq_signlen = signlen;
+	if (signer != NULL && signer[0] != '\0')
+		new->srq_signer = (u_char *) strdup(signer);
+	else
+		new->srq_signer = NULL;
+
+	if (keydata != NULL)
+	{
+		new->srq_domain = (u_char *) strdup(domain);
+		new->srq_selector = (u_char *) strdup(selector);
+		new->srq_keydata = malloc(keydatalen + 1);
+		if (new->srq_domain == NULL || new->srq_selector == NULL ||
+		    new->srq_keydata == NULL)
+		{
+			TRYFREE(new->srq_signer);
+			TRYFREE(new->srq_domain);
+			TRYFREE(new->srq_selector);
+			TRYFREE(new->srq_keydata);
+			free(new);
+			return -1;
+		}
+		new->srq_keydatalen = keydatalen + 1;
+		memset(new->srq_keydata, '\0', keydatalen + 1);
+		memcpy(new->srq_keydata, keydata, keydatalen);
+	}
+
+	if (dfc->mctx_srtail != NULL)
+		dfc->mctx_srtail->srq_next = new;
+
+	if (dfc->mctx_srhead == NULL)
+		dfc->mctx_srhead = new;
+
+	dfc->mctx_srtail = new;
+
+	return 0;
+}
+
+#ifdef HAVE_LIBCURL
+/*
+**  DKIMF_ADD_SIGNREQUEST_VAULT -- fan a vault: selectors secret out into one
+**                                 signing request per currently-valid selector
+**
+**  Parameters:
+**  	conf -- configuration handle
+**  	dfc -- message context
+**  	keytable -- vault: KeyTable handle
+**  	keyname -- KeyTable key (vault lookup key)
+**  	signer -- signer identity to use, or NULL
+**  	signlen -- signature length
+**
+**  Return value:
+**  	2 -- a selectors array was present but no selector is valid "now"
+**  	     (a miss; do not fall back to a single private_key)
+**  	1 -- no selectors array in the secret (caller uses the single-key path)
+**  	0 -- selectors fanned out; one request per kept selector
+**  	-1 -- lookup/transport error, or a request could not be appended
+**
+**  Notes:
+**  	Emit-all-valid: one secret with N selectors valid "now" raises N sign
+**  	requests (rotation overlap + algorithm diversity).  libopendkim derives
+**  	each signature's algorithm from its key material, so RSA and Ed25519
+**  	selectors yield RSA and Ed25519 signatures with no per-request alg.  A
+**  	selector with an unparseable key is skipped, not fatal.
+*/
+
+static int
+dkimf_add_signrequest_vault(struct dkimf_config *conf, struct msgctx *dfc,
+                            DKIMF_DB keytable, const char *keyname,
+                            const char *signer, ssize_t signlen)
+{
+	int vr;
+	unsigned int i;
+	unsigned int nsels = 0;
+	unsigned int added = 0;
+	struct dkimf_vault_selector *sels = NULL;
+
+	(void) conf;
+
+	vr = dkimf_db_vault_selectors(keytable, keyname, strlen(keyname),
+	                              time(NULL), &sels, &nsels);
+	if (vr != 0)
+		return vr;		/* 1 = no array (fall back); -1 = error */
+
+	for (i = 0; i < nsels; i++)
+	{
+		const char *sdom;
+
+		/* skip a selector whose key will not parse, rather than wedge
+		** the whole message at signing time */
+		if (dkimf_keytype(sels[i].vs_key,
+		                  strlen(sels[i].vs_key)) < 0)
+		{
+			if (dolog)
+			{
+				syslog(LOG_WARNING,
+				       "key '%s' selector '%s': unparseable key, skipping",
+				       keyname, sels[i].vs_selector);
+			}
+			continue;
+		}
+
+		if (sels[i].vs_domain[0] != '\0')
+			sdom = sels[i].vs_domain;
+		else if (dfc->mctx_domain[0] != '\0')
+			sdom = (const char *) dfc->mctx_domain;
+		else
+		{
+			if (dolog)
+			{
+				syslog(LOG_WARNING,
+				       "key '%s' selector '%s': no domain available, skipping",
+				       keyname, sels[i].vs_selector);
+			}
+			continue;
+		}
+
+		if (dkimf_signreq_append(dfc, sdom, sels[i].vs_selector,
+		                         sels[i].vs_key,
+		                         strlen(sels[i].vs_key),
+		                         signer, signlen) != 0)
+		{
+			free(sels);
+			return -1;
+		}
+
+		added++;
+	}
+
+	free(sels);
+
+	if (added == 0)
+	{
+		if (dolog)
+		{
+			syslog(LOG_INFO,
+			       "key '%s': no currently-valid vault selectors",
+			       keyname);
+		}
+		return 2;
+	}
+
+	return 0;
+}
+#endif /* HAVE_LIBCURL */
+
+/*
 **  DKIMF_ADD_SIGNREQUEST -- add a signing request
 **
 **  Parameters:
@@ -4443,7 +4626,6 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 {
 	_Bool found = FALSE;
 	size_t keydatasz = 0;
-	struct signreq *new;
 	struct dkimf_db_data dbd[4];
 	char keydata[MAXBUFRSZ + 1];
 	char domain[DKIM_MAXHOSTNAMELEN + 1];
@@ -4471,6 +4653,31 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		_Bool insecure;
 
 		assert(keyname != NULL);
+
+#ifdef HAVE_LIBCURL
+		/*
+		**  A vault: secret may carry a "selectors" array: emit one
+		**  signing request per currently-valid selector.  A single
+		**  private_key secret returns 1 here and falls through to the
+		**  single-tuple path below.
+		*/
+
+		if (dkimf_db_type(keytable) == DKIMF_DB_TYPE_VAULT)
+		{
+			int vr;
+
+			vr = dkimf_add_signrequest_vault(conf, dfc, keytable,
+			                                 keyname, signer,
+			                                 signlen);
+			if (vr == 0)
+				return 0;	/* fanned out >= 1 request */
+			if (vr == 2)
+				return 1;	/* array present, none valid now */
+			if (vr == -1)
+				return -1;
+			/* vr == 1: no selectors array; use the single-key path */
+		}
+#endif /* HAVE_LIBCURL */
 
 		memset(domain, '\0', sizeof domain);
 		memset(selector, '\0', sizeof selector);
@@ -4648,53 +4855,21 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		}
 	}
 
-	new = malloc(sizeof *new);
-	if (new == NULL)
-		return -1;
-
-	new->srq_next = NULL;
-	new->srq_dkim = NULL;
-	new->srq_domain = NULL;
-	new->srq_selector = NULL;
-	new->srq_keydata = NULL;
-	new->srq_keydatalen = 0;
-	new->srq_signlen = signlen;
-	if (signer != NULL && signer[0] != '\0')
-		new->srq_signer = (u_char *) strdup(signer);
-	else
-		new->srq_signer = NULL;
-
 	if (keytable != NULL)
 	{
-		if (domain[0] == '%' && domain[1] == '\0')
-			new->srq_domain = (u_char *) strdup((char *) dfc->mctx_domain);
-		else
-			new->srq_domain = (u_char *) strdup((char *) domain);
+		const char *fdomain;
 
-		new->srq_selector = (u_char *) strdup((char *) selector);
-		new->srq_keydata = (void *) malloc(keydatasz + 1);
-		if (new->srq_keydata == NULL)
-		{
-			TRYFREE(new->srq_signer);
-			TRYFREE(new->srq_domain);
-			TRYFREE(new->srq_selector);
-			free(new);
-			return -1;
-		}
-		new->srq_keydatalen = keydatasz + 1;
-		memset(new->srq_keydata, '\0', keydatasz + 1);
-		memcpy(new->srq_keydata, dbd[2].dbdata_buffer, keydatasz);
+		if (domain[0] == '%' && domain[1] == '\0')
+			fdomain = (const char *) dfc->mctx_domain;
+		else
+			fdomain = domain;
+
+		return dkimf_signreq_append(dfc, fdomain, selector,
+		                            dbd[2].dbdata_buffer, keydatasz,
+		                            signer, signlen);
 	}
 
-	if (dfc->mctx_srtail != NULL)
-		dfc->mctx_srtail->srq_next = new;
-
-	if (dfc->mctx_srhead == NULL)
-		dfc->mctx_srhead = new;
-
-	dfc->mctx_srtail = new;
-
-	return 0;
+	return dkimf_signreq_append(dfc, NULL, NULL, NULL, 0, signer, signlen);
 }
 
 /*
@@ -5810,6 +5985,10 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  sizeof conf->conf_vaultfield);
 		dkimf_db_set_vault_config(conf->conf_vaulttoken,
 		                          conf->conf_vaultfield);
+		(void) config_get(data, "VaultSelectorsField",
+		                  &conf->conf_vaultselfield,
+		                  sizeof conf->conf_vaultselfield);
+		dkimf_db_set_vault_selectors_field(conf->conf_vaultselfield);
 #endif /* HAVE_LIBCURL */
 
 		str = NULL;
