@@ -541,3 +541,25 @@ if(WITH_REDIS)
         SKIP_RETURN_CODE 77
     )
 endif()
+
+# ── curl-backend parser unit test (offline) ──────────────────────────────────
+# t-db-parsers.c #includes opendkim-db.c to reach its static parsers, so that
+# translation unit is NOT listed as a source here (it would double-define).
+
+if(WITH_CURL)
+    add_executable(t-db-parsers
+        tests/t-db-parsers.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-parsers)
+    apply_hardening(t-db-parsers)
+    apply_sanitizers(t-db-parsers)
+    add_test(
+        NAME t-db-parsers
+        COMMAND t-db-parsers
+    )
+    set_tests_properties(t-db-parsers PROPERTIES
+        TIMEOUT 10
+    )
+endif()
