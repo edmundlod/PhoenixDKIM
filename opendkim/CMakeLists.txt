@@ -581,4 +581,25 @@ if(WITH_CURL)
         TIMEOUT 30
         SKIP_RETURN_CODE 77
     )
+
+    # pdkim.http_get() integration via the lua: backend (needs Lua too).
+    if(WITH_LUA)
+        add_executable(t-db-lua-http
+            tests/t-db-lua-http.c
+            opendkim-db.c
+            opendkim-lua.c
+            util.c
+        )
+        configure_daemon_target(t-db-lua-http)
+        apply_hardening(t-db-lua-http)
+        apply_sanitizers(t-db-lua-http)
+        add_test(
+            NAME t-db-lua-http
+            COMMAND t-db-lua-http
+        )
+        set_tests_properties(t-db-lua-http PROPERTIES
+            TIMEOUT 30
+            SKIP_RETURN_CODE 77
+        )
+    endif()
 endif()
