@@ -753,10 +753,18 @@ dkimf_lua_setup_hook(void *ctx, const char *script, size_t scriptlen,
 	**  The policy API is exposed as "pdkim" (primary); "odkim" is bound to
 	**  the same table as a deprecation-windowed alias so existing policy
 	**  scripts (and the frozen t-*.lua tests, Process Rule 1) keep working.
+	**  The sandbox may already have created "pdkim" (for pdkim.http_get when
+	**  built with libcurl), so extend that table rather than replacing it.
 	*/
 
 # if LUA_VERSION_NUM >= 502
-	luaL_newlib(l, dkimf_lua_lib_setup);
+	lua_getglobal(l, "pdkim");
+	if (!lua_istable(l, -1))
+	{
+		lua_pop(l, 1);
+		lua_newtable(l);
+	}
+	luaL_setfuncs(l, dkimf_lua_lib_setup, 0);
 	lua_pushvalue(l, -1);
 	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
@@ -921,7 +929,13 @@ dkimf_lua_screen_hook(void *ctx, const char *script, size_t scriptlen,
 
 	/* "pdkim" primary, "odkim" deprecation alias -- see setup hook. */
 # if LUA_VERSION_NUM >= 502
-	luaL_newlib(l, dkimf_lua_lib_screen);
+	lua_getglobal(l, "pdkim");
+	if (!lua_istable(l, -1))
+	{
+		lua_pop(l, 1);
+		lua_newtable(l);
+	}
+	luaL_setfuncs(l, dkimf_lua_lib_screen, 0);
 	lua_pushvalue(l, -1);
 	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
@@ -1076,7 +1090,13 @@ dkimf_lua_final_hook(void *ctx, const char *script, size_t scriptlen,
 
 	/* "pdkim" primary, "odkim" deprecation alias -- see setup hook. */
 # if LUA_VERSION_NUM >= 502
-	luaL_newlib(l, dkimf_lua_lib_final);
+	lua_getglobal(l, "pdkim");
+	if (!lua_istable(l, -1))
+	{
+		lua_pop(l, 1);
+		lua_newtable(l);
+	}
+	luaL_setfuncs(l, dkimf_lua_lib_final, 0);
 	lua_pushvalue(l, -1);
 	lua_setglobal(l, "pdkim");
 	lua_setglobal(l, "odkim");
