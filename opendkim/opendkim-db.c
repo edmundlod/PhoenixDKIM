@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <regex.h>
 #include <netdb.h>
+#include <time.h>
 
 /* libopendkim includes */
 #include <dkim.h>
@@ -79,6 +80,9 @@ typedef valkeyReply    redisReply;
 #  include <hiredis/hiredis.h>
 # endif /* USE_LIBVALKEY */
 #endif /* USE_REDIS */
+#ifdef HAVE_LIBCURL
+# include <curl/curl.h>
+#endif /* HAVE_LIBCURL */
 
 /* macros */
 #define	BUFRSZ			1024
@@ -172,6 +176,32 @@ struct dkimf_db_redis
 };
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+#define DKIMF_DB_HTTP_BODYMAX	65536
+
+/* one easy handle, serialised by db->db_lock; the table is shared by threads */
+struct dkimf_db_http
+{
+	_Bool			http_vault;	/* vault: wrapper active */
+	char *			http_uri;	/* URI template, verbatim */
+	char *			http_vfield;	/* vault: JSON field to extract */
+	char *			http_vselfield;	/* vault: selectors array field */
+	char *			http_vval;	/* vault: extracted-value scratch */
+	long			http_timeout;
+	CURL *			http_curl;
+	struct curl_slist *	http_headers;
+	char			http_err[256];
+	char			http_body[DKIMF_DB_HTTP_BODYMAX];
+};
+
+struct dkimf_db_httpbuf
+{
+	char *			buf;
+	size_t			len;
+	size_t			cap;
+};
+#endif /* HAVE_LIBCURL */
+
 
 /* globals */
 struct dkimf_db_table dbtypes[] =
@@ -188,12 +218,28 @@ struct dkimf_db_table dbtypes[] =
 #ifdef USE_REDIS
 	{ "redis",		DKIMF_DB_TYPE_REDIS },
 #endif /* USE_REDIS */
+#ifdef HAVE_LIBCURL
+	{ "http",		DKIMF_DB_TYPE_HTTP },
+	{ "https",		DKIMF_DB_TYPE_HTTP },
+	{ "vault",		DKIMF_DB_TYPE_VAULT },
+#endif /* HAVE_LIBCURL */
 	{ NULL,			DKIMF_DB_TYPE_UNKNOWN },
 };
 
 
 /* globals */
 static unsigned int gflags = 0;
+
+#ifdef HAVE_LIBCURL
+/* global HTTP backend parameters, owned by the active configuration */
+static const char *	s_http_token = NULL;
+static const char *	s_http_header = NULL;
+static long		s_http_timeout = 5;
+static const char *	s_http_cainfo = NULL;
+static const char *	s_vault_token = NULL;
+static const char *	s_vault_field = NULL;
+static const char *	s_vault_selfield = NULL;
+#endif /* HAVE_LIBCURL */
 
 
 /*
@@ -211,6 +257,817 @@ dkimf_db_flags(unsigned int flags)
 {
 	gflags = flags;
 }
+
+
+#ifdef HAVE_LIBCURL
+/*
+**  DKIMF_DB_SET_HTTP_CONFIG -- record global parameters for HTTP backends
+**
+**  Parameters:
+**  	token -- bearer token, or NULL
+**  	auth_header -- complete "Name: value" header line, or NULL
+**  	timeout_secs -- per-request timeout in seconds
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	The strings are owned by the configuration and must outlive every
+**  	dkimf_db_open() of an http/https backend.  Call before opening any.
+*/
+
+void
+dkimf_db_set_http_config(const char *token, const char *auth_header,
+                         long timeout_secs)
+{
+	s_http_token = token;
+	s_http_header = auth_header;
+	if (timeout_secs > 0)
+		s_http_timeout = timeout_secs;
+}
+
+
+/*
+**  DKIMF_DB_SET_VAULT_CONFIG -- record global parameters for the vault backend
+**
+**  Parameters:
+**  	token -- Vault token, or NULL to fall back to $VAULT_TOKEN
+**  	field -- JSON field to extract, or NULL for "private_key"
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	The strings are owned by the configuration and must outlive every
+**  	dkimf_db_open() of a vault backend.  Call before opening any.
+*/
+
+void
+dkimf_db_set_vault_config(const char *token, const char *field)
+{
+	s_vault_token = token;
+	s_vault_field = field;
+}
+
+
+/*
+**  DKIMF_DB_SET_VAULT_SELECTORS_FIELD -- record the vault: selectors array name
+**
+**  Parameters:
+**  	field -- JSON array field name, or NULL for "selectors"
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	The string is owned by the configuration and must outlive every
+**  	dkimf_db_open() of a vault backend.  Call before opening any.
+*/
+
+void
+dkimf_db_set_vault_selectors_field(const char *field)
+{
+	s_vault_selfield = field;
+}
+
+
+/*
+**  DKIMF_DB_SET_HTTP_CABUNDLE -- override the CA bundle for http/vault TLS
+**
+**  Parameters:
+**  	path -- PEM CA bundle file, or NULL to use libcurl's default store
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	A trust-injection seam, used by the TLS test to trust a throwaway test
+**  	CA (CURLOPT_CAINFO; peer/host verification stay on).  It is not wired to
+**  	any configuration option -- production runs never call it, so the
+**  	default system trust store is used unchanged.  The string must outlive
+**  	every open.
+*/
+
+void
+dkimf_db_set_http_cabundle(const char *path)
+{
+	s_http_cainfo = path;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_WRITE -- libcurl write callback accumulating the response
+**
+**  Parameters:
+**  	ptr -- delivered bytes
+**  	size, nmemb -- block geometry (bytes = size * nmemb)
+**  	userdata -- struct dkimf_db_httpbuf to append into
+**
+**  Return value:
+**  	Bytes consumed; a short return aborts the transfer (overflow guard).
+*/
+
+static size_t
+dkimf_db_http_write(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	size_t n;
+	struct dkimf_db_httpbuf *b = (struct dkimf_db_httpbuf *) userdata;
+
+	if (size != 0 && nmemb > SIZE_MAX / size)
+		return 0;
+	n = size * nmemb;
+
+	/* keep one byte for the NUL appended once the transfer completes */
+	if (b->cap < 1 || b->len > b->cap - 1 || n > b->cap - 1 - b->len)
+		return 0;
+
+	memcpy(b->buf + b->len, ptr, n);
+	b->len += n;
+
+	return n;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_SAFE -- True IFF a value is safe to substitute into a URI
+**
+**  Parameters:
+**  	s -- value
+**  	len -- length of value
+**
+**  Return value:
+**  	TRUE IFF every byte is in the allowlist [A-Za-z0-9._@-].
+*/
+
+static _Bool
+dkimf_db_http_safe(const char *s, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; i++)
+	{
+		char c = s[i];
+
+		if (!(isalnum((unsigned char) c) || c == '.' || c == '_' ||
+		      c == '-' || c == '@'))
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_APPEND -- allowlist-check, percent-encode and append a value
+**
+**  Parameters:
+**  	curl -- easy handle (used for curl_easy_escape())
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**  	pos -- current write offset (updated)
+**  	val -- value to append
+**  	vallen -- length of value
+**
+**  Return value:
+**  	0 on success, -1 on rejected value or insufficient space.
+*/
+
+static int
+dkimf_db_http_append(CURL *curl, char *out, size_t outlen, size_t *pos,
+                     const char *val, size_t vallen)
+{
+	size_t enclen;
+	char *enc;
+
+	if (!dkimf_db_http_safe(val, vallen))
+		return -1;
+
+	enc = curl_easy_escape(curl, val, (int) vallen);
+	if (enc == NULL)
+		return -1;
+
+	enclen = strlen(enc);
+	if (outlen < 1 || *pos > outlen - 1 || enclen > outlen - 1 - *pos)
+	{
+		curl_free(enc);
+		return -1;
+	}
+
+	memcpy(out + *pos, enc, enclen);
+	*pos += enclen;
+	curl_free(enc);
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_HTTP_BUILDURL -- expand a URI template for a lookup key
+**
+**  Parameters:
+**  	curl -- easy handle (used for percent-encoding)
+**  	tmpl -- URI template, possibly containing {key}, {d}, {s}
+**  	key -- NUL-terminated lookup key
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**
+**  Return value:
+**  	0 on success, -1 on rejected key or insufficient space.
+**
+**  Notes:
+**  	{d} is the part before the first ':' in the key, {s} the part after.
+**  	If no token appears, "?key=<encoded>" is appended.
+*/
+
+static int
+dkimf_db_http_buildurl(CURL *curl, const char *tmpl, const char *key,
+                       char *out, size_t outlen)
+{
+	_Bool subst = FALSE;
+	size_t pos = 0;
+	size_t domlen;
+	size_t sellen;
+	const char *colon;
+	const char *sel;
+	const char *p;
+
+	colon = strchr(key, ':');
+	if (colon != NULL)
+	{
+		domlen = colon - key;
+		sel = colon + 1;
+		sellen = strlen(sel);
+	}
+	else
+	{
+		domlen = strlen(key);
+		sel = key + domlen;
+		sellen = 0;
+	}
+
+	for (p = tmpl; *p != '\0'; )
+	{
+		if (strncmp(p, "{key}", 5) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         key, strlen(key)) != 0)
+				return -1;
+			subst = TRUE;
+			p += 5;
+		}
+		else if (strncmp(p, "{d}", 3) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         key, domlen) != 0)
+				return -1;
+			subst = TRUE;
+			p += 3;
+		}
+		else if (strncmp(p, "{s}", 3) == 0)
+		{
+			if (dkimf_db_http_append(curl, out, outlen, &pos,
+			                         sel, sellen) != 0)
+				return -1;
+			subst = TRUE;
+			p += 3;
+		}
+		else
+		{
+			if (outlen < 1 || pos > outlen - 2)
+				return -1;
+			out[pos++] = *p;
+			p++;
+		}
+	}
+
+	if (!subst)
+	{
+		static const char q[] = "?key=";
+
+		if (outlen < 1 || pos > outlen - 1 || sizeof q - 1 > outlen - 1 - pos)
+			return -1;
+		memcpy(out + pos, q, sizeof q - 1);
+		pos += sizeof q - 1;
+		if (dkimf_db_http_append(curl, out, outlen, &pos,
+		                         key, strlen(key)) != 0)
+			return -1;
+	}
+
+	out[pos] = '\0';
+
+	return 0;
+}
+
+
+/* maximum object/array nesting the bounded JSON scanner will descend */
+#define DKIMF_DB_JSON_MAXDEPTH	32
+
+/*
+**  DKIMF_DB_JSON_WS -- advance past JSON insignificant whitespace
+*/
+
+static const char *
+dkimf_db_json_ws(const char *p)
+{
+	while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')
+		p++;
+
+	return p;
+}
+
+
+/*
+**  DKIMF_DB_JSON_STRING -- copy an unescaped JSON string value
+**
+**  Parameters:
+**  	p -- pointer at the opening quote of the string
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**  	endp -- if non-NULL, set past the closing quote on success
+**
+**  Return value:
+**  	0 on success, -1 on malformed input or output overflow.
+**
+**  Notes:
+**  	Unescapes the JSON escapes a PEM key carries (\n \r \t \" \\ \/ and
+**  	\b \f); a \uXXXX is skipped since no PEM/selector value contains one.
+*/
+
+static int
+dkimf_db_json_string(const char *p, char *out, size_t outlen,
+                     const char **endp)
+{
+	size_t pos = 0;
+
+	if (*p != '"')
+		return -1;
+	p++;
+
+	while (*p != '\0' && *p != '"')
+	{
+		char c;
+
+		if (*p == '\\')
+		{
+			switch (p[1])
+			{
+			  case 'n':	c = '\n'; break;
+			  case 'r':	c = '\r'; break;
+			  case 't':	c = '\t'; break;
+			  case 'b':	c = '\b'; break;
+			  case 'f':	c = '\f'; break;
+			  case '/':	c = '/';  break;
+			  case '"':	c = '"';  break;
+			  case '\\':	c = '\\'; break;
+			  case 'u':
+				if (p[2] == '\0' || p[3] == '\0' ||
+				    p[4] == '\0' || p[5] == '\0')
+					return -1;
+				p += 6;
+				continue;
+			  case '\0':
+				return -1;
+			  default:
+				c = p[1];
+				break;
+			}
+			p += 2;
+		}
+		else
+		{
+			c = *p++;
+		}
+
+		if (outlen < 1 || pos > outlen - 2)
+			return -1;
+		out[pos++] = c;
+	}
+
+	if (*p != '"')
+		return -1;
+	if (outlen < 1)
+		return -1;
+
+	out[pos] = '\0';
+	if (endp != NULL)
+		*endp = p + 1;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_JSON_INT -- parse a JSON integer value
+**
+**  Parameters:
+**  	p -- pointer at the first character of the number
+**  	val -- parsed value (output)
+**  	endp -- if non-NULL, set past the number on success
+**
+**  Return value:
+**  	0 on success, -1 on overflow, missing digits or a fractional/exponent
+**  	form (epoch-second bounds are integers).
+*/
+
+static int
+dkimf_db_json_int(const char *p, long long *val, const char **endp)
+{
+	char *end;
+	long long v;
+
+	if (*p != '-' && !isdigit((unsigned char) *p))
+		return -1;
+
+	errno = 0;
+	v = strtoll(p, &end, 10);
+	if (end == p || errno == ERANGE)
+		return -1;
+	if (*end == '.' || *end == 'e' || *end == 'E')
+		return -1;
+
+	*val = v;
+	if (endp != NULL)
+		*endp = end;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_JSON_SKIP -- advance past one complete JSON value
+**
+**  Parameters:
+**  	p -- pointer at (optional whitespace then) the value
+**  	depth -- current nesting depth
+**
+**  Return value:
+**  	Pointer just past the value, or NULL on malformed input or if the
+**  	nesting limit is exceeded.
+**
+**  Notes:
+**  	Used to skip unrecognised fields and to bound a selector object so a
+**  	single malformed entry can be discarded without losing resync.
+*/
+
+static const char *
+dkimf_db_json_skip(const char *p, int depth)
+{
+	if (depth > DKIMF_DB_JSON_MAXDEPTH)
+		return NULL;
+
+	p = dkimf_db_json_ws(p);
+
+	switch (*p)
+	{
+	  case '"':
+		p++;
+		while (*p != '\0' && *p != '"')
+		{
+			if (*p == '\\')
+			{
+				if (p[1] == '\0')
+					return NULL;
+				p += 2;
+			}
+			else
+			{
+				p++;
+			}
+		}
+		if (*p != '"')
+			return NULL;
+		return p + 1;
+
+	  case '{':
+	  case '[':
+	  {
+		char close = (*p == '{') ? '}' : ']';
+		_Bool object = (*p == '{');
+
+		p++;
+		for (;;)
+		{
+			p = dkimf_db_json_ws(p);
+			if (*p == '\0')
+				return NULL;
+			if (*p == close)
+				return p + 1;
+			if (*p == ',')
+			{
+				p++;
+				continue;
+			}
+
+			if (object)
+			{
+				if (*p != '"')
+					return NULL;
+				p = dkimf_db_json_skip(p, depth + 1);
+				if (p == NULL)
+					return NULL;
+				p = dkimf_db_json_ws(p);
+				if (*p != ':')
+					return NULL;
+				p++;
+			}
+
+			p = dkimf_db_json_skip(p, depth + 1);
+			if (p == NULL)
+				return NULL;
+		}
+	  }
+
+	  case 't':
+		return (strncmp(p, "true", 4) == 0) ? p + 4 : NULL;
+	  case 'f':
+		return (strncmp(p, "false", 5) == 0) ? p + 5 : NULL;
+	  case 'n':
+		return (strncmp(p, "null", 4) == 0) ? p + 4 : NULL;
+
+	  default:
+		if (*p == '-' || isdigit((unsigned char) *p))
+		{
+			p++;
+			while (*p == '.' || *p == '-' || *p == '+' ||
+			       *p == 'e' || *p == 'E' ||
+			       isdigit((unsigned char) *p))
+				p++;
+			return p;
+		}
+		return NULL;
+	}
+}
+
+
+/*
+**  DKIMF_DB_VAULT_INNER -- locate the inner data object of a Vault KV envelope
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**
+**  Return value:
+**  	Pointer into json at the inner object, or NULL if no envelope is found.
+**
+**  Notes:
+**  	KVv2 is {"data":{"data":{...}}}, KVv1 is {"data":{...}}.
+*/
+
+static const char *
+dkimf_db_vault_inner(const char *json)
+{
+	const char *inner;
+
+	inner = strstr(json, "\"data\":{\"data\":{");
+	if (inner == NULL)
+		inner = strstr(json, "\"data\":{");
+
+	return inner;
+}
+
+
+/*
+**  DKIMF_DB_VAULT_EXTRACT -- pull a string field from a Vault KV JSON envelope
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**  	field -- JSON field name to extract
+**  	out -- output buffer
+**  	outlen -- size of output buffer
+**
+**  Return value:
+**  	0 on success, -1 if the field was not found or did not fit.
+*/
+
+static int
+dkimf_db_vault_extract(const char *json, const char *field,
+                       char *out, size_t outlen)
+{
+	const char *inner;
+	const char *p;
+	char needle[BUFRSZ + 1];
+
+	if (snprintf(needle, sizeof needle, "\"%s\":\"", field) >= (int) sizeof needle)
+		return -1;
+
+	inner = dkimf_db_vault_inner(json);
+	if (inner == NULL)
+		return -1;
+
+	p = strstr(inner, needle);
+	if (p == NULL)
+		return -1;
+	/* back up to the opening quote that dkimf_db_json_string expects */
+	p += strlen(needle) - 1;
+
+	return dkimf_db_json_string(p, out, outlen, NULL);
+}
+
+
+/*
+**  DKIMF_DB_VAULT_PARSE_ENTRY -- parse and window-filter one selector object
+**
+**  Parameters:
+**  	p -- pointer at the '{' of a (caller-bounded, balanced) selector object
+**  	now -- reference time for the validity window (injectable test seam)
+**  	out -- selector to populate
+**
+**  Return value:
+**  	0 -- entry is well-formed and valid "now" (kept)
+**  	1 -- entry is malformed, missing a required field, or out of window
+**  	     (skip it; never fatal -- a bad selector must not wedge a domain)
+**
+**  Notes:
+**  	Window (rspamd is_selector_valid, verbatim): keep iff
+**  	(no valid_start OR now >= valid_start) AND
+**  	(no valid_end OR now < valid_end).  valid_end is exclusive.
+*/
+
+static int
+dkimf_db_vault_parse_entry(const char *p, time_t now,
+                           struct dkimf_vault_selector *out)
+{
+	_Bool have_start = FALSE;
+	_Bool have_end = FALSE;
+	long long vstart = 0;
+	long long vend = 0;
+
+	memset(out, '\0', sizeof *out);
+
+	p = dkimf_db_json_ws(p + 1);
+
+	while (*p != '\0' && *p != '}')
+	{
+		char kbuf[64];
+		const char *e;
+
+		if (*p != '"')
+			return 1;
+		if (dkimf_db_json_string(p, kbuf, sizeof kbuf, &e) != 0)
+			return 1;
+
+		p = dkimf_db_json_ws(e);
+		if (*p != ':')
+			return 1;
+		p = dkimf_db_json_ws(p + 1);
+
+		if (strcmp(kbuf, "selector") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_selector,
+			                         sizeof out->vs_selector, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "key") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_key,
+			                         sizeof out->vs_key, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "domain") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_domain,
+			                         sizeof out->vs_domain, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "alg") == 0)
+		{
+			if (dkimf_db_json_string(p, out->vs_alg,
+			                         sizeof out->vs_alg, &e) != 0)
+				return 1;
+			p = e;
+		}
+		else if (strcmp(kbuf, "valid_start") == 0)
+		{
+			if (dkimf_db_json_int(p, &vstart, &e) != 0)
+				return 1;
+			have_start = TRUE;
+			p = e;
+		}
+		else if (strcmp(kbuf, "valid_end") == 0)
+		{
+			if (dkimf_db_json_int(p, &vend, &e) != 0)
+				return 1;
+			have_end = TRUE;
+			p = e;
+		}
+		else
+		{
+			p = dkimf_db_json_skip(p, 0);
+			if (p == NULL)
+				return 1;
+		}
+
+		p = dkimf_db_json_ws(p);
+		if (*p == ',')
+			p = dkimf_db_json_ws(p + 1);
+		else if (*p != '}')
+			return 1;
+	}
+
+	if (out->vs_key[0] == '\0' || out->vs_selector[0] == '\0')
+		return 1;
+
+	if (have_start && (long long) now < vstart)
+		return 1;
+	if (have_end && (long long) now >= vend)
+		return 1;
+
+	return 0;
+}
+
+
+/*
+**  DKIMF_DB_VAULT_PARSE_SELECTORS -- parse a Vault secret's selectors array
+**
+**  Parameters:
+**  	json -- NUL-terminated response body
+**  	field -- selectors array field name
+**  	now -- reference time for the validity window
+**  	out -- caller-provided array to populate with kept selectors
+**  	maxout -- capacity of out
+**  	nout -- number of kept selectors written (output)
+**
+**  Return value:
+**  	0 -- a selectors array was present; *nout entries were kept (>= 0)
+**  	1 -- no selectors array (caller should use the single-key path)
+**  	-1 -- the envelope or array structure is malformed
+**
+**  Notes:
+**  	Malformed or out-of-window entries are skipped and logged, never fatal.
+*/
+
+static int
+dkimf_db_vault_parse_selectors(const char *json, const char *field,
+                               time_t now,
+                               struct dkimf_vault_selector *out,
+                               unsigned int maxout, unsigned int *nout)
+{
+	const char *inner;
+	const char *p;
+	char needle[BUFRSZ + 1];
+	unsigned int n = 0;
+
+	*nout = 0;
+
+	inner = dkimf_db_vault_inner(json);
+	if (inner == NULL)
+		return 1;
+
+	if (snprintf(needle, sizeof needle, "\"%s\":", field) >= (int) sizeof needle)
+		return -1;
+
+	p = strstr(inner, needle);
+	if (p == NULL)
+		return 1;
+	p = dkimf_db_json_ws(p + strlen(needle));
+	if (*p != '[')
+		return 1;
+	p++;
+
+	for (;;)
+	{
+		const char *elemend;
+
+		p = dkimf_db_json_ws(p);
+		if (*p == ']')
+			break;
+		if (*p == ',')
+		{
+			p++;
+			continue;
+		}
+		if (*p != '{')
+			return -1;
+
+		elemend = dkimf_db_json_skip(p, 0);
+		if (elemend == NULL)
+			return -1;
+
+		if (n < maxout)
+		{
+			if (dkimf_db_vault_parse_entry(p, now, &out[n]) == 0)
+				n++;
+			else
+				syslog(LOG_WARNING,
+				       "vault: skipping invalid or out-of-window selector");
+		}
+		else
+		{
+			syslog(LOG_WARNING,
+			       "vault: more than %u selectors; ignoring extras",
+			       maxout);
+		}
+
+		p = elemend;
+	}
+
+	*nout = n;
+
+	return 0;
+}
+#endif /* HAVE_LIBCURL */
 
 
 
@@ -499,6 +1356,15 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 		p++;
 	}
 
+	/*
+	**  Network backends keep a single connection handle that is shared by
+	**  every thread querying this (process-wide) data set, so they must be
+	**  serialised.  Force a lock into existence; dkimf_db_get() takes it.
+	*/
+	if (new->db_type == DKIMF_DB_TYPE_HTTP ||
+	    new->db_type == DKIMF_DB_TYPE_VAULT ||
+	    new->db_type == DKIMF_DB_TYPE_REDIS)
+		new->db_flags |= DKIMF_DB_FLAG_MAKELOCK;
 
 	/* use provided lock, or create a new one if needed */
 	if (lock != NULL)
@@ -1288,6 +2154,189 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 	  }
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  case DKIMF_DB_TYPE_VAULT:
+	  {
+		CURL *curl;
+		struct dkimf_db_http *h;
+		_Bool vault = (new->db_type == DKIMF_DB_TYPE_VAULT);
+
+		if (vault)
+		{
+			if (strncasecmp(name, "vault://", 8) != 0)
+			{
+				free(new);
+				if (err != NULL)
+					*err = "vault: URI must begin with vault://";
+				return 1;
+			}
+		}
+		else if (strncasecmp(name, "http://", 7) != 0 &&
+		         strncasecmp(name, "https://", 8) != 0)
+		{
+			free(new);
+			if (err != NULL)
+				*err = "http: URI must begin with http:// or https://";
+			return 1;
+		}
+
+		h = (struct dkimf_db_http *) malloc(sizeof *h);
+		if (h == NULL)
+		{
+			if (err != NULL)
+				*err = strerror(errno);
+			free(new);
+			return -1;
+		}
+		memset(h, '\0', sizeof *h);
+
+		h->http_uri = strdup(name);
+		if (h->http_uri == NULL)
+		{
+			if (err != NULL)
+				*err = strerror(errno);
+			free(h);
+			free(new);
+			return -1;
+		}
+
+		/* "vault://" and "https://" are both 8 bytes: rewrite in place */
+		if (vault)
+			memcpy(h->http_uri, "https://", 8);
+
+		h->http_timeout = s_http_timeout;
+
+		curl = curl_easy_init();
+		if (curl == NULL)
+		{
+			free(h->http_uri);
+			free(h);
+			free(new);
+			if (err != NULL)
+				*err = "http: curl_easy_init() failed";
+			return -1;
+		}
+
+		(void) curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+		(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+		(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+		(void) curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+		(void) curl_easy_setopt(curl, CURLOPT_TIMEOUT, h->http_timeout);
+		(void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
+		                        dkimf_db_http_write);
+		if (s_http_cainfo != NULL)
+			(void) curl_easy_setopt(curl, CURLOPT_CAINFO,
+			                        s_http_cainfo);
+
+		{
+			const char *token;
+			const char *fmt;
+
+			if (vault)
+			{
+				token = (s_vault_token != NULL) ? s_vault_token
+				                                : getenv("VAULT_TOKEN");
+				fmt = "X-Vault-Token: %s";
+			}
+			else
+			{
+				token = s_http_token;
+				fmt = "Authorization: Bearer %s";
+			}
+
+			if (token != NULL)
+			{
+				char hdr[BUFRSZ + 1];
+				struct curl_slist *l;
+
+				if (snprintf(hdr, sizeof hdr, fmt, token) >= (int) sizeof hdr)
+				{
+					curl_easy_cleanup(curl);
+					free(h->http_uri);
+					free(h);
+					free(new);
+					if (err != NULL)
+						*err = "http: auth token too long";
+					return 1;
+				}
+
+				l = curl_slist_append(h->http_headers, hdr);
+				if (l == NULL)
+				{
+					curl_slist_free_all(h->http_headers);
+					curl_easy_cleanup(curl);
+					free(h->http_uri);
+					free(h);
+					free(new);
+					if (err != NULL)
+						*err = strerror(errno);
+					return -1;
+				}
+				h->http_headers = l;
+			}
+		}
+
+		if (s_http_header != NULL)
+		{
+			struct curl_slist *l;
+
+			l = curl_slist_append(h->http_headers, s_http_header);
+			if (l == NULL)
+			{
+				curl_slist_free_all(h->http_headers);
+				curl_easy_cleanup(curl);
+				free(h->http_uri);
+				free(h);
+				free(new);
+				if (err != NULL)
+					*err = strerror(errno);
+				return -1;
+			}
+			h->http_headers = l;
+		}
+
+		if (h->http_headers != NULL)
+			(void) curl_easy_setopt(curl, CURLOPT_HTTPHEADER,
+			                        h->http_headers);
+
+		if (vault)
+		{
+			const char *f = (s_vault_field != NULL) ? s_vault_field
+			                                        : "private_key";
+			const char *sf = (s_vault_selfield != NULL) ? s_vault_selfield
+			                                            : "selectors";
+
+			h->http_vault = TRUE;
+			h->http_vfield = strdup(f);
+			h->http_vselfield = strdup(sf);
+			h->http_vval = (char *) malloc(DKIMF_DB_HTTP_BODYMAX);
+			if (h->http_vfield == NULL || h->http_vselfield == NULL ||
+			    h->http_vval == NULL)
+			{
+				free(h->http_vfield);
+				free(h->http_vselfield);
+				free(h->http_vval);
+				curl_slist_free_all(h->http_headers);
+				curl_easy_cleanup(curl);
+				free(h->http_uri);
+				free(h);
+				free(new);
+				if (err != NULL)
+					*err = strerror(errno);
+				return -1;
+			}
+		}
+
+		h->http_curl = curl;
+
+		new->db_data = (void *) h;
+		new->db_handle = (void *) h;
+
+		break;
+	  }
+#endif /* HAVE_LIBCURL */
+
 	}
 
 	*db = new;
@@ -1700,9 +2749,14 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			return -1;
 		}
 
+		/* dkimf_db_open() forces a lock into existence for this type */
+		assert(db->db_lock != NULL);
+		(void) pthread_mutex_lock(db->db_lock);
+
 		reply = (redisReply *) redisCommand(r->redis_ctx, "GET %s", query);
 		if (reply == NULL)
 		{
+			(void) pthread_mutex_unlock(db->db_lock);
 			db->db_status = EIO;
 			return -1;
 		}
@@ -1712,6 +2766,7 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			if (exists != NULL)
 				*exists = FALSE;
 			freeReplyObject(reply);
+			(void) pthread_mutex_unlock(db->db_lock);
 			return 0;
 		}
 
@@ -1724,14 +2779,156 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 			                       req, reqnum) != 0)
 			{
 				freeReplyObject(reply);
+				(void) pthread_mutex_unlock(db->db_lock);
 				return -1;
 			}
 		}
 
 		freeReplyObject(reply);
+		(void) pthread_mutex_unlock(db->db_lock);
 		return 0;
 	  }
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  case DKIMF_DB_TYPE_VAULT:
+	  {
+		long code = 0;
+		size_t keylen;
+		char keybuf[BUFRSZ + 1];
+		char url[4096];
+		char emsg[128];
+		CURLcode rc;
+		struct dkimf_db_http *h;
+		struct dkimf_db_httpbuf b;
+
+		h = (struct dkimf_db_http *) db->db_data;
+
+		/* a zero length means the key is NUL-terminated (see callers) */
+		keylen = (buflen == 0) ? strlen((const char *) buf) : buflen;
+
+		if (keylen >= sizeof keybuf)
+		{
+			db->db_status = ENOMEM;
+			return -1;
+		}
+		memcpy(keybuf, buf, keylen);
+		keybuf[keylen] = '\0';
+
+		b.buf = h->http_body;
+		b.len = 0;
+		b.cap = sizeof h->http_body;
+
+		/* dkimf_db_open() forces a lock into existence for this type */
+		assert(db->db_lock != NULL);
+		(void) pthread_mutex_lock(db->db_lock);
+
+		if (dkimf_db_http_buildurl(h->http_curl, h->http_uri, keybuf,
+		                           url, sizeof url) != 0)
+		{
+			(void) strlcpy(h->http_err,
+			               "URI rejected (unsafe key or too long)",
+			               sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EINVAL;
+			syslog(LOG_WARNING, "%s: rejected lookup key", h->http_uri);
+			return -1;
+		}
+
+		(void) curl_easy_setopt(h->http_curl, CURLOPT_URL, url);
+		(void) curl_easy_setopt(h->http_curl, CURLOPT_WRITEDATA, &b);
+
+		rc = curl_easy_perform(h->http_curl);
+		if (rc != CURLE_OK)
+		{
+			(void) strlcpy(h->http_err, curl_easy_strerror(rc),
+			               sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EIO;
+			syslog(LOG_WARNING, "%s: %s", h->http_uri,
+			       curl_easy_strerror(rc));
+			return -1;
+		}
+
+		(void) curl_easy_getinfo(h->http_curl, CURLINFO_RESPONSE_CODE,
+		                         &code);
+
+		if (code == 404)
+		{
+			(void) pthread_mutex_unlock(db->db_lock);
+			if (exists != NULL)
+				*exists = FALSE;
+			return 0;
+		}
+
+		if (code < 200 || code >= 300)
+		{
+			(void) snprintf(emsg, sizeof emsg, "HTTP status %ld",
+			                code);
+			(void) strlcpy(h->http_err, emsg, sizeof h->http_err);
+			(void) pthread_mutex_unlock(db->db_lock);
+			db->db_status = EIO;
+			syslog(LOG_WARNING, "%s: %s", h->http_uri, emsg);
+			return -1;
+		}
+
+		/* NUL-terminate and strip the trailing line ending */
+		b.buf[b.len] = '\0';
+		while (b.len > 0 &&
+		       (b.buf[b.len - 1] == '\n' || b.buf[b.len - 1] == '\r'))
+			b.buf[--b.len] = '\0';
+
+		if (h->http_vault)
+		{
+			if (dkimf_db_vault_extract(b.buf, h->http_vfield,
+			                           h->http_vval,
+			                           DKIMF_DB_HTTP_BODYMAX) != 0)
+			{
+				(void) strlcpy(h->http_err,
+				               "vault: field not found in response",
+				               sizeof h->http_err);
+				(void) pthread_mutex_unlock(db->db_lock);
+				db->db_status = EINVAL;
+				syslog(LOG_WARNING, "%s: vault field \"%s\" not found",
+				       h->http_uri, h->http_vfield);
+				return -1;
+			}
+
+			if (exists != NULL)
+				*exists = TRUE;
+
+			if (reqnum > 0)
+			{
+				if (dkimf_db_datasplit(h->http_vval,
+				                       strlen(h->http_vval),
+				                       req, reqnum) != 0)
+				{
+					(void) pthread_mutex_unlock(db->db_lock);
+					return -1;
+				}
+			}
+
+			(void) pthread_mutex_unlock(db->db_lock);
+			return 0;
+		}
+
+		if (exists != NULL)
+			*exists = TRUE;
+
+		if (reqnum > 0)
+		{
+			if (dkimf_db_datasplit(b.buf, b.len, req, reqnum) != 0)
+			{
+				(void) pthread_mutex_unlock(db->db_lock);
+				return -1;
+			}
+		}
+
+		(void) pthread_mutex_unlock(db->db_lock);
+		return 0;
+	  }
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);
@@ -1740,6 +2937,143 @@ dkimf_db_get(DKIMF_DB db, const void *buf, size_t buflen,
 
 	/* NOTREACHED */
 }
+
+#ifdef HAVE_LIBCURL
+/*
+**  DKIMF_DB_VAULT_SELECTORS -- enumerate the currently-valid selectors of a
+**                              vault: secret
+**
+**  Parameters:
+**  	db -- vault: DB handle
+**  	buf -- lookup key
+**  	buflen -- length of the key, or 0 if NUL-terminated
+**  	now -- reference time for the validity window (injectable test seam)
+**  	out -- receives a malloc'd array of kept selectors (caller frees)
+**  	nout -- number of kept selectors (output)
+**
+**  Return value:
+**  	0 -- a selectors array was present; *out holds *nout entries (>= 0)
+**  	1 -- the secret carries no selectors array (use the single-key path),
+**  	     or the key was not found (404)
+**  	-1 -- transport, HTTP, or parse error
+**
+**  Notes:
+**  	The emit-all-valid path: one secret -> N signatures.  The transport is
+**  	the Phase-2 vault GET, serialised on db->db_lock like dkimf_db_get().
+*/
+
+int
+dkimf_db_vault_selectors(DKIMF_DB db, const void *buf, size_t buflen,
+                         time_t now, struct dkimf_vault_selector **out,
+                         unsigned int *nout)
+{
+	long code = 0;
+	size_t keylen;
+	int pr;
+	CURLcode rc;
+	struct dkimf_db_http *h;
+	struct dkimf_db_httpbuf b;
+	struct dkimf_vault_selector *arr;
+	char keybuf[BUFRSZ + 1];
+	char url[4096];
+
+	assert(db != NULL);
+	assert(out != NULL);
+	assert(nout != NULL);
+
+	*out = NULL;
+	*nout = 0;
+
+	if (db->db_type != DKIMF_DB_TYPE_VAULT)
+		return 1;
+
+	h = (struct dkimf_db_http *) db->db_data;
+
+	keylen = (buflen == 0) ? strlen((const char *) buf) : buflen;
+	if (keylen >= sizeof keybuf)
+	{
+		db->db_status = ENOMEM;
+		return -1;
+	}
+	memcpy(keybuf, buf, keylen);
+	keybuf[keylen] = '\0';
+
+	b.buf = h->http_body;
+	b.len = 0;
+	b.cap = sizeof h->http_body;
+
+	assert(db->db_lock != NULL);
+	(void) pthread_mutex_lock(db->db_lock);
+
+	if (dkimf_db_http_buildurl(h->http_curl, h->http_uri, keybuf,
+	                           url, sizeof url) != 0)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EINVAL;
+		syslog(LOG_WARNING, "%s: rejected lookup key", h->http_uri);
+		return -1;
+	}
+
+	(void) curl_easy_setopt(h->http_curl, CURLOPT_URL, url);
+	(void) curl_easy_setopt(h->http_curl, CURLOPT_WRITEDATA, &b);
+
+	rc = curl_easy_perform(h->http_curl);
+	if (rc != CURLE_OK)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EIO;
+		syslog(LOG_WARNING, "%s: %s", h->http_uri,
+		       curl_easy_strerror(rc));
+		return -1;
+	}
+
+	(void) curl_easy_getinfo(h->http_curl, CURLINFO_RESPONSE_CODE, &code);
+
+	if (code == 404)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		return 1;
+	}
+	if (code < 200 || code >= 300)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = EIO;
+		syslog(LOG_WARNING, "%s: HTTP status %ld", h->http_uri, code);
+		return -1;
+	}
+
+	b.buf[b.len] = '\0';
+
+	arr = (struct dkimf_vault_selector *)
+	      calloc(DKIMF_DB_VAULT_MAXSELECTORS, sizeof *arr);
+	if (arr == NULL)
+	{
+		(void) pthread_mutex_unlock(db->db_lock);
+		db->db_status = ENOMEM;
+		return -1;
+	}
+
+	pr = dkimf_db_vault_parse_selectors(b.buf,
+	                                    (h->http_vselfield != NULL)
+	                                        ? h->http_vselfield
+	                                        : "selectors",
+	                                    now, arr,
+	                                    DKIMF_DB_VAULT_MAXSELECTORS, nout);
+
+	(void) pthread_mutex_unlock(db->db_lock);
+
+	if (pr != 0)
+	{
+		free(arr);
+		*nout = 0;
+		return pr;
+	}
+
+	*out = arr;
+
+	return 0;
+}
+#endif /* HAVE_LIBCURL */
 
 /*
 **  DKIMF_DB_CLOSE -- close a DB handle
@@ -1849,6 +3183,27 @@ dkimf_db_close(DKIMF_DB db)
 	  }
 #endif /* USE_REDIS */
 
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  case DKIMF_DB_TYPE_VAULT:
+	  {
+		struct dkimf_db_http *h;
+
+		h = (struct dkimf_db_http *) db->db_data;
+		if (h->http_curl != NULL)
+			curl_easy_cleanup(h->http_curl);
+		if (h->http_headers != NULL)
+			curl_slist_free_all(h->http_headers);
+		free(h->http_uri);
+		free(h->http_vfield);
+		free(h->http_vselfield);
+		free(h->http_vval);
+		free(h);
+		free(db);
+		return 0;
+	  }
+#endif /* HAVE_LIBCURL */
+
 	  default:
 		assert(0);
 		return -1;
@@ -1916,6 +3271,17 @@ dkimf_db_strerror(DKIMF_DB db, char *err, size_t errlen)
 		return strlcpy(err, "Redis error", errlen);
 	  }
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  case DKIMF_DB_TYPE_VAULT:
+	  {
+		struct dkimf_db_http *h;
+
+		h = (struct dkimf_db_http *) db->db_data;
+		return strlcpy(err, h->http_err, errlen);
+	  }
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);
@@ -2054,6 +3420,12 @@ dkimf_db_walk(DKIMF_DB db, _Bool first, void *key, size_t *keylen,
 	  case DKIMF_DB_TYPE_REDIS:
 		return -1;
 #endif /* USE_REDIS */
+
+#ifdef HAVE_LIBCURL
+	  case DKIMF_DB_TYPE_HTTP:
+	  case DKIMF_DB_TYPE_VAULT:
+		return -1;
+#endif /* HAVE_LIBCURL */
 
 	  default:
 		assert(0);

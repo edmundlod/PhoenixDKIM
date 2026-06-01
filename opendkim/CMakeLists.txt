@@ -80,9 +80,10 @@ if(WITH_REDIS)
 endif()
 
 # ── libcurl (optional, default OFF) ───────────────────────────────────────────
-# Enables SMTP report delivery via the SMTPURI config option.
+# Enables SMTP report delivery (SMTPURI), the http:/https:/vault: data set
+# backends, and pdkim.http_get() in the Lua sandbox.
 
-option(WITH_CURL "Enable libcurl SMTP report delivery (SMTPURI config option)" OFF)
+option(WITH_CURL "Enable libcurl: SMTP reports (SMTPURI), http/https/vault data set backends, pdkim.http_get()" OFF)
 
 if(WITH_CURL)
     find_package(CURL REQUIRED)
@@ -537,6 +538,109 @@ if(WITH_REDIS)
     )
     set_tests_properties(t-db-redis PROPERTIES
         TIMEOUT 10
+        SKIP_RETURN_CODE 77
+    )
+endif()
+
+# ── curl-backend parser unit test (offline) ──────────────────────────────────
+# t-db-parsers.c #includes opendkim-db.c to reach its static parsers, so that
+# translation unit is NOT listed as a source here (it would double-define).
+
+if(WITH_CURL)
+    add_executable(t-db-parsers
+        tests/t-db-parsers.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-parsers)
+    apply_hardening(t-db-parsers)
+    apply_sanitizers(t-db-parsers)
+    add_test(
+        NAME t-db-parsers
+        COMMAND t-db-parsers
+    )
+    set_tests_properties(t-db-parsers PROPERTIES
+        TIMEOUT 10
+    )
+
+    # End-to-end http: backend test against a self-contained forked server.
+    add_executable(t-db-http
+        tests/t-db-http.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-http)
+    apply_hardening(t-db-http)
+    apply_sanitizers(t-db-http)
+    add_test(
+        NAME t-db-http
+        COMMAND t-db-http
+    )
+    set_tests_properties(t-db-http PROPERTIES
+        TIMEOUT 30
+        SKIP_RETURN_CODE 77
+    )
+
+    # pdkim.http_get() integration via the lua: backend (needs Lua too).
+    if(WITH_LUA)
+        add_executable(t-db-lua-http
+            tests/t-db-lua-http.c
+            opendkim-db.c
+            opendkim-lua.c
+            util.c
+        )
+        configure_daemon_target(t-db-lua-http)
+        apply_hardening(t-db-lua-http)
+        apply_sanitizers(t-db-lua-http)
+        add_test(
+            NAME t-db-lua-http
+            COMMAND t-db-lua-http
+        )
+        set_tests_properties(t-db-lua-http PROPERTIES
+            TIMEOUT 30
+            SKIP_RETURN_CODE 77
+        )
+    endif()
+
+    # End-to-end vault: backend over TLS (OpenSSL server + throwaway cert).
+    add_executable(t-db-vault
+        tests/t-db-vault.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-vault)
+    apply_hardening(t-db-vault)
+    apply_sanitizers(t-db-vault)
+    target_link_libraries(t-db-vault PRIVATE OpenSSL::SSL)
+    add_test(
+        NAME t-db-vault
+        COMMAND t-db-vault
+    )
+    set_tests_properties(t-db-vault PROPERTIES
+        TIMEOUT 30
+        SKIP_RETURN_CODE 77
+    )
+
+    # Emit-all-valid four-key signing: one vault secret -> RSA old/new +
+    # Ed25519 old/new -> four verified signatures (two algorithms).
+    add_executable(t-db-vault-sign
+        tests/t-db-vault-sign.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-vault-sign)
+    apply_hardening(t-db-vault-sign)
+    apply_sanitizers(t-db-vault-sign)
+    target_link_libraries(t-db-vault-sign PRIVATE OpenSSL::SSL)
+    add_test(
+        NAME t-db-vault-sign
+        COMMAND t-db-vault-sign
+    )
+    set_tests_properties(t-db-vault-sign PROPERTIES
+        TIMEOUT 60
         SKIP_RETURN_CODE 77
     )
 endif()

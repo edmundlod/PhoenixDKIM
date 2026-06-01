@@ -59,6 +59,11 @@ struct configdef dkimf_config[] =
 	{ "FinalPolicyScript",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_LUA */
 	{ "FixCRLF",			CONFIG_TYPE_BOOLEAN,	FALSE },
+#ifdef HAVE_LIBCURL
+	{ "HttpAuthHeader",		CONFIG_TYPE_STRING,	FALSE },
+	{ "HttpAuthToken",		CONFIG_TYPE_STRING,	FALSE },
+	{ "HttpTimeout",		CONFIG_TYPE_INTEGER,	FALSE },
+#endif /* HAVE_LIBCURL */
 	{ "IdentityHeader",		CONFIG_TYPE_STRING,     FALSE },
 	{ "IdentityHeaderRemove",	CONFIG_TYPE_BOOLEAN,    FALSE },
 	{ "IgnoreMalformedMail",	CONFIG_TYPE_BOOLEAN,	FALSE },
@@ -148,6 +153,11 @@ struct configdef dkimf_config[] =
 	{ "UnprotectedKey",		CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_UNBOUND */
 	{ "UserID",			CONFIG_TYPE_STRING,	FALSE },
+#ifdef HAVE_LIBCURL
+	{ "VaultField",			CONFIG_TYPE_STRING,	FALSE },
+	{ "VaultSelectorsField",	CONFIG_TYPE_STRING,	FALSE },
+	{ "VaultToken",			CONFIG_TYPE_STRING,	FALSE },
+#endif /* HAVE_LIBCURL */
 	{ "WeakSyntaxChecks",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "X-Header",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ NULL,				(u_int) -1,		FALSE }
