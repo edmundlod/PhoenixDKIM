@@ -20,6 +20,11 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#ifdef HAVE_LIBCURL
+# include <stdint.h>
+# include <curl/curl.h>
+#endif /* HAVE_LIBCURL */
+
 /* libopendkim includes */
 #include <dkim.h>
 
@@ -400,6 +405,229 @@ dkimf_lua_gc_cleanup(struct dkimf_lua_gc *gc)
 	}
 }
 
+#ifdef HAVE_LIBCURL
+# define PDKIM_HTTP_MAX	(16 * 1024 * 1024)
+
+struct pdkim_buf
+{
+	char *		data;
+	size_t		len;
+	size_t		cap;
+};
+
+/*
+**  PDKIM_HTTP_WRITE -- libcurl write callback growing a heap buffer
+**
+**  Parameters:
+**  	ptr -- delivered bytes
+**  	size, nmemb -- block geometry (bytes = size * nmemb)
+**  	userdata -- struct pdkim_buf to append into
+**
+**  Return value:
+**  	Bytes consumed; a short return aborts the transfer.
+*/
+
+static size_t
+pdkim_http_write(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	size_t n;
+	size_t need;
+	struct pdkim_buf *b = (struct pdkim_buf *) userdata;
+
+	if (size != 0 && nmemb > SIZE_MAX / size)
+		return 0;
+	n = size * nmemb;
+
+	if (n > PDKIM_HTTP_MAX - b->len)
+		return 0;
+	need = b->len + n;
+
+	if (need > b->cap)
+	{
+		size_t newcap = (b->cap == 0) ? 8192 : b->cap;
+		char *p;
+
+		while (newcap < need)
+			newcap *= 2;
+
+		p = (char *) realloc(b->data, newcap);
+		if (p == NULL)
+			return 0;
+		b->data = p;
+		b->cap = newcap;
+	}
+
+	memcpy(b->data + b->len, ptr, n);
+	b->len += n;
+
+	return n;
+}
+
+
+/*
+**  PDKIM_HTTP_GET -- pdkim.http_get(url [, opts]) Lua binding
+**
+**  Parameters:
+**  	l -- Lua state; arg 1 is the URL, optional arg 2 is a table with
+**  	     "token" (Bearer), "header" (verbatim line) and "timeout" (seconds)
+**
+**  Return value:
+**  	One value (the response body) on a 2xx reply, or two values
+**  	(nil, error message) on any failure.
+**
+**  Notes:
+**  	A fresh easy handle per call (Lua states are short-lived).  TLS peer
+**  	and host verification are forced on; the sandbox already denies the
+**  	filesystem and process primitives, so this is the only egress path.
+*/
+
+static int
+pdkim_http_get(lua_State *l)
+{
+	long timeout = 5;
+	long code = 0;
+	const char *url;
+	char tokbuf[1024];
+	char hdrbuf[2048];
+	CURL *curl;
+	CURLcode rc;
+	struct curl_slist *hdrs = NULL;
+	struct pdkim_buf b;
+
+	url = luaL_checkstring(l, 1);
+
+	tokbuf[0] = '\0';
+	hdrbuf[0] = '\0';
+
+	if (lua_gettop(l) >= 2 && lua_istable(l, 2))
+	{
+		lua_getfield(l, 2, "token");
+		if (lua_isstring(l, -1))
+		{
+			if (snprintf(tokbuf, sizeof tokbuf, "%s",
+			             lua_tostring(l, -1)) >= (int) sizeof tokbuf)
+			{
+				lua_pop(l, 1);
+				lua_pushnil(l);
+				lua_pushstring(l, "pdkim.http_get: token too long");
+				return 2;
+			}
+		}
+		lua_pop(l, 1);
+
+		lua_getfield(l, 2, "header");
+		if (lua_isstring(l, -1))
+		{
+			if (snprintf(hdrbuf, sizeof hdrbuf, "%s",
+			             lua_tostring(l, -1)) >= (int) sizeof hdrbuf)
+			{
+				lua_pop(l, 1);
+				lua_pushnil(l);
+				lua_pushstring(l, "pdkim.http_get: header too long");
+				return 2;
+			}
+		}
+		lua_pop(l, 1);
+
+		lua_getfield(l, 2, "timeout");
+		if (lua_isnumber(l, -1))
+			timeout = (long) lua_tointeger(l, -1);
+		lua_pop(l, 1);
+	}
+
+	curl = curl_easy_init();
+	if (curl == NULL)
+	{
+		lua_pushnil(l);
+		lua_pushstring(l, "pdkim.http_get: curl_easy_init() failed");
+		return 2;
+	}
+
+	if (tokbuf[0] != '\0')
+	{
+		char authbuf[1088];
+		struct curl_slist *nl;
+
+		(void) snprintf(authbuf, sizeof authbuf,
+		                "Authorization: Bearer %s", tokbuf);
+		nl = curl_slist_append(hdrs, authbuf);
+		if (nl == NULL)
+		{
+			curl_slist_free_all(hdrs);
+			curl_easy_cleanup(curl);
+			lua_pushnil(l);
+			lua_pushstring(l, "pdkim.http_get: out of memory");
+			return 2;
+		}
+		hdrs = nl;
+	}
+
+	if (hdrbuf[0] != '\0')
+	{
+		struct curl_slist *nl;
+
+		nl = curl_slist_append(hdrs, hdrbuf);
+		if (nl == NULL)
+		{
+			curl_slist_free_all(hdrs);
+			curl_easy_cleanup(curl);
+			lua_pushnil(l);
+			lua_pushstring(l, "pdkim.http_get: out of memory");
+			return 2;
+		}
+		hdrs = nl;
+	}
+
+	b.data = NULL;
+	b.len = 0;
+	b.cap = 0;
+
+	(void) curl_easy_setopt(curl, CURLOPT_URL, url);
+	(void) curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+	(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+	(void) curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+	(void) curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
+	(void) curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+	(void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, pdkim_http_write);
+	(void) curl_easy_setopt(curl, CURLOPT_WRITEDATA, &b);
+	if (hdrs != NULL)
+		(void) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hdrs);
+
+	rc = curl_easy_perform(curl);
+	if (rc != CURLE_OK)
+	{
+		free(b.data);
+		curl_slist_free_all(hdrs);
+		curl_easy_cleanup(curl);
+		lua_pushnil(l);
+		lua_pushstring(l, curl_easy_strerror(rc));
+		return 2;
+	}
+
+	(void) curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
+
+	curl_slist_free_all(hdrs);
+	curl_easy_cleanup(curl);
+
+	if (code < 200 || code >= 300)
+	{
+		char emsg[64];
+
+		free(b.data);
+		(void) snprintf(emsg, sizeof emsg, "HTTP status %ld", code);
+		lua_pushnil(l);
+		lua_pushstring(l, emsg);
+		return 2;
+	}
+
+	lua_pushlstring(l, b.data == NULL ? "" : b.data, b.len);
+	free(b.data);
+
+	return 1;
+}
+#endif /* HAVE_LIBCURL */
+
+
 /*
 **  DKIMF_LUA_SANDBOX -- remove dangerous globals exposed by luaL_openlibs()
 **
@@ -436,6 +664,23 @@ dkimf_lua_sandbox(lua_State *l)
 		lua_pushnil(l);
 		lua_setglobal(l, strip[i]);
 	}
+
+#ifdef HAVE_LIBCURL
+	{
+		static const luaL_Reg pdkim_lib[] =
+		{
+			{ "http_get",	pdkim_http_get	},
+			{ NULL,		NULL		}
+		};
+
+# if LUA_VERSION_NUM >= 502
+		luaL_newlib(l, pdkim_lib);
+		lua_setglobal(l, "pdkim");
+# else /* LUA_VERSION_NUM >= 502 */
+		luaL_register(l, "pdkim", pdkim_lib);
+# endif /* LUA_VERSION_NUM >= 502 */
+	}
+#endif /* HAVE_LIBCURL */
 }
 
 #ifdef DKIMF_LUA_CONTEXT_HOOKS
@@ -1108,12 +1353,29 @@ dkimf_lua_db_hook(const char *script, size_t scriptlen, const char *query,
 		if (lres->lrs_results != NULL)
 		{
 			int c;
+			int n = 0;
 
+			/*
+			**  lua_tostring() yields NULL for a non-stringable result
+			**  (nil, boolean, table); a returned nil is the idiomatic
+			**  "no value", so stop at the first one.  rcount then
+			**  reflects only the leading run of string results, and a
+			**  bare "return nil" becomes rcount 0 (a clean miss)
+			**  instead of strdup(NULL).
+			*/
 			for (c = 0; c < lres->lrs_rcount; c++)
 			{
-				lres->lrs_results[c] = strdup(lua_tostring(l,
-				                                           c + 1));
+				const char *s = lua_tostring(l, c + 1);
+
+				if (s == NULL)
+					break;
+				lres->lrs_results[n++] = strdup(s);
 			}
+			lres->lrs_rcount = n;
+		}
+		else
+		{
+			lres->lrs_rcount = 0;
 		}
 	}
 
