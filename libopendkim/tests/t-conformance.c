@@ -1818,8 +1818,8 @@ test_api_libversion(void)
 	printf("  API: dkim_libversion\n");
 
 	ver = dkim_libversion();
-	CHECK(ver == OPENDKIM_LIB_VERSION,
-	      "dkim_libversion must match OPENDKIM_LIB_VERSION");
+	CHECK(ver == PHOENIXDKIM_LIB_VERSION,
+	      "dkim_libversion must match PHOENIXDKIM_LIB_VERSION");
 
 	return 1;
 }

@@ -8155,13 +8155,13 @@ dkim_libfeature(DKIM_LIB *lib, u_int fc)
 **  	None.
 **
 **  Return value:
-**  	Library version, i.e. value of the OPENDKIM_LIB_VERSION macro.
+**  	Library version, i.e. value of the PHOENIXDKIM_LIB_VERSION macro.
 */
 
 uint32_t
 dkim_libversion(void)
 {
-	return OPENDKIM_LIB_VERSION;
+	return PHOENIXDKIM_LIB_VERSION;
 }
 
 /*

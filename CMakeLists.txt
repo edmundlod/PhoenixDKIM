@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(opendkim
-    VERSION 3.0.0
+project(phoenixdkim
+    VERSION 1.0.0
     DESCRIPTION "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519"
     LANGUAGES C
 )
@@ -79,9 +79,9 @@ add_subdirectory(miltertest)
 include(CheckSHA1Verify)
 
 # CPack for creating .deb files
-set(CPACK_PACKAGE_NAME "opendkim")
+set(CPACK_PACKAGE_NAME "phoenixdkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
-set(CPACK_PACKAGE_VERSION "3.0.0")
+set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519")
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Edmund Lodewijks <edmund@proteamail.com>")

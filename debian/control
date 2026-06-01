@@ -16,7 +16,7 @@ Rules-Requires-Root: no
 Package: phoenixdkim
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
-Depends: libopendkim13 (= ${binary:Version}), ${shlibs:Depends},
+Depends: libphoenixdkim0 (= ${binary:Version}), ${shlibs:Depends},
  ${misc:Depends}, adduser, dns-root-data
 Recommends: phoenixdkim-tools
 Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
@@ -40,7 +40,7 @@ Description: Utilities for administering the PhoenixDKIM milter
    - phoenixdkim-testkey
    - phoenixdkim-testmsg
 
-Package: libopendkim13
+Package: libphoenixdkim0
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -51,11 +51,11 @@ Description: DomainKeys Identified Mail (DKIM) library
  signing and verifying signatures according to RFC 4871, and supports both
  DomainKeys signing policy and DKIM ADSP.
 
-Package: libopendkim-dev
+Package: libphoenixdkim-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
-Depends: libopendkim13 (= ${binary:Version}), ${misc:Depends}
+Depends: libphoenixdkim0 (= ${binary:Version}), ${misc:Depends}
 Description: DomainKeys Identified Mail (DKIM) library (development files)
  Header files and development libraries for building against the
  PhoenixDKIM DKIM library.

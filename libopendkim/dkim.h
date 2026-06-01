@@ -34,10 +34,10 @@ extern "C" {
 **  	mm == minor revision number
 **  	pp == patch number
 **
-**      This was the old autotools-era line:
-**      #define	OPENDKIM_LIB_VERSION	0x01020000
-**
-**      Now injected via libopendkim/CMakeLists.txt
+**      PHOENIXDKIM_LIB_VERSION is the ABI version (the libtool
+**      current:revision:age triple, also the source of the SONAME) -- NOT the
+**      product/release version.  It is injected via libopendkim/CMakeLists.txt.
+**      (Old autotools-era spelling: OPENDKIM_LIB_VERSION 0x01020000.)
 */
 
 
@@ -1395,7 +1395,7 @@ extern _Bool dkim_libfeature(DKIM_LIB *lib, u_int fc);
 **  	None.
 **
 **  Return value:
-**  	Library version, i.e. value of the OPENDKIM_LIB_VERSION macro.
+**  	Library version, i.e. value of the PHOENIXDKIM_LIB_VERSION macro.
 */
 
 extern uint32_t dkim_libversion(void);

@@ -37,7 +37,7 @@ main(int argc, char **argv)
 	printf("*** testing dkim_libversion()\n");
 
 	libversion = dkim_libversion();
-	assert(libversion == OPENDKIM_LIB_VERSION);
+	assert(libversion == PHOENIXDKIM_LIB_VERSION);
 
 	return 0;
 }

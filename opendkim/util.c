@@ -168,7 +168,7 @@ dkimf_optlist(FILE *where)
 
 		fprintf(where, "\t\t%s\n", optlist[c]);
 	}
-        fprintf(where, "\t%s\n", LIBOPENDKIM_FEATURE_STRING);
+        fprintf(where, "\t%s\n", LIBPHOENIXDKIM_FEATURE_STRING);
 }
 
 /*
