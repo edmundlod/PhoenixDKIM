@@ -562,4 +562,23 @@ if(WITH_CURL)
     set_tests_properties(t-db-parsers PROPERTIES
         TIMEOUT 10
     )
+
+    # End-to-end http: backend test against a self-contained forked server.
+    add_executable(t-db-http
+        tests/t-db-http.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-http)
+    apply_hardening(t-db-http)
+    apply_sanitizers(t-db-http)
+    add_test(
+        NAME t-db-http
+        COMMAND t-db-http
+    )
+    set_tests_properties(t-db-http PROPERTIES
+        TIMEOUT 30
+        SKIP_RETURN_CODE 77
+    )
 endif()
