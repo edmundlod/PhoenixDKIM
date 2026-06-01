@@ -1353,12 +1353,29 @@ dkimf_lua_db_hook(const char *script, size_t scriptlen, const char *query,
 		if (lres->lrs_results != NULL)
 		{
 			int c;
+			int n = 0;
 
+			/*
+			**  lua_tostring() yields NULL for a non-stringable result
+			**  (nil, boolean, table); a returned nil is the idiomatic
+			**  "no value", so stop at the first one.  rcount then
+			**  reflects only the leading run of string results, and a
+			**  bare "return nil" becomes rcount 0 (a clean miss)
+			**  instead of strdup(NULL).
+			*/
 			for (c = 0; c < lres->lrs_rcount; c++)
 			{
-				lres->lrs_results[c] = strdup(lua_tostring(l,
-				                                           c + 1));
+				const char *s = lua_tostring(l, c + 1);
+
+				if (s == NULL)
+					break;
+				lres->lrs_results[n++] = strdup(s);
 			}
+			lres->lrs_rcount = n;
+		}
+		else
+		{
+			lres->lrs_rcount = 0;
 		}
 	}
 
