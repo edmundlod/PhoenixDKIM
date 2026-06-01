@@ -51,6 +51,16 @@ static const char ENVELOPE[] =
 	"\"metadata\":{\"version\":1}}}";
 static const char EXPECT[] = "-----BEGIN-----\nLINE2\n-----END-----";
 
+/* KVv2 envelope carrying a selectors array (emit-all-valid).  "old" expired
+** (valid_end 1500); "a" valid 1000..3000; "b" valid from 2000 with no end. */
+static const char SELENV[] =
+	"{\"data\":{\"data\":{\"selectors\":["
+	"{\"selector\":\"a\",\"key\":\"KA\","
+	"\"valid_start\":1000,\"valid_end\":3000},"
+	"{\"selector\":\"b\",\"key\":\"KB\",\"valid_start\":2000},"
+	"{\"selector\":\"old\",\"key\":\"KO\","
+	"\"valid_start\":100,\"valid_end\":1500}]}}}";
+
 static int failures = 0;
 
 static void
@@ -121,12 +131,27 @@ serve_one(SSL *ssl)
 	}
 	else
 	{
+		const char *body;
+		size_t blen;
+
+		/* route by lookup key: ?key=sel -> selectors array secret */
+		if (strstr(req, "key=sel") != NULL)
+		{
+			body = SELENV;
+			blen = sizeof SELENV - 1;
+		}
+		else
+		{
+			body = ENVELOPE;
+			blen = sizeof ENVELOPE - 1;
+		}
+
 		n = snprintf(hdr, sizeof hdr,
 		             "HTTP/1.0 200 OK\r\nContent-Length: %zu\r\n"
-		             "Connection: close\r\n\r\n", sizeof ENVELOPE - 1);
+		             "Connection: close\r\n\r\n", blen);
 		if (n > 0)
 			ssl_write_all(ssl, hdr, (size_t) n);
-		ssl_write_all(ssl, ENVELOPE, sizeof ENVELOPE - 1);
+		ssl_write_all(ssl, body, blen);
 	}
 
 	SSL_shutdown(ssl);
@@ -297,6 +322,49 @@ main(void)
 	{
 		fprintf(stderr, "open failed: %s\n", errp != NULL ? errp : "(null)");
 		ck("get private_key (TLS + KVv2)", 0);
+	}
+
+	/* ── selectors array: emit-all-valid enumeration over TLS ───────────── */
+	errp = NULL;
+	status = dkimf_db_open(&db, uri, DKIMF_DB_FLAG_READONLY, NULL, &errp);
+	if (status == 0)
+	{
+		struct dkimf_vault_selector *sels;
+		unsigned int n;
+		int r;
+
+		/* now=2500: "a" and "b" valid, "old" expired -> 2 kept */
+		sels = NULL;
+		n = 0;
+		r = dkimf_db_vault_selectors(db, "sel", 0, (time_t) 2500,
+		                             &sels, &n);
+		ck("selectors now=2500 -> 2 kept", r == 0 && n == 2);
+		free(sels);
+
+		/* now=4000: only "b" still valid (no valid_end) -> 1 kept */
+		sels = NULL;
+		n = 0;
+		r = dkimf_db_vault_selectors(db, "sel", 0, (time_t) 4000,
+		                             &sels, &n);
+		ck("selectors now=4000 -> 1 kept",
+		   r == 0 && n == 1 && strcmp(sels[0].vs_selector, "b") == 0);
+		free(sels);
+
+		/* a single private_key secret has no array -> 1 (fall back) */
+		sels = NULL;
+		n = 0;
+		r = dkimf_db_vault_selectors(db, "example.com", 0, (time_t) 0,
+		                             &sels, &n);
+		ck("single-key secret -> no array", r == 1 && sels == NULL);
+		free(sels);
+
+		(void) dkimf_db_close(db);
+	}
+	else
+	{
+		ck("selectors now=2500 -> 2 kept", 0);
+		ck("selectors now=4000 -> 1 kept", 0);
+		ck("single-key secret -> no array", 0);
 	}
 
 	/* ── no token configured: server rejects with 401 -> get error ───────── */
