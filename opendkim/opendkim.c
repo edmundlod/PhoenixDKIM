@@ -8569,7 +8569,7 @@ dkimf_libstatus(SMFICTX *ctx, DKIM *dkim, const char *where, int status)
 			sslerr = dkim_getsslbuf(dkim);
 
 			syslog(LOG_ERR,
-			       "%s: %s%sinternal error from libopendkim: %s%s%s",
+			       "%s: %s%sinternal error from libphoenixdkim: %s%s%s",
 			       JOBID(dfc->mctx_jobid),
 			       where == NULL ? "" : where,
 			       where == NULL ? "" : ": ", err,

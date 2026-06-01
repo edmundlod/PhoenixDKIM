@@ -1,5 +1,5 @@
 # --- Package Version Logic ---
-set(VERSION_RELEASE 3)
+set(VERSION_RELEASE 1)
 set(VERSION_MAJOR_REV 0)
 set(VERSION_MINOR_REV 0)
 set(VERSION_PATCH 0)
@@ -8,17 +8,23 @@ set(VERSION_PATCH 0)
 set(PACKAGE_VERSION "${VERSION_RELEASE}.${VERSION_MAJOR_REV}.${VERSION_MINOR_REV}")
 
 # --- Library Version Logic (Libtool equivalent) ---
-set(LIBVERSION_CURRENT 13)
+# This is the ABI version (current:revision:age), the source of the SONAME and
+# of PHOENIXDKIM_LIB_VERSION below.  It is NOT the product/release version
+# (that is PACKAGE_VERSION above).  Reset to 0:0:0 for the libphoenixdkim
+# rename: the SONAME is brand-new, the ABI is not yet frozen (beta), and it
+# bumps to 1 when a stable ABI is declared at the 1.0.0 release.
+set(LIBVERSION_CURRENT 0)
 set(LIBVERSION_REVISION 0)
 set(LIBVERSION_AGE 0)
 
-# LIBOPENDKIM_VERSION_INFO (simple concatenation)
-set(LIBOPENDKIM_VERSION_INFO "${LIBVERSION_CURRENT}:${LIBVERSION_REVISION}:${LIBVERSION_AGE}")
+# LIBPHOENIXDKIM_VERSION_INFO (simple concatenation)
+set(LIBPHOENIXDKIM_VERSION_INFO "${LIBVERSION_CURRENT}:${LIBVERSION_REVISION}:${LIBVERSION_AGE}")
 
 # --- Hexadecimal Version Logic for the library (for dkim.h) ---
 
 # 1. Perform the bitwise math
-# Formula: ((RELEASE << 8 | MAJOR) << 8 | MINOR) << 8 | PATCH
+# Encodes the ABI triple as 0x[current][revision][age]00 (current.revision.age,
+# NOT the product version) -- this is what dkim_libversion() returns.
 math(EXPR HEX_VAL "(((${LIBVERSION_CURRENT} << 8) | ${LIBVERSION_REVISION}) << 8 | ${LIBVERSION_AGE}) << 8")
 
 # 2. Convert to Hexadecimal string (requires CMake 3.13+)
@@ -38,7 +44,7 @@ set(HEX_VERSION "0x${HEX_BODY}")
 
 # --- Output for Verification ---
 message(STATUS "Package Version: ${PACKAGE_VERSION}")
-message(STATUS "Libtool Version: ${LIBOPENDKIM_VERSION_INFO}")
+message(STATUS "Libtool Version: ${LIBPHOENIXDKIM_VERSION_INFO}")
 message(STATUS "Hex Version:     ${HEX_VERSION}")
 
 # ── Required modules ──────────────────────────────────────────────────────────
@@ -277,7 +283,7 @@ configure_file(
 # ── Process dkim.h to inject the hex version ──────────────────────────────────
 configure_file(
     dkim.h
-    ${CMAKE_CURRENT_BINARY_DIR}/opendkim/dkim.h
+    ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim/dkim.h
     @ONLY
 )
 
@@ -304,9 +310,9 @@ set(LIBOPENDKIM_SOURCES
 add_library(opendkim SHARED ${LIBOPENDKIM_SOURCES})
 
 set_target_properties(opendkim PROPERTIES
-    OUTPUT_NAME   opendkim
-    VERSION       13.0.0
-    SOVERSION     13
+    OUTPUT_NAME   phoenixdkim
+    VERSION       0.0.0
+    SOVERSION     0
 )
 
 # ── Static library ────────────────────────────────────────────────────────────
@@ -314,7 +320,7 @@ set_target_properties(opendkim PROPERTIES
 add_library(opendkim_static STATIC ${LIBOPENDKIM_SOURCES})
 
 set_target_properties(opendkim_static PROPERTIES
-    OUTPUT_NAME opendkim
+    OUTPUT_NAME phoenixdkim
 )
 
 # ── Common configuration helper ───────────────────────────────────────────────
@@ -323,14 +329,14 @@ function(configure_opendkim_target tgt)
     target_include_directories(${tgt}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/opendkim>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/phoenixdkim>
         PRIVATE
             ${CMAKE_CURRENT_BINARY_DIR}   # build-config.h lives here
     )
 
     # Inject the version hex directly into the source code
     target_compile_definitions(${tgt} PUBLIC
-        OPENDKIM_LIB_VERSION=${HEX_VERSION}
+        PHOENIXDKIM_LIB_VERSION=${HEX_VERSION}
     )
 
     # Always-on compile definitions for this modern build
@@ -395,7 +401,7 @@ apply_sanitizers(opendkim_static)
 # ── Public header install ─────────────────────────────────────────────────────
 
 install(FILES dkim.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/opendkim
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/phoenixdkim
 )
 
 install(TARGETS opendkim opendkim_static
@@ -405,34 +411,34 @@ install(TARGETS opendkim opendkim_static
 
 # ── pkg-config .pc file ───────────────────────────────────────────────────────
 
-set(OPENDKIM_PC_REQUIRES_PRIVATE "")
-set(OPENDKIM_PC_PRIVATE_LIBS "")
+set(PHOENIXDKIM_PC_REQUIRES_PRIVATE "")
+set(PHOENIXDKIM_PC_PRIVATE_LIBS "")
 
 if(UNBOUND_FOUND)
-    string(APPEND OPENDKIM_PC_REQUIRES_PRIVATE " libunbound")
+    string(APPEND PHOENIXDKIM_PC_REQUIRES_PRIVATE " libunbound")
 endif()
 
 if(LMDB_FOUND AND PKG_CONFIG_FOUND)
-    string(APPEND OPENDKIM_PC_REQUIRES_PRIVATE " lmdb")
+    string(APPEND PHOENIXDKIM_PC_REQUIRES_PRIVATE " lmdb")
 else()
-    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -llmdb")
+    string(APPEND PHOENIXDKIM_PC_PRIVATE_LIBS " -llmdb")
 endif()
 
 if(RESOLV_LIBRARY)
-    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -lresolv")
+    string(APPEND PHOENIXDKIM_PC_PRIVATE_LIBS " -lresolv")
 endif()
 
 if(STRL_LIBRARY)
-    string(APPEND OPENDKIM_PC_PRIVATE_LIBS " -lbsd")
+    string(APPEND PHOENIXDKIM_PC_PRIVATE_LIBS " -lbsd")
 endif()
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/opendkim.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/opendkim.pc
+    ${CMAKE_CURRENT_SOURCE_DIR}/phoenixdkim.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.pc
     @ONLY
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opendkim.pc
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
