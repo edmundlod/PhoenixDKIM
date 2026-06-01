@@ -1,5 +1,5 @@
 ##
-## opendkim.conf -- configuration file for OpenDKIM filter
+## phoenixdkim.conf -- configuration file for PhoenixDKIM filter
 ##
 ## Copyright (c) 2010-2015, The Trusted Domain Project.  All rights reserved.
 ##
@@ -7,14 +7,14 @@
 ##
 
 ##
-## For settings that refer to a "dataset", see the opendkim(8) man page.
+## For settings that refer to a "dataset", see the phoenixdkim(8) man page.
 ##
 
 ## DEPRECATED CONFIGURATION OPTIONS
 ## 
 ## The following configuration options are no longer valid.  They should be
 ## removed from your existing configuration file to prevent potential issues.
-## Failure to do so may result in opendkim being unable to start.
+## Failure to do so may result in phoenixdkim being unable to start.
 ## 
 ## Removed in 2.10.0:
 ##   AddAllSignatureResults
@@ -102,7 +102,7 @@
 ##  AutoRestartRate n/t[u]
 ##  	default (none)
 ## 
-##  Sets the maximum automatic restart rate.  See the opendkim.conf(5)
+##  Sets the maximum automatic restart rate.  See the phoenixdkim.conf(5)
 ##  man page for the format of this parameter.
 
 # AutoRestartRate	n/tu
@@ -121,14 +121,14 @@
 ##  operation.  Thus, cores will be dumped here and configuration files
 ##  are read relative to this location.
 
-# BaseDirectory		/run/opendkim
+# BaseDirectory		/run/phoenixdkim
 
 ##  BodyLengthDB dataset
 ##  	default (none)
 ##
 ##  A data set that is checked against envelope recipients to see if a
 ##  body length tag should be included in the generated signature.
-##  This has security implications; see opendkim.conf(5) for details.
+##  This has security implications; see phoenixdkim.conf(5) for details.
 
 # BodyLengthDB		dataset
 
@@ -287,7 +287,7 @@ KeyFile			/var/db/dkim/example.private
 ##  or verify it.  The logic behind the decision is non-trivial and can be
 ##  confusing to administrators not familiar with its operation.  A
 ##  description of how the decision is made can be found in the OPERATIONS
-##  section of the opendkim(8) man page.  This causes a large increase
+##  section of the phoenixdkim(8) man page.  This causes a large increase
 ##  in the amount of log data generated for each message, so it should be
 ##  limited to debugging use and not enabled for general operation.
 
@@ -297,7 +297,7 @@ KeyFile			/var/db/dkim/example.private
 ##
 ##  Gives a set of MTA-provided macros which should be checked to see
 ##  if the sender has been determined to be a local user and therefore
-##  whether or not signing should be done.  See opendkim.conf(5) for
+##  whether or not signing should be done.  See phoenixdkim.conf(5) for
 ##  more information.
 
 # MacroList		foo=bar,baz=blivit
@@ -418,7 +418,7 @@ KeyFile			/var/db/dkim/example.private
 ##
 ##  Specifies what to do when certain error conditions are encountered.
 ##
-##  See opendkim.conf(5) for more information.
+##  See phoenixdkim.conf(5) for more information.
 
 # On-Default
 # On-BadSignature
@@ -434,7 +434,7 @@ KeyFile			/var/db/dkim/example.private
 ##
 ##  Specifies a set of header fields that should be included in all signature
 ##  header lists (the "h=" tag) once more than the number of times they were
-##  actually present in the signed message.  See opendkim.conf(5) for more
+##  actually present in the signed message.  See phoenixdkim.conf(5) for more
 ##  information.
 
 # OverSignHeaders	header1,header2,...
@@ -562,7 +562,7 @@ KeyFile			/var/db/dkim/example.private
 ##  Requests enabling of resolver trace features, if available.  The effect
 ##  of setting this flag depends on how trace features, if any, are implemented
 ##  in the resolver in use.  Currently only effective when used with the
-##  OpenDKIM asynchronous resolver.
+##  PhoenixDKIM asynchronous resolver.
 
 # ResolverTracing	no
 
@@ -578,7 +578,7 @@ Selector		my-selector-name
 ##
 ##  Overrides the default list of headers that will be used to determine
 ##  the sending domain when deciding whether to sign the message and with
-##  with which key(s).  See opendkim.conf(5) for details.
+##  with which key(s).  See phoenixdkim.conf(5) for details.
 
 # SenderHeaders		From
 
@@ -587,7 +587,7 @@ Selector		my-selector-name
 ##
 ##  Specifies whether or not the filter should generate report mail back
 ##  to senders when verification fails and an address for such a purpose
-##  is provided.  See opendkim.conf(5) for details.
+##  is provided.  See phoenixdkim.conf(5) for details.
 
 # SendReports		No
 
@@ -617,7 +617,7 @@ Selector		my-selector-name
 ##
 ##  Specifies the list of headers which should be included when generating
 ##  signatures.  The string should be a comma-separated list of header names.
-##  See the opendkim.conf(5) man page for more information.
+##  See the phoenixdkim.conf(5) man page for more information.
 
 # SignHeaders		header1,header2,...
 
@@ -629,7 +629,7 @@ Selector		my-selector-name
 ##  message.  The sender is determined from the value of the sender
 ##  header fields as described with SenderHeaders above.  The key for this
 ##  lookup should be an address or address pattern that matches senders;
-##  see the opendkim.conf(5) man page for more information.  The value
+##  see the phoenixdkim.conf(5) man page for more information.  The value
 ##  of the lookup should return the name of a key found in the KeyTable
 ##  that should be used to sign the message.  If MultipleSignatures
 ##  is set, all possible lookup keys will be attempted which may result
@@ -676,7 +676,7 @@ Socket			inet:port@localhost
 ##  	default "no"
 ##
 ##  Selects strict CRLF mode during testing (see the "-t" command line
-##  flag in the opendkim(8) man page).  Messages for which all header
+##  flag in the phoenixdkim(8) man page).  Messages for which all header
 ##  fields and body lines are not CRLF-terminated are considered malformed
 ##  and will produce an error.
 
@@ -708,12 +708,12 @@ Syslog			Yes
 # SyslogFacility	mail
 
 ##  SyslogName		name
-##  	default "opendkim"
+##  	default "phoenixdkim"
 ##
 ##  Set the syslog identity.  Useful when running multiple instances
 ##  to distinguish them in log output.
 
-# SyslogName		opendkim
+# SyslogName		phoenixdkim
 
 ##  SyslogSuccess { yes | no }
 ##  	default "no"
