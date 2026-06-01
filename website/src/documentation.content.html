@@ -8,13 +8,13 @@
 <h2><a name="manpages" href="#manpages">Man pages</a></h2>
 
 <ul>
-  <li><a href="/man/opendkim.8.html">opendkim(8)</a> — DKIM signing and verifying filter</li>
-  <li><a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> — configuration file</li>
-  <li><a href="/man/opendkim-genkey.8.html">opendkim-genkey(8)</a> — generate a DKIM signing key</li>
-  <li><a href="/man/opendkim-genzone.8.html">opendkim-genzone(8)</a> — generate a DKIM public key DNS zone fragment</li>
-  <li><a href="/man/opendkim-testkey.8.html">opendkim-testkey(8)</a> — test a DKIM key in DNS</li>
-  <li><a href="/man/opendkim-testmsg.8.html">opendkim-testmsg(8)</a> — test a DKIM-signed message</li>
-  <li><a href="/man/opendkim-lua.3.html">opendkim-lua(3)</a> — Lua scripts for OpenDKIM</li>
+  <li><a href="/man/phoenixdkim.8.html">phoenixdkim(8)</a> — DKIM signing and verifying filter</li>
+  <li><a href="/man/phoenixdkim.conf.5.html">phoenixdkim.conf(5)</a> — configuration file</li>
+  <li><a href="/man/phoenixdkim-genkey.8.html">phoenixdkim-genkey(8)</a> — generate a DKIM signing key</li>
+  <li><a href="/man/phoenixdkim-genzone.8.html">phoenixdkim-genzone(8)</a> — generate a DKIM public key DNS zone fragment</li>
+  <li><a href="/man/phoenixdkim-testkey.8.html">phoenixdkim-testkey(8)</a> — test a DKIM key in DNS</li>
+  <li><a href="/man/phoenixdkim-testmsg.8.html">phoenixdkim-testmsg(8)</a> — test a DKIM-signed message</li>
+  <li><a href="/man/phoenixdkim-lua.3.html">phoenixdkim-lua(3)</a> — Lua scripts for PhoenixDKIM</li>
 </ul>
 
 <h2><a name="config" href="#config">Configuration examples</a></h2>
@@ -22,7 +22,7 @@
 <p>
 These examples cover common setups from the simplest to the more involved.
 They are not a substitute for the
-<a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page, which
+<a href="/man/phoenixdkim.conf.5.html">phoenixdkim.conf(5)</a> man page, which
 documents every option.
 </p>
 
@@ -43,8 +43,8 @@ key, or if you simply do not send mail through this filter.
 </p>
 
 <pre>Syslog                  yes
-Socket                  local:/run/opendkim/opendkim.sock
-UserID                  opendkim:opendkim
+Socket                  local:/run/phoenixdkim/phoenixdkim.sock
+UserID                  phoenixdkim:phoenixdkim
 
 Mode                    v</pre>
 
@@ -52,34 +52,34 @@ Mode                    v</pre>
 
 <p>
 Generate an RSA signing key with
-<a href="/man/opendkim-genkey.8.html">opendkim-genkey(8)</a>:
+<a href="/man/phoenixdkim-genkey.8.html">phoenixdkim-genkey(8)</a>:
 </p>
 
-<pre>opendkim-genkey -b 2048 -d example.com -s mail</pre>
+<pre>phoenixdkim-genkey -b 2048 -d example.com -s mail</pre>
 
 <p>
 This creates two files: <tt>mail.private</tt> (the private key) and
 <tt>mail.txt</tt> (the DNS TXT record to publish). Copy
-<tt>mail.private</tt> to <tt>/etc/opendkim/keys/</tt> and publish the
+<tt>mail.private</tt> to <tt>/etc/phoenixdkim/keys/</tt> and publish the
 record from <tt>mail.txt</tt> as <tt>mail._domainkey.example.com</tt>
 in your domain's DNS.
 </p>
 
 <pre>Syslog                  yes
-Socket                  local:/run/opendkim/opendkim.sock
-UserID                  opendkim:opendkim
+Socket                  local:/run/phoenixdkim/phoenixdkim.sock
+UserID                  phoenixdkim:phoenixdkim
 
 Mode                    sv
 Canonicalization        relaxed/relaxed
 Domain                  example.com
 Selector                mail
-KeyFile                 /etc/opendkim/keys/mail.private</pre>
+KeyFile                 /etc/phoenixdkim/keys/mail.private</pre>
 
 <p>
 <tt>Mode sv</tt> enables both signing and verification. If you sign for
 more than one domain, use <tt>KeyTable</tt> and <tt>SigningTable</tt>
 instead of <tt>Domain</tt>, <tt>Selector</tt>, and <tt>KeyFile</tt>;
-see the <a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page.
+see the <a href="/man/phoenixdkim.conf.5.html">phoenixdkim.conf(5)</a> man page.
 </p>
 
 <h3><a name="dual-signing" href="#dual-signing">3. Dual signing: Ed25519 and RSA</a></h3>
@@ -110,35 +110,35 @@ handle Ed25519 gracefully, even if you have an RSA backup signature.
 If you do want to proceed, generate both keys:
 </p>
 
-<pre>opendkim-genkey -b 2048 -d example.com -s mail-rsa
-opendkim-genkey -t ed25519 -d example.com -s mail-ed25519</pre>
+<pre>phoenixdkim-genkey -b 2048 -d example.com -s mail-rsa
+phoenixdkim-genkey -t ed25519 -d example.com -s mail-ed25519</pre>
 
 <p>
 Copy both <tt>.private</tt> files to
-<tt>/etc/opendkim/keys/example.com/</tt> and publish both DNS records.
+<tt>/etc/phoenixdkim/keys/example.com/</tt> and publish both DNS records.
 It is good practice to keep each domain's keys in its own subdirectory
 under <tt>keys/</tt>.
 </p>
 
 <p>
 The format of <tt>KeyTable</tt> and <tt>SigningTable</tt> is described in the
-<a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a> man page.
+<a href="/man/phoenixdkim.conf.5.html">phoenixdkim.conf(5)</a> man page.
 </p>
 
-<p>Create <tt>/etc/opendkim/keytable</tt>:</p>
+<p>Create <tt>/etc/phoenixdkim/keytable</tt>:</p>
 
-<pre>mail-rsa      example.com:mail-rsa:/etc/opendkim/keys/example.com/mail-rsa.private
-mail-ed25519  example.com:mail-ed25519:/etc/opendkim/keys/example.com/mail-ed25519.private</pre>
+<pre>mail-rsa      example.com:mail-rsa:/etc/phoenixdkim/keys/example.com/mail-rsa.private
+mail-ed25519  example.com:mail-ed25519:/etc/phoenixdkim/keys/example.com/mail-ed25519.private</pre>
 
-<p>Create <tt>/etc/opendkim/signingtable</tt>:</p>
+<p>Create <tt>/etc/phoenixdkim/signingtable</tt>:</p>
 
 <pre>*@example.com  mail-rsa
 *@example.com  mail-ed25519</pre>
 
 <pre>Mode                    sv
 Canonicalization        relaxed/relaxed
-KeyTable                /etc/opendkim/keytable
-SigningTable            refile:/etc/opendkim/signingtable
+KeyTable                /etc/phoenixdkim/keytable
+SigningTable            refile:/etc/phoenixdkim/signingtable
 MultipleSignatures      yes</pre>
 
 <p>
@@ -193,7 +193,7 @@ the key over HTTPS for each lookup:
 </p>
 
 <pre>KeyTable      vault://vault.example.com:8200/v1/secret/data/dkim/{d}
-SigningTable  refile:/etc/opendkim/signingtable
+SigningTable  refile:/etc/phoenixdkim/signingtable
 VaultToken    hvs.CAES...your-token...</pre>
 
 <p>
@@ -257,7 +257,7 @@ A selector that is malformed or outside its window is skipped and logged, never
 fatal, so one bad entry cannot stop a domain's mail. The array field name
 (<tt>VaultSelectorsField</tt>, default <tt>selectors</tt>), the single-key field
 name (<tt>VaultField</tt>), and the token (<tt>VaultToken</tt>) are all
-documented in <a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a>. The
+documented in <a href="/man/phoenixdkim.conf.5.html">phoenixdkim.conf(5)</a>. The
 secret schema matches
 <a href="https://docs.rspamd.com/modules/dkim_signing/">rspamd's Vault layout</a>,
 so the <em>same</em> secret can be managed with rspamd's tooling and signed by
