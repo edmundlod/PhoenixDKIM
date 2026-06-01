@@ -16,7 +16,7 @@ ReportAddress           postmaster@@DOMAIN@
 SendReports             yes
 
 ## Hosts to sign email for - 127.0.0.1 is default
-## See the OPERATION section of opendkim(8) for more information
+## See the OPERATION section of phoenixdkim(8) for more information
 #
 # InternalHosts		192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12
 
@@ -25,4 +25,4 @@ SendReports             yes
 #
 # PeerList		X.X.X.X
 
-# PidFile		/var/run/opendkim/opendkim.pid
+# PidFile		/var/run/phoenixdkim/phoenixdkim.pid
