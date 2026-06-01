@@ -1,6 +1,6 @@
-usr/sbin/opendkim
-debian/opendkim.service usr/lib/systemd/system/
-usr/share/man/man8/opendkim.8
-usr/share/man/man5/opendkim.conf.5
-usr/share/man/man3/opendkim-lua.3
+usr/sbin/phoenixdkim
+debian/phoenixdkim.service usr/lib/systemd/system/
+usr/share/man/man8/phoenixdkim.8
+usr/share/man/man5/phoenixdkim.conf.5
+usr/share/man/man3/phoenixdkim-lua.3
 usr/lib/*/pkgconfig/opendkim.pc

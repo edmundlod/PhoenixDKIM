@@ -148,7 +148,7 @@ endif()
 # Distro packaging ships its own unit, so default this OFF off-Linux and let
 # packagers turn it off explicitly (Debian does, via debian/rules).  The unit
 # itself is generated from the build so its Type=/WatchdogSec match what was
-# actually compiled (see opendkim.service.in below).
+# actually compiled (see phoenixdkim.service.in below).
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     option(INSTALL_SYSTEMD_UNIT "Install the generated systemd service unit" ON)
 else()
@@ -401,7 +401,7 @@ if(INSTALL_SYSTEMD_UNIT)
     if(HAVE_LIBSYSTEMD)
         set(SD_TYPE "notify")
         set(SD_WATCHDOG_BLOCK
-"# opendkim feeds this watchdog from a dedicated thread at half the interval
+"# phoenixdkim feeds this watchdog from a dedicated thread at half the interval
 # below (i.e. every 15s).  systemd restarts the service if no keep-alive
 # arrives within WatchdogSec, catching a wholly hung process.
 WatchdogSec=30")
@@ -412,11 +412,11 @@ WatchdogSec=30")
 # uses Type=simple and omits WatchdogSec.")
     endif()
     configure_file(
-        ${CMAKE_SOURCE_DIR}/contrib/systemd/opendkim.service.in
-        ${CMAKE_CURRENT_BINARY_DIR}/opendkim.service
+        ${CMAKE_SOURCE_DIR}/contrib/systemd/phoenixdkim.service.in
+        ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.service
         @ONLY
     )
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/opendkim.service
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.service
         DESTINATION ${SYSTEMD_UNIT_DIR}
     )
 endif()

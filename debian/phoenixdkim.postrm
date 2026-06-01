@@ -3,7 +3,7 @@
 set -e
 
 if [ "$1" = "purge" ]; then
-    rm -rf /lib/opendkim
+    rm -rf /lib/phoenixdkim
 fi
 
 #DEBHELPER#

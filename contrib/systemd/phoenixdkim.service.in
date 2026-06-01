@@ -1,32 +1,32 @@
 [Unit]
 Description=PhoenixDKIM Milter
-Documentation=man:opendkim(8) man:opendkim.conf(5) man:opendkim-lua(3) man:opendkim-genkey(8) man:opendkim-genzone(8) man:opendkim-testkey(8) man:opendkim-testmsg(8)
+Documentation=man:phoenixdkim(8) man:phoenixdkim.conf(5) man:phoenixdkim-lua(3) man:phoenixdkim-genkey(8) man:phoenixdkim-genzone(8) man:phoenixdkim-testkey(8) man:phoenixdkim-testmsg(8)
 After=network-online.target nss-lookup.target syslog.target
 Wants=network-online.target
 
-# Best-effort ordering so opendkim is ready before a local MTA starts
+# Best-effort ordering so phoenixdkim is ready before a local MTA starts
 # accepting mail.  The authoritative way to guarantee ordering is on the
-# consumer side, e.g. "After=opendkim.service" (and "Wants=opendkim.service")
+# consumer side, e.g. "After=phoenixdkim.service" (and "Wants=phoenixdkim.service")
 # in the MTA unit.
 Before=postfix.service sendmail.service exim.service exim4.service opensmtpd.service
 
 [Service]
 Type=@SD_TYPE@
-RuntimeDirectory=opendkim
+RuntimeDirectory=phoenixdkim
 RuntimeDirectoryMode=0750
-ExecStart=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim -f -x /etc/opendkim.conf
+ExecStart=@CMAKE_INSTALL_FULL_SBINDIR@/phoenixdkim -f -x /etc/phoenixdkim/phoenixdkim.conf
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 
 @SD_WATCHDOG_BLOCK@
-User=opendkim
-Group=opendkim
+User=phoenixdkim
+Group=phoenixdkim
 
 # As the file system is mounted read-only with ProtectSystem=strict, adding
-# /var/spool/postfix/opendkim by default makes it possible to use opendkim
+# /var/spool/postfix/phoenixdkim by default makes it possible to use phoenixdkim
 # with postfix without further configuration.
-ReadWritePaths=-/var/spool/postfix/opendkim
-RuntimeDirectory=opendkim
+ReadWritePaths=-/var/spool/postfix/phoenixdkim
+RuntimeDirectory=phoenixdkim
 
 # Hardening - see systemd.exec(5)
 CapabilityBoundingSet=
@@ -56,15 +56,15 @@ SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallFilter=~ @privileged @resources
 
-# These lines prevent opendkim from executing any binary other than itself,
+# These lines prevent phoenixdkim from executing any binary other than itself,
 # which is a strong mitigation against an attacker spawning a shell.
-# IMPORTANT: if you use ReportAddress or ReportCommand in opendkim.conf,
-# opendkim will popen() a mail submission binary (sendmail by default).
+# IMPORTANT: if you use ReportAddress or ReportCommand in phoenixdkim.conf,
+# phoenixdkim will popen() a mail submission binary (sendmail by default).
 # In that case you must add the binary's path, e.g.:
-#   ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim /usr/lib /usr/sbin/sendmail
-# or override via: systemctl edit opendkim.service
+#   ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/phoenixdkim /usr/lib /usr/sbin/sendmail
+# or override via: systemctl edit phoenixdkim.service
 NoExecPaths=/
-ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/opendkim /usr/lib
+ExecPaths=@CMAKE_INSTALL_FULL_SBINDIR@/phoenixdkim /usr/lib
 
 
 [Install]
