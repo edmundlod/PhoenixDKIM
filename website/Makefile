@@ -41,6 +41,12 @@ SHELL   = /bin/bash
 TMPL    = src/template.html
 OUTDIR  = out
 
+# Product version, single-sourced from the library's CMake version block, so the
+# generated man pages always state the PhoenixDKIM version they were built from
+# without a second place to bump at release time.
+VER_SRC := ../libphoenixdkim/CMakeLists.txt
+PHOENIXDKIM_VERSION := $(shell sed -n 's/^set(VERSION_RELEASE *\([0-9][0-9]*\)).*/\1/p' $(VER_SRC)).$(shell sed -n 's/^set(VERSION_MAJOR_REV *\([0-9][0-9]*\)).*/\1/p' $(VER_SRC)).$(shell sed -n 's/^set(VERSION_MINOR_REV *\([0-9][0-9]*\)).*/\1/p' $(VER_SRC))
+
 # ── regular pages ────────────────────────────────────────────────────────────
 
 PAGES = \
@@ -150,8 +156,12 @@ $(OUTDIR)/%.html: src/%.content.html $(TMPL)
 #   1. save Creator/CreationDate comments to append at bottom
 #   2. strip everything before <h2>NAME (head, body tag, h1 title, TOC, hr)
 #   3. strip </body> and </html>
-$(OUTDIR)/man/%.html: $(TMPL)
-	$(eval MANSRC := $(filter %/$(patsubst $(OUTDIR)/man/%.html,%,$@),$(MANPAGES)))
+# SECONDEXPANSION lets the prerequisite name the matching man-page source by
+# stem, so editing a .8/.5/.3 in the project regenerates its HTML (the recipe's
+# $(eval MANSRC ...) alone created no dependency).
+.SECONDEXPANSION:
+$(OUTDIR)/man/%.html: $$(foreach m,$(MANPAGES),$$(if $$(filter $$*,$$(notdir $$m)),$$m)) $(TMPL) src/fork-notice.html | $(OUTDIR)/man
+	$(eval MANSRC := $(filter %/$*,$(MANPAGES)))
 	@name=$(patsubst $(OUTDIR)/man/%.html,%,$@); \
 	tmpfile=$$(mktemp); \
 	groftmp=$$(mktemp); \
@@ -165,7 +175,7 @@ $(OUTDIR)/man/%.html: $(TMPL)
 		-e '/<\/html>/d' \
 		$$groftmp \
 	>> $$tmpfile; \
-	printf '<hr>\nThis document was created from the manual pages using groff.<br>\nTime: %s\n' "$$credate" >> $$tmpfile; \
+	printf '<hr>\nThis document was generated from the PhoenixDKIM %s manual pages using groff.<br>\nTime: %s\n' "$(PHOENIXDKIM_VERSION)" "$$credate" >> $$tmpfile; \
 	rm $$groftmp; \
 	sed \
 	    -e "s|%%TITLE%%|$$name|g" \
