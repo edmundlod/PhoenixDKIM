@@ -47,55 +47,6 @@ man page for a description of such parameters.
 Unless otherwise stated, Boolean values default to "false", integer values
 default to 0, and string and dataset values default to being undefined.
 
-.SH DEPRECATED OPTIONS
-The following configuration options have been removed and must not appear in
-.I phoenixdkim.conf.
-Their presence may prevent the filter from starting.
-
-.SS "Removed in 2.10.0"
-AddAllSignatureResults,
-ADSPAction,
-ADSPNoSuchDomain,
-BogusPolicy,
-DisableADSP,
-LDAPSoftStart,
-LocalADSP,
-NoDiscardableMailTo,
-On-PolicyError,
-SendADSPReports,
-UnprotectedPolicy.
-
-.SS "Removed in 3.0.0"
-The following options were removed when their associated subsystems were eliminated.
-
-.TP
-.I AllowSHA1Only
-SHA-1 signing support has been removed.
-
-.TP
-.I LDAPAuthMechanism, LDAPAuthName, LDAPAuthRealm, LDAPAuthUser, LDAPBindPassword, LDAPBindUser, LDAPDisableCache, LDAPKeepaliveIdle, LDAPKeepaliveInterval, LDAPKeepaliveProbes, LDAPTimeout, LDAPUseTLS
-LDAP/OpenLDAP support has been removed.
-
-.TP
-.I SoftStart
-The LDAP/SQL backend support that this option guarded has been removed.
-
-.TP
-.I Statistics, StatisticsName, StatisticsPrefix
-Statistics collection support has been removed.
-
-.TP
-.I VBR-Certifiers, VBR-PurgeFields, VBR-TrustedCertifiers, VBR-TrustedCertifiersOnly, VBR-Type
-Vouch By Reference (VBR) support has been removed.
-
-.TP
-.I POPDBFile
-POP-before-SMTP database support has been removed.
-
-.TP
-.I ReplaceHeaders, ReplaceRules
-Header field text replacement (the MASQUERADE_AS workaround) has been removed.
-
 .SH PARAMETERS
 .TP
 .I AlwaysAddARHeader (Boolean)

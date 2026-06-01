@@ -273,6 +273,46 @@ commits — <tt>git log --grep=_FFR_</tt> lists them.</p>
 
 <hr>
 
+<h2>Configuration keywords no longer accepted</h2>
+
+<p>Because the subsystems above are gone, the configuration keywords that drove
+them are no longer recognised. They were previously enumerated in the
+configuration man page's deprecated-options section; they are recorded here
+instead, since PhoenixDKIM is a standalone product rather than a drop-in
+OpenDKIM replacement. If any of these were carried over from an
+<tt>opendkim.conf</tt>, remove them &mdash; their presence may stop the filter
+from starting.</p>
+
+<h3>ADSP and legacy policy</h3>
+
+<p><tt>AddAllSignatureResults</tt>, <tt>ADSPAction</tt>,
+<tt>ADSPNoSuchDomain</tt>, <tt>BogusPolicy</tt>, <tt>DisableADSP</tt>,
+<tt>LocalADSP</tt>, <tt>NoDiscardableMailTo</tt>, <tt>On-PolicyError</tt>,
+<tt>SendADSPReports</tt>, <tt>UnprotectedPolicy</tt> &mdash; ADSP (RFC&nbsp;5617)
+and its associated policy handling.</p>
+
+<h3>Removed subsystems</h3>
+
+<ul>
+<li><strong>RSA-SHA1 signing:</strong> <tt>AllowSHA1Only</tt>.</li>
+<li><strong>LDAP:</strong> <tt>LDAPAuthMechanism</tt>, <tt>LDAPAuthName</tt>,
+  <tt>LDAPAuthRealm</tt>, <tt>LDAPAuthUser</tt>, <tt>LDAPBindPassword</tt>,
+  <tt>LDAPBindUser</tt>, <tt>LDAPDisableCache</tt>, <tt>LDAPKeepaliveIdle</tt>,
+  <tt>LDAPKeepaliveInterval</tt>, <tt>LDAPKeepaliveProbes</tt>,
+  <tt>LDAPTimeout</tt>, <tt>LDAPUseTLS</tt>, <tt>LDAPSoftStart</tt>.</li>
+<li><strong>LDAP/SQL backend start-up:</strong> <tt>SoftStart</tt>.</li>
+<li><strong>Statistics:</strong> <tt>Statistics</tt>, <tt>StatisticsName</tt>,
+  <tt>StatisticsPrefix</tt>.</li>
+<li><strong>VBR:</strong> <tt>VBR-Certifiers</tt>, <tt>VBR-PurgeFields</tt>,
+  <tt>VBR-TrustedCertifiers</tt>, <tt>VBR-TrustedCertifiersOnly</tt>,
+  <tt>VBR-Type</tt>.</li>
+<li><strong>POP-before-SMTP:</strong> <tt>POPDBFile</tt>.</li>
+<li><strong>Header text replacement (the MASQUERADE_AS workaround):</strong>
+  <tt>ReplaceHeaders</tt>, <tt>ReplaceRules</tt>.</li>
+</ul>
+
+<hr>
+
 <h2>What this fork keeps</h2>
 
 <p>For balance, the components that remain:</p>
