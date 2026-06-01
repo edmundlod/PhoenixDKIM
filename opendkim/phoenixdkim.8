@@ -106,6 +106,53 @@ LMDB (Lightning Memory-Mapped Database) key-value store.
 (Requires liblmdb; enabled with -DWITH_LMDB=ON.)
 .TP
 .I g)
+If the string begins with "http:" or "https:", the remainder is a URI that is
+queried with an HTTP GET for each lookup.  The lookup key can be inserted into
+the path using the tokens "{key}" (the whole key), "{d}" (the part before the
+first colon), and "{s}" (the part after it); substituted values are restricted
+to the characters [A-Za-z0-9._@-] and percent-encoded.  If the path contains no
+token, the key is appended as "?key=<value>".  An HTTP 200 response supplies the
+value, with its trailing line ending stripped; 404 means "not found"; any other
+status is treated as an error.  Authentication and the per-request timeout are
+controlled by the
+.I HttpAuthToken,
+.I HttpAuthHeader,
+and
+.I HttpTimeout
+options described in
+.I phoenixdkim.conf(5).
+(Requires libcurl; enabled with -DWITH_CURL=ON.)
+.TP
+.I h)
+If the string begins with "vault:", the remainder is treated as a URI to a
+HashiCorp Vault KV secrets engine: the "vault:" scheme is rewritten to "https:",
+an "X-Vault-Token" header is added (see
+.I VaultToken
+in
+.I phoenixdkim.conf(5),
+or the
+.I VAULT_TOKEN
+environment variable), and the requested field (see
+.I VaultField,
+default "private_key") is extracted from the JSON envelope of both KVv1 and KVv2
+responses.  Token substitution, status handling, and the timeout are otherwise
+identical to the "http:" backend.
+Alternatively, when the secret carries a selectors array (see
+.I VaultSelectorsField
+in
+.I phoenixdkim.conf(5)),
+a single
+.I KeyTable
+lookup may raise
+.B multiple
+signing requests: the filter emits one DKIM signature for every selector whose
+validity window contains the current time.  This signs with an old and a new
+selector concurrently during a key rotation (so a verifier passes against
+whichever DNS record it has yet propagated) and, where selectors of different
+algorithms are valid, produces both an RSA and an Ed25519 signature.
+(Requires libcurl; enabled with -DWITH_CURL=ON.)
+.TP
+.I i)
 In any other case, the string is presumed to be a comma-separated list.
 Elements in the list are either simple data elements that are part of the
 set or, in the case of an entry of the form "x=y", are stored as key-value
