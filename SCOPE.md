@@ -80,7 +80,7 @@ avoid scope creep and compatibility breakage.
 | LMDB (`lmdb:`) | **New.** Replaces BerkeleyDB (`bdb:`). Fast, crash-safe, actively maintained, single-file. Implement as the binary/indexed backend. |
 | Lua script (`lua:`) | Dynamic key lookup via Lua script. Keep as optional (`-DWITH_LUA=ON`). Useful for multi-tenant and secrets-manager integrations. Lua 5.4 target. |
 | HTTP / HTTPS (`http:`, `https:`) | **New. Optional (`-DWITH_CURL=ON`).** GET-based key lookup against any HTTP endpoint. Bearer token auth. Covers secrets managers and LDAP/SQL bridge services. See `ai/backend-extension-plan.md`. |
-| Vault (`vault:`) | **New. Optional (`-DWITH_CURL=ON`).** Convenience wrapper over `https:` that knows the HashiCorp Vault KVv2 JSON envelope and the `X-Vault-Token` header. See `ai/backend-extension-plan.md`. |
+| Vault (`vault:`) | **New. Optional (`-DWITH_CURL=ON`).** Convenience wrapper over `https:` that knows the HashiCorp Vault KVv2 JSON envelope and the `X-Vault-Token` header. A secret may also carry a `selectors` array, in which case a single lookup raises **one signing request per currently-valid selector** (emit-all-valid rotation/algorithm overlap) — so this backend can drive multiple signatures, unlike the others. See `ai/backend-extension-plan.md`. |
 
 **Why no native LDAP or SQL drivers**: The original OpenLDAP code depended on
 `libldap`, optional Cyrus SASL, and a BerkeleyDB caching layer (now gone).
