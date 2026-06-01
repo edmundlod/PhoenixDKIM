@@ -70,8 +70,8 @@ if(SSL_ROOT_DIR AND NOT OPENSSL_ROOT_DIR)
     set(OPENSSL_ROOT_DIR "${SSL_ROOT_DIR}")
 endif()
 
-add_subdirectory(libopendkim)
-add_subdirectory(opendkim)
+add_subdirectory(libphoenixdkim)
+add_subdirectory(phoenixdkim)
 add_subdirectory(miltertest)
 
 # Probe SHA1 RSA verify support after OpenSSL has been found by the

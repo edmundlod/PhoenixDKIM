@@ -10,13 +10,13 @@
 # Both options do two things:
 #
 #   1. Configure MEMORYCHECK_COMMAND / MEMORYCHECK_COMMAND_OPTIONS so that
-#      "ctest -T memcheck" instruments the libopendkim unit-test binaries
+#      "ctest -T memcheck" instruments the libphoenixdkim unit-test binaries
 #      directly through Valgrind.
 #
 #   2. Generate a thin shell wrapper
 #         ${CMAKE_BINARY_DIR}/valgrind-bin/phoenixdkim
-#      and set OPENDKIM_VALGRIND_BIN_DIR so that opendkim/tests/CMakeLists.txt
-#      can point OPENDKIM_BINPATH there.  The miltertest Lua scripts call
+#      and set OPENDKIM_VALGRIND_BIN_DIR so that phoenixdkim/tests/CMakeLists.txt
+#      can point PHOENIXDKIM_BINPATH there.  The miltertest Lua scripts call
 #         binpath .. "/phoenixdkim"
 #      so the daemon itself then runs under Valgrind without touching the
 #      Lua scripts at all.
@@ -126,12 +126,12 @@ endif()
 
 # ── Generate integration-test wrapper script ──────────────────────────────────
 # The Lua test drivers call:
-#   os.getenv("OPENDKIM_BINPATH") .. "/phoenixdkim"
+#   os.getenv("PHOENIXDKIM_BINPATH") .. "/phoenixdkim"
 # We generate a wrapper script at that path that execs the real daemon under
 # Valgrind, so the daemon is instrumented even though miltertest itself is not.
 
 set(OPENDKIM_VALGRIND_BIN_DIR "${CMAKE_BINARY_DIR}/valgrind-bin")
-set(_real_bin                 "${CMAKE_BINARY_DIR}/opendkim/phoenixdkim")
+set(_real_bin                 "${CMAKE_BINARY_DIR}/phoenixdkim/phoenixdkim")
 
 # Build a properly-quoted exec line for the shell wrapper.
 # Each argument goes on its own line for readability.
