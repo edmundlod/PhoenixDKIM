@@ -5,7 +5,7 @@
 # VERIFICATION.
 #
 # Result variable (BOOL, cached):
-#   OPENDKIM_SHA1_VERIFY_OK
+#   PHOENIXDKIM_SHA1_VERIFY_OK
 #
 # Effect: if the probe fails, a CMake WARNING is emitted that explains the
 # situation and gives platform-specific instructions for enabling SHA1.
@@ -82,11 +82,11 @@ done:
     EVP_PKEY_free(pkey);
     return ret;
 }
-]] OPENDKIM_SHA1_VERIFY_OK)
+]] PHOENIXDKIM_SHA1_VERIFY_OK)
 
 cmake_pop_check_state()
 
-if(NOT OPENDKIM_SHA1_VERIFY_OK)
+if(NOT PHOENIXDKIM_SHA1_VERIFY_OK)
     if(EXISTS "/etc/crypto-policies/config")
         file(READ "/etc/crypto-policies/config" _sha1_cp_content)
         string(STRIP "${_sha1_cp_content}" _sha1_cp_content)

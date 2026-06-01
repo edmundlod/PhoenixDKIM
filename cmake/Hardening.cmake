@@ -4,19 +4,19 @@
 #
 # Usage: call apply_hardening(<target>) on every C target.
 #
-# Link-hardening flags (PIE, RELRO, BIND_NOW) are behind OPENDKIM_ENABLE_LINK_HARDENING
+# Link-hardening flags (PIE, RELRO, BIND_NOW) are behind PHOENIXDKIM_ENABLE_LINK_HARDENING
 # (default OFF).  Distro build infrastructure (dpkg-buildflags, rpm hardening macros,
 # FreeBSD/OpenBSD ports frameworks) injects these already.  Enabling them here on top
 # causes duplicate-flag warnings and conflicts with downstream maintainers.  Set ON only
 # when building completely outside a distro environment.
 #
-# -z noexecstack is split into its own option (OPENDKIM_ENABLE_NOEXECSTACK, default ON)
+# -z noexecstack is split into its own option (PHOENIXDKIM_ENABLE_NOEXECSTACK, default ON)
 # because it has essentially no downside and is not part of the PIE/RELRO policy debate.
 #
-# Extra high-noise conversion/alignment warnings (OPENDKIM_ENABLE_EXTRA_WARNINGS, default
+# Extra high-noise conversion/alignment warnings (PHOENIXDKIM_ENABLE_EXTRA_WARNINGS, default
 # OFF) are provided for targeted cleanup sessions.
 #
-# Strict ISO C17 conformance (OPENDKIM_ENABLE_STRICT_C, default OFF) adds
+# Strict ISO C17 conformance (PHOENIXDKIM_ENABLE_STRICT_C, default OFF) adds
 # -pedantic-errors, turning any use of compiler extensions into a hard error.
 # -Wextra is already part of the baseline; combine STRICT_C with EXTRA_WARNINGS
 # for the widest diagnostic net.
@@ -102,13 +102,13 @@ check_c_compiler_flag(-Wformat-overflow=2        HARDEN_CC_WFORMAT_OVERFLOW2)
 check_c_compiler_flag(-Wstringop-overflow=4      HARDEN_CC_WSTRINGOP_OVERFLOW4)
 
 # Extra high-noise warnings (optional, default OFF)
-option(OPENDKIM_ENABLE_EXTRA_WARNINGS
+option(PHOENIXDKIM_ENABLE_EXTRA_WARNINGS
     "Enable -Wconversion, -Wsign-conversion, and -Wcast-align. These fire \
 frequently in legacy C code and are best used during targeted cleanup sessions, \
 not as part of normal CI. Default OFF."
     OFF)
 
-if(OPENDKIM_ENABLE_EXTRA_WARNINGS)
+if(PHOENIXDKIM_ENABLE_EXTRA_WARNINGS)
     check_c_compiler_flag(-Wconversion      HARDEN_CC_WCONVERSION)
     check_c_compiler_flag(-Wsign-conversion HARDEN_CC_WSIGN_CONVERSION)
     check_c_compiler_flag(-Wcast-align      HARDEN_CC_WCAST_ALIGN)
@@ -119,16 +119,16 @@ endif()
 # -pedantic-errors enforces strict ISO C17 — any GNU or compiler extension
 # becomes a hard error rather than a warning.  -Wextra is already part of the
 # baseline (always on); -Wconversion/-Wsign-conversion live in
-# OPENDKIM_ENABLE_EXTRA_WARNINGS.  Combine all three options for the widest
+# PHOENIXDKIM_ENABLE_EXTRA_WARNINGS.  Combine all three options for the widest
 # diagnostic net during cleanup sessions.
-option(OPENDKIM_ENABLE_STRICT_C
+option(PHOENIXDKIM_ENABLE_STRICT_C
     "Enable -pedantic-errors: reject any code that is not strictly ISO C17. \
--Wextra is already on by default. Pair with OPENDKIM_ENABLE_EXTRA_WARNINGS \
+-Wextra is already on by default. Pair with PHOENIXDKIM_ENABLE_EXTRA_WARNINGS \
 (-Wconversion, -Wsign-conversion, -Wcast-align) for maximum diagnostic coverage. \
 Best used during targeted cleanup sessions, not as part of normal CI. Default OFF."
     OFF)
 
-if(OPENDKIM_ENABLE_STRICT_C)
+if(PHOENIXDKIM_ENABLE_STRICT_C)
     check_c_compiler_flag(-pedantic-errors HARDEN_CC_PEDANTIC_ERRORS)
 endif()
 
@@ -139,33 +139,33 @@ endif()
 # effectively zero.  Distros generally do NOT inject this automatically (unlike
 # PIE/RELRO), making it the right default to set in the build system.
 
-option(OPENDKIM_ENABLE_NOEXECSTACK
+option(PHOENIXDKIM_ENABLE_NOEXECSTACK
     "Mark the stack segment non-executable (-z noexecstack). \
 Near-zero cost; prevents accidental or JIT-injected executable stacks. \
 Default ON."
     ON)
 
-if(OPENDKIM_ENABLE_NOEXECSTACK)
+if(PHOENIXDKIM_ENABLE_NOEXECSTACK)
     check_linker_flag(C "-Wl,-z,noexecstack" HARDEN_LD_NOEXECSTACK)
 endif()
 
 # ── PIE + RELRO + BIND_NOW (optional, default OFF) ────────────────────────────
 
-option(OPENDKIM_ENABLE_LINK_HARDENING
+option(PHOENIXDKIM_ENABLE_LINK_HARDENING
     "Add -pie, -z relro, and -z now to runtime targets. \
 Distro packaging infrastructure (dpkg-buildflags, rpm macros, ports frameworks) \
 typically injects these already. Enable only when building outside a distro \
 environment. Default OFF."
     OFF)
 
-if(OPENDKIM_ENABLE_LINK_HARDENING)
+if(PHOENIXDKIM_ENABLE_LINK_HARDENING)
     check_linker_flag(C "-Wl,-z,relro"  HARDEN_LD_RELRO)
     check_linker_flag(C "-Wl,-z,now"    HARDEN_LD_BINDNOW)
     check_c_compiler_flag(-pie          HARDEN_LD_PIE)
     if(HARDEN_LD_RELRO)
         message(STATUS "Hardening: link hardening ON (PIE, RELRO, BIND_NOW)")
     else()
-        message(WARNING "Hardening: OPENDKIM_ENABLE_LINK_HARDENING=ON but the "
+        message(WARNING "Hardening: PHOENIXDKIM_ENABLE_LINK_HARDENING=ON but the "
                         "linker does not support -z relro. Link hardening disabled.")
     endif()
 endif()
@@ -255,9 +255,9 @@ function(apply_hardening tgt)
     # -Wsign-conversion: implicit signed↔unsigned conversions.
     # -Wcast-align: cast increases required alignment of the target type.
     #
-    # Enabled only under OPENDKIM_ENABLE_EXTRA_WARNINGS.
+    # Enabled only under PHOENIXDKIM_ENABLE_EXTRA_WARNINGS.
 
-    if(OPENDKIM_ENABLE_EXTRA_WARNINGS)
+    if(PHOENIXDKIM_ENABLE_EXTRA_WARNINGS)
         foreach(_xw CONVERSION SIGN_CONVERSION CAST_ALIGN)
             if(HARDEN_CC_W${_xw})
                 string(TOLOWER "${_xw}" _xf)
@@ -274,7 +274,7 @@ function(apply_hardening tgt)
     # -Wextra is already in the baseline above; -Wconversion/-Wsign-conversion
     # are in the EXTRA_WARNINGS block above — combine for maximum strictness.
 
-    if(OPENDKIM_ENABLE_STRICT_C AND HARDEN_CC_PEDANTIC_ERRORS)
+    if(PHOENIXDKIM_ENABLE_STRICT_C AND HARDEN_CC_PEDANTIC_ERRORS)
         target_compile_options(${tgt} PRIVATE -pedantic-errors)
     endif()
 
@@ -303,17 +303,17 @@ function(apply_hardening tgt)
     #
     # Skipped when any sanitizer is active: ASAN/UBSAN intercept memory functions
     # themselves and FORTIFY_SOURCE can trigger false positives against that layer.
-    # Sanitizers.cmake defines OPENDKIM_ENABLE_ASAN / _UBSAN; include it before
+    # Sanitizers.cmake defines PHOENIXDKIM_ENABLE_ASAN / _UBSAN; include it before
     # this module so those variables are defined here.
 
     set(_san_active FALSE)
-    if(DEFINED OPENDKIM_ENABLE_ASAN  AND OPENDKIM_ENABLE_ASAN)
+    if(DEFINED PHOENIXDKIM_ENABLE_ASAN  AND PHOENIXDKIM_ENABLE_ASAN)
         set(_san_active TRUE)
     endif()
-    if(DEFINED OPENDKIM_ENABLE_UBSAN AND OPENDKIM_ENABLE_UBSAN)
+    if(DEFINED PHOENIXDKIM_ENABLE_UBSAN AND PHOENIXDKIM_ENABLE_UBSAN)
         set(_san_active TRUE)
     endif()
-    if(DEFINED OPENDKIM_ENABLE_MSAN  AND OPENDKIM_ENABLE_MSAN)
+    if(DEFINED PHOENIXDKIM_ENABLE_MSAN  AND PHOENIXDKIM_ENABLE_MSAN)
         set(_san_active TRUE)
     endif()
 
@@ -354,13 +354,13 @@ function(apply_hardening tgt)
 
     # ── Non-executable stack ──────────────────────────────────────────────────
 
-    if(OPENDKIM_ENABLE_NOEXECSTACK AND HARDEN_LD_NOEXECSTACK)
+    if(PHOENIXDKIM_ENABLE_NOEXECSTACK AND HARDEN_LD_NOEXECSTACK)
         target_link_options(${tgt} PRIVATE "LINKER:-z,noexecstack")
     endif()
 
     # ── PIE + RELRO + BIND_NOW (optional) ────────────────────────────────────
 
-    if(OPENDKIM_ENABLE_LINK_HARDENING)
+    if(PHOENIXDKIM_ENABLE_LINK_HARDENING)
         get_target_property(_tgt_type ${tgt} TYPE)
         if(_tgt_type STREQUAL "EXECUTABLE" AND HARDEN_LD_PIE)
             target_link_options(${tgt} PRIVATE -pie)
