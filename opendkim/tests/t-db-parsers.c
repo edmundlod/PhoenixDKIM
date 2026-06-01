@@ -144,6 +144,160 @@ main(void)
 
 	curl_easy_cleanup(curl);
 
+	/* ── dkimf_db_vault_parse_selectors: array parsing + window filter ──── */
+	{
+		struct dkimf_vault_selector sels[DKIMF_DB_VAULT_MAXSELECTORS];
+		unsigned int n;
+		char big[8192];
+		size_t off;
+		unsigned int i;
+
+		/* two selectors, both valid at now=2500 */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"KA\","
+		         "\"valid_start\":1000,\"valid_end\":3000},"
+		         "{\"selector\":\"b\",\"key\":\"KB\",\"valid_start\":2000}"
+		         "]}}}",
+		         "selectors", (time_t) 2500, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel two valid -> n=2",
+		        rc == 0 && n == 2 &&
+		        strcmp(sels[0].vs_selector, "a") == 0 &&
+		        strcmp(sels[0].vs_key, "KA") == 0 &&
+		        strcmp(sels[1].vs_selector, "b") == 0 &&
+		        strcmp(sels[1].vs_key, "KB") == 0);
+
+		/* valid_end is exclusive: now == valid_end -> expired */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"K\",\"valid_end\":3000}]}}}",
+		         "selectors", (time_t) 3000, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel valid_end exclusive", rc == 0 && n == 0);
+
+		/* now == valid_start -> valid (inclusive lower bound) */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"K\",\"valid_start\":2000}]}}}",
+		         "selectors", (time_t) 2000, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel valid_start inclusive", rc == 0 && n == 1);
+
+		/* not yet valid */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"K\",\"valid_start\":2000}]}}}",
+		         "selectors", (time_t) 1000, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel not yet valid", rc == 0 && n == 0);
+
+		/* unbounded (no window fields) -> always kept */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"K\"}]}}}",
+		         "selectors", (time_t) 123, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel unbounded kept", rc == 0 && n == 1);
+
+		/* expired excluded, valid kept (three entries, two in window) */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"KA\","
+		         "\"valid_start\":1000,\"valid_end\":3000},"
+		         "{\"selector\":\"b\",\"key\":\"KB\",\"valid_start\":2000},"
+		         "{\"selector\":\"old\",\"key\":\"KO\","
+		         "\"valid_start\":100,\"valid_end\":1500}]}}}",
+		         "selectors", (time_t) 2500, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel expired excluded",
+		        rc == 0 && n == 2 &&
+		        strcmp(sels[0].vs_selector, "a") == 0 &&
+		        strcmp(sels[1].vs_selector, "b") == 0);
+
+		/* malformed entry (missing key) skipped, valid one kept */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"x\"},"
+		         "{\"selector\":\"y\",\"key\":\"KY\"}]}}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel malformed skipped",
+		        rc == 0 && n == 1 && strcmp(sels[0].vs_selector, "y") == 0);
+
+		/* per-entry domain + alg captured; unknown field ignored */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"s\",\"key\":\"K\",\"domain\":\"d.example\","
+		         "\"alg\":\"ed25519\",\"note\":{\"nested\":[1,2]}}]}}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel domain+alg captured",
+		        rc == 0 && n == 1 &&
+		        strcmp(sels[0].vs_domain, "d.example") == 0 &&
+		        strcmp(sels[0].vs_alg, "ed25519") == 0);
+
+		/* KVv1 envelope */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"selectors\":["
+		         "{\"selector\":\"s\",\"key\":\"K\"}]}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel kvv1 envelope", rc == 0 && n == 1);
+
+		/* no selectors array -> 1 (caller uses single-key path) */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"private_key\":\"PEM\"}}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_rc("sel no array -> 1", rc, 1);
+
+		/* no envelope at all -> 1 */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"errors\":[\"nope\"]}", "selectors", (time_t) 0,
+		         sels, DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_rc("sel no envelope -> 1", rc, 1);
+
+		/* empty array -> 0 kept */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":[]}}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel empty array", rc == 0 && n == 0);
+
+		/* numeric overflow in valid_start -> entry dropped */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"selectors\":["
+		         "{\"selector\":\"a\",\"key\":\"K\","
+		         "\"valid_start\":999999999999999999999999}]}}}",
+		         "selectors", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel numeric overflow dropped", rc == 0 && n == 0);
+
+		/* more than MAXSELECTORS entries -> bounded at MAXSELECTORS */
+		off = 0;
+		off += (size_t) snprintf(big + off, sizeof big - off,
+		                         "{\"data\":{\"data\":{\"selectors\":[");
+		for (i = 0; i < DKIMF_DB_VAULT_MAXSELECTORS + 2; i++)
+			off += (size_t) snprintf(big + off, sizeof big - off,
+			                         "%s{\"selector\":\"s%u\",\"key\":\"K\"}",
+			                         i == 0 ? "" : ",", i);
+		off += (size_t) snprintf(big + off, sizeof big - off, "]}}}");
+		rc = dkimf_db_vault_parse_selectors(big, "selectors", (time_t) 0,
+		                                    sels,
+		                                    DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel bounded at max",
+		        rc == 0 && n == DKIMF_DB_VAULT_MAXSELECTORS);
+
+		/* configurable array field name */
+		rc = dkimf_db_vault_parse_selectors(
+		         "{\"data\":{\"data\":{\"keys\":["
+		         "{\"selector\":\"s\",\"key\":\"K\"}]}}}",
+		         "keys", (time_t) 0, sels,
+		         DKIMF_DB_VAULT_MAXSELECTORS, &n);
+		ck_true("sel custom field name", rc == 0 && n == 1);
+	}
+
 	printf(failures ? "\n%d FAILED\n" : "\nALL PASS\n", failures);
 	return failures ? 1 : 0;
 }

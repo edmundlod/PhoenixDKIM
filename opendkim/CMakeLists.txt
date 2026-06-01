@@ -622,4 +622,25 @@ if(WITH_CURL)
         TIMEOUT 30
         SKIP_RETURN_CODE 77
     )
+
+    # Emit-all-valid four-key signing: one vault secret -> RSA old/new +
+    # Ed25519 old/new -> four verified signatures (two algorithms).
+    add_executable(t-db-vault-sign
+        tests/t-db-vault-sign.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-vault-sign)
+    apply_hardening(t-db-vault-sign)
+    apply_sanitizers(t-db-vault-sign)
+    target_link_libraries(t-db-vault-sign PRIVATE OpenSSL::SSL)
+    add_test(
+        NAME t-db-vault-sign
+        COMMAND t-db-vault-sign
+    )
+    set_tests_properties(t-db-vault-sign PROPERTIES
+        TIMEOUT 60
+        SKIP_RETURN_CODE 77
+    )
 endif()
