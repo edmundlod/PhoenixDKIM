@@ -54,6 +54,7 @@ PAGES = \
     announcements \
     download \
     documentation \
+    coming-from \
     removed-features \
     packages \
     contributing \
