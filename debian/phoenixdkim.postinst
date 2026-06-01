@@ -2,9 +2,9 @@
 
 set -e
 
-RUNDIR=/run/opendkim
-USER=opendkim
-GROUP=opendkim
+RUNDIR=/run/phoenixdkim
+USER=phoenixdkim
+GROUP=phoenixdkim
 
 pathfind() {
   OLDIFS="$IFS"
@@ -20,8 +20,8 @@ pathfind() {
 }
 
 if [ "$1" = "configure" ]; then
-	if ! id -u opendkim >/dev/null 2>&1; then
-		adduser --quiet --system --group --home /run/opendkim opendkim
+	if ! id -u phoenixdkim >/dev/null 2>&1; then
+		adduser --quiet --system --group --home /run/phoenixdkim phoenixdkim
 	fi
 
         # Create the run directory if it doesn't exist
@@ -32,18 +32,18 @@ if [ "$1" = "configure" ]; then
         fi
 
 	# Set ownership if the admin has not overriden it.
-	if [ -d /run/opendkim ] && ! dpkg-statoverride --list /run/opendkim >/dev/null; then
-		chown opendkim:opendkim /run/opendkim
+	if [ -d /run/phoenixdkim ] && ! dpkg-statoverride --list /run/phoenixdkim >/dev/null; then
+		chown phoenixdkim:phoenixdkim /run/phoenixdkim
 	fi
 	if [ -d /etc/dkimkeys ] && ! dpkg-statoverride --list /etc/dkimkeys >/dev/null; then
-		chown opendkim:opendkim /etc/dkimkeys
+		chown phoenixdkim:phoenixdkim /etc/dkimkeys
 		chmod 0700 /etc/dkimkeys
 	fi
 
 	# Upgrade /etc/default to systemd override files
-	if [ -d /run/systemd/system ] && [ -f /etc/default/opendkim ]; then
-		if [ -f /etc/tmpfiles.d/opendkim.conf ]; then
-			systemd-tmpfiles --create /etc/tmpfiles.d/opendkim.conf
+	if [ -d /run/systemd/system ] && [ -f /etc/default/phoenixdkim ]; then
+		if [ -f /etc/tmpfiles.d/phoenixdkim.conf ]; then
+			systemd-tmpfiles --create /etc/tmpfiles.d/phoenixdkim.conf
 		fi
 	fi
 fi
