@@ -30,7 +30,8 @@ documents every option.
 <a href="#verify-only">1. Verify only</a> |
 <a href="#verify-sign">2. Verify and sign</a> |
 <a href="#dual-signing">3. Dual signing: Ed25519 and RSA</a> |
-<a href="#hardening">4. Hardening</a>
+<a href="#hardening">4. Hardening</a> |
+<a href="#vault-rotation">5. Vault-backed keys and zero-downtime rotation</a>
 </p>
 
 <h3><a name="verify-only" href="#verify-only">1. Verify only</a></h3>
@@ -179,4 +180,95 @@ Note that <tt>OversignHeaders</tt> does not need to mirror every entry in
 <tt>Resent-*</tt> families may legitimately appear multiple times (on
 mailing lists, for example), so oversigning them can break valid traffic.
 Focus oversigning on the headers that identify and address the message.
+</p>
+
+<h3><a name="vault-rotation" href="#vault-rotation">5. Vault-backed keys and zero-downtime rotation</a></h3>
+
+<p>
+PhoenixDKIM can read signing keys at runtime from
+<a href="https://www.vaultproject.io/">HashiCorp&nbsp;Vault</a> instead of from
+files on disk, using the <tt>vault:</tt> data set backend. Point
+<tt>KeyTable</tt> at a Vault KV&nbsp;v1 or KV&nbsp;v2 path and the filter fetches
+the key over HTTPS for each lookup:
+</p>
+
+<pre>KeyTable      vault://vault.example.com:8200/v1/secret/data/dkim/{d}
+SigningTable  refile:/etc/opendkim/signingtable
+VaultToken    hvs.CAES...your-token...</pre>
+
+<p>
+The <tt>{d}</tt> token is replaced with the signing domain, so the secret at
+<tt>secret/data/dkim/example.com</tt> supplies the key for
+<tt>example.com</tt>. (<tt>VaultToken</tt> may instead be supplied through the
+<tt>VAULT_TOKEN</tt> environment variable.) In its simplest form the secret
+holds a single <tt>private_key</tt> field and produces one signature, exactly
+like a file-based key.
+</p>
+
+<p>
+<strong>The interesting part is rotation.</strong> Replacing a DKIM key is
+normally nerve-wracking: you publish the new public key in DNS, but you cannot
+know when every resolver and forwarder worldwide has seen it. Sign with the new
+key too early and mail signed against the not-yet-propagated record fails
+verification. The robust answer is to sign with the <em>old and the new key at
+the same time</em> for the duration of a grace window, so a verifier passes
+against whichever record it currently holds. PhoenixDKIM does this directly from
+Vault: a secret may carry a <tt>selectors</tt> array, and the filter emits
+<strong>one signature for every selector whose validity window contains the
+current time</strong>.
+</p>
+
+<p>
+Write a secret like this (KV&nbsp;v2 shown) at
+<tt>secret/data/dkim/example.com</tt>:
+</p>
+
+<pre>{
+  "selectors": [
+    { "selector": "2025a", "key": "-----BEGIN PRIVATE KEY-----\n...old RSA...\n-----END PRIVATE KEY-----",
+      "valid_end": 1739000000 },
+    { "selector": "2025b", "key": "-----BEGIN PRIVATE KEY-----\n...new RSA...\n-----END PRIVATE KEY-----",
+      "valid_start": 1736000000 }
+  ]
+}</pre>
+
+<p>
+During the overlap — after <tt>2025b</tt>'s <tt>valid_start</tt> but before
+<tt>2025a</tt>'s <tt>valid_end</tt> — every message is signed with
+<em>both</em> selectors. Once the window passes, <tt>2025a</tt> drops out
+automatically and only <tt>2025b</tt> remains. No filter restart, no config
+edit: you change the timestamps in Vault and the signing follows. Each window
+bound is a Unix timestamp;
+<tt>valid_start</tt> is inclusive and <tt>valid_end</tt> is exclusive, and an
+absent bound simply means &ldquo;unbounded&rdquo;.
+</p>
+
+<p>
+The same mechanism gives you <strong>algorithm diversity</strong> for free: list
+an RSA selector and an Ed25519 selector as both valid, and each message gets an
+RSA signature <em>and</em> an Ed25519 signature. The algorithm is taken from the
+key material itself, so you never declare it twice. Combining the two ideas, a
+secret can rotate RSA and Ed25519 keys at once, emitting four signatures (old
+and new of each) across the grace window — the safest possible cutover.
+</p>
+
+<p>
+A selector that is malformed or outside its window is skipped and logged, never
+fatal, so one bad entry cannot stop a domain's mail. The array field name
+(<tt>VaultSelectorsField</tt>, default <tt>selectors</tt>), the single-key field
+name (<tt>VaultField</tt>), and the token (<tt>VaultToken</tt>) are all
+documented in <a href="/man/opendkim.conf.5.html">opendkim.conf(5)</a>. The
+secret schema matches
+<a href="https://docs.rspamd.com/modules/dkim_signing/">rspamd's Vault layout</a>,
+so the <em>same</em> secret can be managed with rspamd's tooling and signed by
+PhoenixDKIM.
+</p>
+
+<p>
+The <tt>vault:</tt> backend is a thin convenience wrapper over the more general
+<tt>http:</tt>/<tt>https:</tt> backend. If your keys live in SQL, LDAP, or any
+other store, point <tt>KeyTable</tt> at a small HTTP bridge of your own (in any
+language) that returns the key for a given domain and selector; PhoenixDKIM
+treats it identically. All of this requires a build with libcurl
+(<tt>-DWITH_CURL=ON</tt>).
 </p>
