@@ -72,6 +72,7 @@ extern int dkimf_db_walk(DKIMF_DB, _Bool, void *, size_t *,
 extern void dkimf_db_set_http_config(const char *token, const char *auth_header,
                                      long timeout_secs);
 extern void dkimf_db_set_vault_config(const char *token, const char *field);
+extern void dkimf_db_set_http_cabundle(const char *path);
 #endif /* HAVE_LIBCURL */
 
 #endif /* _OPENDKIM_DB_H_ */

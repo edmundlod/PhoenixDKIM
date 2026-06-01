@@ -602,4 +602,24 @@ if(WITH_CURL)
             SKIP_RETURN_CODE 77
         )
     endif()
+
+    # End-to-end vault: backend over TLS (OpenSSL server + throwaway cert).
+    add_executable(t-db-vault
+        tests/t-db-vault.c
+        opendkim-db.c
+        opendkim-lua.c
+        util.c
+    )
+    configure_daemon_target(t-db-vault)
+    apply_hardening(t-db-vault)
+    apply_sanitizers(t-db-vault)
+    target_link_libraries(t-db-vault PRIVATE OpenSSL::SSL)
+    add_test(
+        NAME t-db-vault
+        COMMAND t-db-vault
+    )
+    set_tests_properties(t-db-vault PROPERTIES
+        TIMEOUT 30
+        SKIP_RETURN_CODE 77
+    )
 endif()

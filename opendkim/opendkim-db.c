@@ -233,6 +233,7 @@ static unsigned int gflags = 0;
 static const char *	s_http_token = NULL;
 static const char *	s_http_header = NULL;
 static long		s_http_timeout = 5;
+static const char *	s_http_cainfo = NULL;
 static const char *	s_vault_token = NULL;
 static const char *	s_vault_field = NULL;
 #endif /* HAVE_LIBCURL */
@@ -303,6 +304,30 @@ dkimf_db_set_vault_config(const char *token, const char *field)
 {
 	s_vault_token = token;
 	s_vault_field = field;
+}
+
+
+/*
+**  DKIMF_DB_SET_HTTP_CABUNDLE -- override the CA bundle for http/vault TLS
+**
+**  Parameters:
+**  	path -- PEM CA bundle file, or NULL to use libcurl's default store
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	A trust-injection seam, used by the TLS test to trust a throwaway test
+**  	CA (CURLOPT_CAINFO; peer/host verification stay on).  It is not wired to
+**  	any configuration option -- production runs never call it, so the
+**  	default system trust store is used unchanged.  The string must outlive
+**  	every open.
+*/
+
+void
+dkimf_db_set_http_cabundle(const char *path)
+{
+	s_http_cainfo = path;
 }
 
 
@@ -1758,6 +1783,9 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 		(void) curl_easy_setopt(curl, CURLOPT_TIMEOUT, h->http_timeout);
 		(void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
 		                        dkimf_db_http_write);
+		if (s_http_cainfo != NULL)
+			(void) curl_easy_setopt(curl, CURLOPT_CAINFO,
+			                        s_http_cainfo);
 
 		{
 			const char *token;
