@@ -16,6 +16,7 @@ override_dh_auto_configure:
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DWITH_LUA=ON \
 		-DWITH_REDIS=ON \
+		-DWITH_CURL=ON \
 		-DINSTALL_SYSTEMD_UNIT=OFF
 
 # Test results on kfreebsd-* are inconsistent, but not due to package bugs.
