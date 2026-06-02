@@ -25,10 +25,10 @@ OversignHeaders		From
 
 # In Debian, phoenixdkim runs as user "phoenixdkim". A umask of 007 is required when
 # using a local socket with MTAs that access the socket as a non-privileged
-# user (for example, Postfix). You may need to add user "postfix" to group
-# "phoenixdkim" in that case.
-UserID			phoenixdkim
-UMask			007
+# user (for example, Postfix).
+# User and Umask are handled via Systemd these days, so leave them commented out.
+#UserID			phoenixdkim
+#UMask			007
 
 # Socket for the MTA connection (required). If the MTA is inside a chroot jail,
 # it must be ensured that the socket is accessible. In Debian, Postfix runs in
