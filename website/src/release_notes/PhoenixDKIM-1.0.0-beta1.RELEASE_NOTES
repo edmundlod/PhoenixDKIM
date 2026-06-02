@@ -13,14 +13,19 @@ drop-in replacement for OpenDKIM. See the "Coming From" guide on the website for
 migrating an OpenDKIM or Rspamd setup -- in most cases you keep your existing
 keys and DNS records and only change the milter.
 
+The earlier 3.0.0-beta series, as well as the earlier opendkim-ng name, were
+from the time that I forked OpenDKIM with the goal to modernise it. Now that
+the Trusted Domain Project has picked up this task itself, this PhoenixDKIM
+project will soar freely to where it wants to go, rather than feeling
+constrained to staying OpenDKIM compatible as a drop-in replacement.
 
 Version reset
 -------------
 
-The version line restarts at 1.0.0. The earlier 3.0.0-beta series carried the
-numbering of the orphaned upstream beta this project forked from (and the interim
-opendkim-ng name); it is unrelated to this 1.0.0 line. A package manager may note
-the apparent version decrease -- that is expected (no epoch is used).
+The version line restarts at 1.0.0.
+
+A package manager may note the apparent version decrease -- that is expected
+(no epoch is used).
 
 
 Rename (opendkim -> phoenixdkim)
