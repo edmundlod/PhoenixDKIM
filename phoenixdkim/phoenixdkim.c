@@ -14136,6 +14136,62 @@ main(int argc, char **argv)
 	}
 #endif /* ! SMFIF_QUARANTINE */
 
+#ifdef HAVE_LIBSYSTEMD
+	/*
+	**  Socket activation: if a service manager (systemd) created, bound
+	**  and put the milter socket into the listening state on our behalf
+	**  and handed it to us as an inherited descriptor, adopt that socket
+	**  instead of opening one ourselves.  sd_listen_fds() reports how many
+	**  descriptors were passed; the first is SD_LISTEN_FDS_START (fd 3).
+	**  We name it to the (patched) libmilter via the "fd:N" conn scheme,
+	**  which takes the address family and listening state from the socket
+	**  itself, so no -p/Socket value is required.  When activated, the
+	**  manager owns the socket, so any -p/Socket given is overridden here.
+	**
+	**  An "fd:N" spec also makes dkimf_socket_cleanup() a no-op (it only
+	**  unlinks "local:"/"unix:" paths), which is exactly what we want: the
+	**  descriptor is the manager's to create and reap, not ours.  The
+	**  descriptor itself survives the autorestart/daemonize fork()s, so it
+	**  is enough to detect activation once, here in the parent.
+	*/
+	if (!testmode)
+	{
+		int nfds;
+
+		nfds = sd_listen_fds(0);
+		if (nfds < 0)
+		{
+			fprintf(stderr, "%s: sd_listen_fds(): %s\n",
+			        progname, strerror(-nfds));
+			return EX_OSERR;
+		}
+		else if (nfds > 0)
+		{
+			/* big enough for "fd:" + a 32-bit decimal + NUL */
+			static char fdsock[sizeof "fd:-2147483648"];
+
+			if (nfds > 1)
+			{
+				fprintf(stderr,
+				        "%s: %d sockets passed by the service manager; using only the first (fd %d)\n",
+				        progname, nfds, SD_LISTEN_FDS_START);
+				if (curconf->conf_dolog)
+				{
+					syslog(LOG_WARNING,
+					       "%d sockets passed by the service manager; using only the first (fd %d)",
+					       nfds, SD_LISTEN_FDS_START);
+				}
+			}
+
+			(void) snprintf(fdsock, sizeof fdsock, "fd:%d",
+			                SD_LISTEN_FDS_START);
+			sock = fdsock;
+			gotp = TRUE;
+			(void) smfi_setconn(sock);
+		}
+	}
+#endif /* HAVE_LIBSYSTEMD */
+
 	if (!gotp && !testmode)
 	{
 		fprintf(stderr, "%s: milter socket must be specified\n",
