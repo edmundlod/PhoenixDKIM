@@ -13,10 +13,14 @@ Project</a>. PhoenixDKIM is an independent fork, started as a personal
 project by one maintainer. Sharing a name with the upstream project risks
 confusion about provenance, support, and security responsibility. </p>
 
-<p> PhoenixDKIM is a drop-in replacement for OpenDKIM. It uses the same
-binary name (<tt>opendkim</tt>), the same configuration file format, and the
-same milter interface. Existing deployments do not need to change anything
-other than the package name. </p>
+<p> <em>(Updated.)</em> The rename has since gone further than this announcement
+first described. PhoenixDKIM is a standalone project, <b>not</b> a drop-in
+replacement for OpenDKIM: as of the 1.0.0-beta1 release the binary, configuration
+path, library, and Lua namespace are all <tt>phoenixdkim</tt>
+(<tt>/etc/phoenixdkim/</tt>, <tt>libphoenixdkim</tt>, <tt>pdkim</tt>). The
+configuration keyword format and the KeyTable/SigningTable layout carry over, and
+the two daemons can be installed side by side — see the
+<a href="/coming-from.html">Coming From</a> guide. </p>
 
 <p> The source repository is at
 <a href="https://github.com/edmundlod/PhoenixDKIM">github.com/edmundlod/PhoenixDKIM</a>.

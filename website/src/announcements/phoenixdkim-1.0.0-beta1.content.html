@@ -1,0 +1,68 @@
+<h1>PhoenixDKIM 1.0.0-beta1</h1>
+
+<p> <b>2 June 2026</b> </p>
+
+<p> This is the first release under the PhoenixDKIM <b>1.0.0</b> line. It
+completes the rename to PhoenixDKIM, resets the version to 1.0.0, and introduces
+dynamic key backends with zero-downtime key rotation. </p>
+
+<p> PhoenixDKIM is a standalone DKIM signing and verification milter — not a
+drop-in replacement for OpenDKIM. If you are coming from OpenDKIM or from
+Rspamd's DKIM signing, the new <a href="/coming-from.html">Coming From</a> guide
+walks through a side-by-side trial: in most cases you keep your existing keys and
+DNS records and only change the milter. </p>
+
+<h2> Version reset to 1.0.0 </h2>
+
+<p> The version line restarts at 1.0.0. The earlier <tt>3.0.0-beta</tt> series
+carried over the numbering of the orphaned upstream beta this project forked from
+(and the interim <tt>opendkim-ng</tt> name); it is unrelated to this 1.0.0 line.
+A package manager may note the apparent version decrease — that is expected. </p>
+
+<h2> Rename complete </h2>
+
+<ul>
+  <li> <p> Binary <tt>phoenixdkim</tt>; tools <tt>phoenixdkim-genkey</tt>,
+       <tt>-testkey</tt>, <tt>-genzone</tt>, <tt>-testmsg</tt>. </p> </li>
+  <li> <p> Configuration at <tt>/etc/phoenixdkim/phoenixdkim.conf</tt> —
+       PhoenixDKIM never reads <tt>/etc/opendkim</tt>, so it coexists with an
+       OpenDKIM install. </p> </li>
+  <li> <p> Library <tt>libphoenixdkim</tt> (SONAME <tt>libphoenixdkim.so.0</tt>);
+       Lua policy API <tt>pdkim.*</tt> (<tt>odkim.*</tt> kept as a deprecated
+       alias). </p> </li>
+  <li> <p> Configuration keywords and the KeyTable / SigningTable formats are
+       unchanged, so configurations port across with minimal edits. </p> </li>
+</ul>
+
+<h2> New: dynamic key backends and rotation </h2>
+
+<p> Built with libcurl (<tt>-DWITH_CURL=ON</tt>): </p>
+
+<ul>
+  <li> <p> <tt>http:</tt> / <tt>https:</tt> and HashiCorp Vault
+       (<tt>vault:</tt>) data-set backends, plus Redis — for keys that live
+       outside flat files. Point the HTTP backend at a small bridge to reach SQL
+       or LDAP. </p> </li>
+  <li> <p> <b>Zero-downtime key rotation:</b> a Vault secret can list several
+       currently-valid selectors, and PhoenixDKIM signs with all of them at once
+       — old and new, RSA and Ed25519 — across the overlap, so a key roll needs
+       no flag day. The secret layout matches Rspamd's, so the same store signs
+       in both. </p> </li>
+</ul>
+
+<h2> Security and correctness </h2>
+
+<ul>
+  <li> <p> RSA-SHA1 signing removed; an RSA-SHA1 signature is never treated as
+       valid on verification (reported <tt>dkim=neutral</tt>, never
+       <tt>dkim=pass</tt>, per RFC 8301). </p> </li>
+  <li> <p> 2048-bit minimum RSA signing key; unmaintained subsystems (LDAP, SQL,
+       BerkeleyDB, VBR, ATPS, RBL, reputation, statistics, ADSP, GnuTLS) removed
+       — see <a href="/removed-features.html">Removed Features</a>. </p> </li>
+</ul>
+
+<p> Full notes:
+<a href="/release_notes/PhoenixDKIM-1.0.0-beta1.RELEASE_NOTES">1.0.0-beta1 release notes</a>;
+source and signatures on the <a href="/download.html">Download</a> page. </p>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
