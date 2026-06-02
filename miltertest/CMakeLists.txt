@@ -12,14 +12,14 @@ find_package(Lua 5.4 EXACT REQUIRED)
 add_executable(miltertest miltertest.c)
 
 target_include_directories(miltertest PRIVATE
-    ${CMAKE_SOURCE_DIR}/libopendkim
-    ${CMAKE_BINARY_DIR}/libopendkim
+    ${CMAKE_SOURCE_DIR}/libphoenixdkim
+    ${CMAKE_BINARY_DIR}/libphoenixdkim
     ${LUA_INCLUDE_DIR}
     ${MILTER_INCLUDE_DIR}
 )
 
 target_link_libraries(miltertest PRIVATE
-    opendkim
+    phoenixdkim
     ${LUA_LIBRARIES}
 )
 

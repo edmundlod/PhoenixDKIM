@@ -1,0 +1,248 @@
+<h1>Coming from OpenDKIM or Rspamd</h1>
+
+<p>The appeal of PhoenixDKIM for an existing DKIM setup is that you can try it
+with almost no commitment. <strong>Your private keys do not change and your DNS
+records do not change</strong> — a DKIM signature only depends on the selector
+and the key, both of which stay exactly as they are. So a trial is just: stand
+PhoenixDKIM up on its own milter socket, point it at the keys you already have,
+and move your MTA over to it. If you like it, leave it; if not, point the milter
+back. Nothing else moved.</p>
+
+<p>This page covers the two most common starting points. The Rspamd section is
+only about Rspamd's <em>DKIM signing</em> — PhoenixDKIM does not replace the rest
+of what Rspamd does.</p>
+
+<p class="page-index">
+<a href="#opendkim">From OpenDKIM</a> |
+<a href="#rspamd">From Rspamd (DKIM signing)</a>
+</p>
+
+<hr>
+
+<h2><a name="opendkim" href="#opendkim">From OpenDKIM</a></h2>
+
+<p>PhoenixDKIM is a fork of
+<a href="https://github.com/trusteddomainproject/OpenDKIM">OpenDKIM</a> and keeps
+its DKIM core, its data-set formats, and nearly all of its configuration
+keywords. Migrating is mostly a change of binary, config path, and dropping a
+few keywords for subsystems that no longer exist.</p>
+
+<h3>What stays the same</h3>
+
+<ul>
+<li><strong>Your keys and DNS.</strong> The same PEM private keys, the same
+  selectors, the same <tt>selector._domainkey</tt> TXT records — nothing to
+  re-generate or re-publish.</li>
+<li><strong>KeyTable / SigningTable.</strong> Identical format
+  (<tt>keyname&nbsp;domain:selector:/path/to/key</tt> and the signing-table
+  mapping). Copy them across unchanged.</li>
+<li><strong>Configuration keywords.</strong> <tt>Mode</tt>, <tt>Domain</tt>,
+  <tt>Selector</tt>, <tt>KeyFile</tt>, <tt>Canonicalization</tt>,
+  <tt>SignHeaders</tt>, <tt>OversignHeaders</tt>, <tt>KeyTable</tt>,
+  <tt>SigningTable</tt>, <tt>MultipleSignatures</tt> and the rest keep their
+  names and meanings.</li>
+<li><strong>DKIM behaviour and the milter interface.</strong> Signing and
+  verification, relaxed/simple canonicalisation, multiple signatures, Ed25519
+  (RFC&nbsp;8463) — all as before. Your MTA integration changes only by socket
+  path.</li>
+<li><strong>Lua policy scripts</strong> still run; the API table is now
+  <tt>pdkim</tt>, with <tt>odkim</tt> kept as a deprecated alias so existing
+  scripts keep working untouched.</li>
+</ul>
+
+<h3>What changed</h3>
+
+<ul>
+<li><strong>Binary:</strong> <tt>opendkim</tt> &rarr; <tt>phoenixdkim</tt>.</li>
+<li><strong>Config path:</strong> <tt>/etc/phoenixdkim/phoenixdkim.conf</tt>.
+  PhoenixDKIM never reads <tt>/etc/opendkim</tt>, so it coexists with an OpenDKIM
+  install rather than hijacking it — copy your config across.</li>
+<li><strong>Library and man pages:</strong> <tt>libphoenixdkim</tt>,
+  <tt>phoenixdkim(8)</tt>, <tt>phoenixdkim.conf(5)</tt>,
+  <tt>phoenixdkim-genkey</tt>, and so on.</li>
+<li><strong>Security defaults.</strong> RSA-SHA1 <em>signing</em> is gone, and an
+  RSA-SHA1 signature is never treated as valid on verification — per RFC&nbsp;8301
+  it is reported <tt>dkim=neutral</tt>, never <tt>dkim=pass</tt>, with
+  <tt>On-WeakAlgorithm</tt> setting only the message disposition. Keys below 2048
+  bits are refused.</li>
+<li><strong>Removed subsystems and their keywords.</strong> LDAP, SQL (OpenDBX),
+  BerkeleyDB, VBR, ATPS, RBL, reputation, statistics, ADSP and GnuTLS are gone.
+  If your config sets any of their keywords (<tt>Statistics</tt>, <tt>LDAP*</tt>,
+  <tt>VBR-*</tt>, <tt>POPDBFile</tt>, &hellip;), remove them — their presence may
+  stop the filter from starting. The full list and reasoning is on the
+  <a href="/removed-features.html">Removed Features</a> page.</li>
+<li><strong>New backends.</strong> <tt>http:</tt> / <tt>https:</tt> /
+  <tt>vault:</tt> / <tt>redis:</tt> data sets, a Vault <tt>selectors</tt> array
+  for zero-downtime rotation, and a <tt>pdkim.http_get()</tt> Lua helper — see
+  the <a href="/documentation.html#vault-rotation">documentation</a>.</li>
+<li><strong>Version number.</strong> PhoenixDKIM starts at 1.0.0 — a fresh line,
+  not a step back from OpenDKIM&nbsp;2.x.</li>
+</ul>
+
+<h3>Test it alongside OpenDKIM</h3>
+
+<p>PhoenixDKIM installs a wholly separate footprint and never touches OpenDKIM's
+files, so the two run side by side. Give PhoenixDKIM its own socket, point it at
+your existing keys, and move the MTA's milter to it; the signatures it produces
+validate against your existing DNS because the selector and key are unchanged.</p>
+
+<p>1. Copy the config and keys (or reuse the files in place):</p>
+
+<pre>install -d /etc/phoenixdkim
+cp  /etc/opendkim/opendkim.conf  /etc/phoenixdkim/phoenixdkim.conf
+cp  /etc/opendkim/KeyTable /etc/opendkim/SigningTable  /etc/phoenixdkim/
+cp -a /etc/opendkim/keys  /etc/phoenixdkim/keys     # or point KeyTable at the existing path</pre>
+
+<p><strong>Permissions and ownership.</strong> PhoenixDKIM runs as its own
+<tt>phoenixdkim</tt> user, so it must be able to <em>read</em> the private keys —
+and by default (<tt>RequireSafeKeys</tt>) it will <em>refuse</em> a key file that
+is readable or writable by anyone other than its owner or a group the process
+belongs to. OpenDKIM's keys are typically owned by the <tt>opendkim</tt> user, so
+after copying them (or if you point at the originals in place) give them to
+<tt>phoenixdkim</tt> and keep them owner-only:</p>
+
+<pre>chown -R phoenixdkim:phoenixdkim /etc/phoenixdkim/keys
+chmod 600 /etc/phoenixdkim/keys/*.private</pre>
+
+<p>A key PhoenixDKIM cannot securely read is skipped rather than used, so check
+the log on first start if a domain is unexpectedly going unsigned. (Setting
+<tt>RequireSafeKeys&nbsp;false</tt> downgrades the refusal to a warning, but
+fixing ownership is the right answer.)</p>
+
+<p>2. In <tt>phoenixdkim.conf</tt>, give it a distinct socket and remove any
+keywords for the dropped subsystems:</p>
+
+<pre>Socket            local:/run/phoenixdkim/phoenixdkim.sock
+UserID            phoenixdkim:phoenixdkim
+Mode              sv
+Canonicalization  relaxed/relaxed
+KeyTable          /etc/phoenixdkim/KeyTable
+SigningTable      refile:/etc/phoenixdkim/SigningTable</pre>
+
+<p>(A single-key setup with <tt>Domain</tt> / <tt>Selector</tt> /
+<tt>KeyFile</tt> works just as well.)</p>
+
+<p>3. Point the MTA at the new socket. For Postfix:</p>
+
+<pre># was:  smtpd_milters = local:/run/opendkim/opendkim.sock
+smtpd_milters      = local:/run/phoenixdkim/phoenixdkim.sock
+non_smtpd_milters  = local:/run/phoenixdkim/phoenixdkim.sock</pre>
+
+<p>Reload Postfix and send a test message; the DKIM-Signature uses the same
+selector and key, so it validates against your existing DNS record. If anything
+looks off, point the milter back at OpenDKIM — nothing else changed. When you're
+happy, leave it on PhoenixDKIM and retire OpenDKIM at your leisure.</p>
+
+<p><strong>One caution:</strong> run a single signer at a time. Don't chain both
+OpenDKIM and PhoenixDKIM as signing milters for the same mail, or each message
+gets two signatures from the same selector.</p>
+
+<hr>
+
+<h2><a name="rspamd" href="#rspamd">From Rspamd (DKIM signing)</a></h2>
+
+<p>This section is only about the <strong>DKIM signing</strong> part of
+<a href="https://rspamd.com/">Rspamd</a> — its <tt>dkim_signing</tt> module.
+Rspamd is a full mail-filtering system; PhoenixDKIM is a focused DKIM milter and
+does not replace Rspamd's scanning, scoring, or anything else. The natural split
+is to <em>keep Rspamd for filtering</em> and let PhoenixDKIM take over just the
+signing — which it can do while reading the very same key store.</p>
+
+<h3>What carries over</h3>
+
+<ul>
+<li><strong>Your keys and DNS.</strong> The same RSA/Ed25519 private keys and the
+  same <tt>selector._domainkey</tt> TXT records. No re-keying, no DNS changes.</li>
+<li><strong>OpenDKIM-style tables.</strong> Rspamd already ships
+  OpenDKIM-compatible <tt>key_table</tt> / <tt>signing_table</tt> support, and
+  PhoenixDKIM uses exactly that format, so the mapping is familiar.</li>
+<li><strong>Vault key storage.</strong> PhoenixDKIM reads the same HashiCorp
+  Vault secret layout Rspamd uses — see below.</li>
+</ul>
+
+<h3>What's different</h3>
+
+<ul>
+<li><strong>Scope.</strong> Rspamd filters, scores, greylists and more;
+  PhoenixDKIM only signs and verifies DKIM. Keep Rspamd for the rest.</li>
+<li><strong>Configuration.</strong> Rspamd uses UCL
+  (<tt>local.d/dkim_signing.conf</tt>); PhoenixDKIM uses the
+  <tt>phoenixdkim.conf</tt> keyword format. The signing intent maps directly:
+  <ul>
+  <li>Rspamd <tt>path</tt> / <tt>selector_map</tt> / <tt>key</tt> &rarr;
+    PhoenixDKIM <tt>KeyTable</tt> + <tt>SigningTable</tt> (or the
+    <tt>vault:</tt> backend).</li>
+  <li>Rspamd <tt>use_domain</tt> (header / envelope / recipient) and
+    <tt>use_esld</tt> &rarr; PhoenixDKIM's <tt>SenderHeaders</tt> /
+    <tt>SenderMacro</tt> / <tt>IdentityHeader</tt> selection.</li>
+  <li>Rspamd <tt>sign_networks</tt> / authenticated-sender gating &rarr;
+    PhoenixDKIM's <tt>InternalHosts</tt> / <tt>PeerList</tt> and signing-mode
+    controls.</li>
+  </ul></li>
+<li><strong>How it runs.</strong> Rspamd signs inside <tt>rspamd_proxy</tt>;
+  PhoenixDKIM is its own milter on its own socket.</li>
+</ul>
+
+<h3>Share the same Vault keys</h3>
+
+<p>If you manage DKIM keys with <tt>rspamadm vault</tt>, PhoenixDKIM can sign from
+the very same secret. Its <tt>vault:</tt> backend understands the Rspamd layout —
+a <tt>selectors</tt> array of
+<tt>{selector, key, alg, valid_start, valid_end}</tt> — and applies the identical
+validity-window rule (<tt>valid_start</tt> inclusive, <tt>valid_end</tt>
+exclusive). During a key roll it behaves exactly as Rspamd does: it signs with
+<em>every</em> currently-valid selector at once, so the old and new selectors
+(and RSA + Ed25519) overlap cleanly while DNS propagates.</p>
+
+<pre>KeyTable      vault://vault.example.com:8200/v1/secret/data/dkim/{d}
+SigningTable  refile:/etc/phoenixdkim/signingtable
+VaultToken    hvs.CAES...</pre>
+
+<p>No keys are copied and no DNS changes: PhoenixDKIM reads the same store Rspamd
+already signs from. The full secret format is in the
+<a href="/documentation.html#vault-rotation">rotation documentation</a>.</p>
+
+<h3>Test it alongside Rspamd</h3>
+
+<p>Keep Rspamd running for filtering, add PhoenixDKIM as a separate signing
+milter on its own socket, and turn off Rspamd's signing so you don't double-sign.
+Keys and DNS stay exactly as they are.</p>
+
+<p>1. Point PhoenixDKIM at your keys — easiest is the shared Vault store above,
+or a local <tt>KeyTable</tt>/<tt>SigningTable</tt> built from the same PEM files —
+and give it its own socket:</p>
+
+<pre>Socket            local:/run/phoenixdkim/phoenixdkim.sock
+UserID            phoenixdkim:phoenixdkim
+Mode              sv
+Canonicalization  relaxed/relaxed
+KeyTable          vault://vault.example.com:8200/v1/secret/data/dkim/{d}
+SigningTable      refile:/etc/phoenixdkim/signingtable
+VaultToken        hvs.CAES...</pre>
+
+<p><strong>Permissions and ownership.</strong> With the shared Vault store the
+keys themselves live in Vault, but the <tt>VaultToken</tt> must be reachable by
+the <tt>phoenixdkim</tt> user — if you keep it in a file or reuse Rspamd's token,
+make sure that file is owned by and readable only by <tt>phoenixdkim</tt> (and
+that the token's Vault policy allows the read). If instead you sign from local
+key files exported from Rspamd, the same rule as the OpenDKIM section applies:
+<tt>chown</tt> them to <tt>phoenixdkim</tt> and keep them owner-only, since
+<tt>RequireSafeKeys</tt> refuses loosely-permissioned keys by default. Rspamd
+usually runs as the <tt>_rspamd</tt> user, so files carried over from it will not
+be readable by <tt>phoenixdkim</tt> until you re-own them.</p>
+
+<p>2. Disable Rspamd's signing so only PhoenixDKIM signs. In
+<tt>local.d/dkim_signing.conf</tt>:</p>
+
+<pre>enabled = false;</pre>
+
+<p>3. Add PhoenixDKIM to the MTA's milter chain ahead of Rspamd, so it signs and
+Rspamd still filters. For Postfix, <tt>rspamd_proxy</tt> typically listens on
+<tt>localhost:11332</tt>:</p>
+
+<pre>smtpd_milters = local:/run/phoenixdkim/phoenixdkim.sock, inet:localhost:11332</pre>
+
+<p>Reload, send a test message, and confirm the DKIM-Signature validates — same
+selector, same key, same DNS record. To roll back, re-enable Rspamd's
+<tt>dkim_signing</tt> and drop PhoenixDKIM from the milter list. When you're
+happy, leave signing with PhoenixDKIM and let Rspamd get on with filtering.</p>

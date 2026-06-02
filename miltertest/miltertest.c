@@ -34,7 +34,7 @@
 # define SMFI_PROT_VERSION	SMFI_VERSION
 #endif /* ! SMFI_PROT_VERSION */
 
-/* libopendkim includes */
+/* libphoenixdkim includes */
 #include <dkim.h>
 
 /* libbsd if found */

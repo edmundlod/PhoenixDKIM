@@ -1,0 +1,75 @@
+PhoenixDKIM 1.0.0-beta1 release notes
+======================================
+
+Date: 2 June 2026
+
+This is the first release under the PhoenixDKIM 1.0.0 line. It completes the
+rename from opendkim / opendkim-ng to PhoenixDKIM, resets the version to 1.0.0,
+and introduces dynamic key backends (HTTP/HTTPS and HashiCorp Vault) with
+zero-downtime key rotation.
+
+PhoenixDKIM is a standalone DKIM signing and verification milter; it is not a
+drop-in replacement for OpenDKIM. See the "Coming From" guide on the website for
+migrating an OpenDKIM or Rspamd setup -- in most cases you keep your existing
+keys and DNS records and only change the milter.
+
+
+Version reset
+-------------
+
+The version line restarts at 1.0.0. The earlier 3.0.0-beta series carried the
+numbering of the orphaned upstream beta this project forked from (and the interim
+opendkim-ng name); it is unrelated to this 1.0.0 line. A package manager may note
+the apparent version decrease -- that is expected (no epoch is used).
+
+
+Rename (opendkim -> phoenixdkim)
+--------------------------------
+
+  - Binary: phoenixdkim (was opendkim). Tools: phoenixdkim-genkey,
+    phoenixdkim-testkey, phoenixdkim-genzone, phoenixdkim-testmsg.
+  - Configuration: /etc/phoenixdkim/phoenixdkim.conf. PhoenixDKIM never reads
+    /etc/opendkim, so it coexists with an OpenDKIM install; copy config and keys
+    over manually.
+  - Library: libphoenixdkim, fresh SONAME libphoenixdkim.so.0; headers in
+    /usr/include/phoenixdkim/; pkg-config phoenixdkim.pc.
+  - Lua policy API: pdkim.* (odkim.* kept as a deprecated in-process alias).
+  - systemd unit phoenixdkim.service; Debian packages libphoenixdkim0,
+    libphoenixdkim-dev, phoenixdkim, phoenixdkim-tools, phoenixdkim-keygen.
+  - Config keywords are unchanged and the KeyTable / SigningTable formats are the
+    same, so configurations port across with minimal edits.
+
+
+New: dynamic key backends and key rotation (optional, -DWITH_CURL=ON)
+---------------------------------------------------------------------
+
+  - http: / https: data-set backends -- look keys up over an HTTP GET; point
+    them at a small bridge to reach SQL, LDAP, or a secrets manager.
+  - vault: backend -- read keys from HashiCorp Vault (KV v1 and v2).
+  - redis: backend.
+  - Zero-downtime key rotation: a Vault secret may carry a "selectors" array, and
+    PhoenixDKIM signs with every currently-valid selector at once -- old and new,
+    RSA and Ed25519 -- across the rotation overlap, so a key roll needs no flag
+    day. The secret layout matches Rspamd's (rspamadm vault), so the same store
+    signs in both.
+  - pdkim.http_get() helper available in the Lua sandbox.
+
+
+Security and correctness
+------------------------
+
+  - RSA-SHA1 signing removed; an RSA-SHA1 signature is never treated as valid on
+    verification (reported dkim=neutral, never dkim=pass, per RFC 8301), with
+    On-WeakAlgorithm selecting only the message disposition.
+  - 2048-bit minimum RSA signing key.
+  - Unmaintained subsystems removed: LDAP, SQL (OpenDBX), BerkeleyDB, VBR, ATPS,
+    RBL, reputation, statistics, ADSP, GnuTLS. The configuration keywords that
+    drove them are no longer accepted (see the Removed Features page).
+  - Memory-safety auditing of the parsers and data-set backends; hardened build
+    (warnings-as-errors, sanitiser-clean, link hardening).
+
+
+Build
+-----
+
+  - OpenSSL 3 or LibreSSL via the EVP API; CMake + CTest; LMDB; Lua 5.4.

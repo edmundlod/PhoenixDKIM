@@ -4,57 +4,57 @@
 #
 # Options
 # -------
-#   OPENDKIM_ENABLE_VALGRIND   ON → Memcheck (heap/uninit/leak)
-#   OPENDKIM_ENABLE_HELGRIND   ON → Helgrind (thread-race detector)
+#   PHOENIXDKIM_ENABLE_VALGRIND   ON → Memcheck (heap/uninit/leak)
+#   PHOENIXDKIM_ENABLE_HELGRIND   ON → Helgrind (thread-race detector)
 #
 # Both options do two things:
 #
 #   1. Configure MEMORYCHECK_COMMAND / MEMORYCHECK_COMMAND_OPTIONS so that
-#      "ctest -T memcheck" instruments the libopendkim unit-test binaries
+#      "ctest -T memcheck" instruments the libphoenixdkim unit-test binaries
 #      directly through Valgrind.
 #
 #   2. Generate a thin shell wrapper
-#         ${CMAKE_BINARY_DIR}/valgrind-bin/opendkim
-#      and set OPENDKIM_VALGRIND_BIN_DIR so that opendkim/tests/CMakeLists.txt
-#      can point OPENDKIM_BINPATH there.  The miltertest Lua scripts call
-#         binpath .. "/opendkim"
+#         ${CMAKE_BINARY_DIR}/valgrind-bin/phoenixdkim
+#      and set PHOENIXDKIM_VALGRIND_BIN_DIR so that phoenixdkim/tests/CMakeLists.txt
+#      can point PHOENIXDKIM_BINPATH there.  The miltertest Lua scripts call
+#         binpath .. "/phoenixdkim"
 #      so the daemon itself then runs under Valgrind without touching the
 #      Lua scripts at all.
 #
-# IMPORTANT: do NOT combine either option with OPENDKIM_ENABLE_ASAN,
-# OPENDKIM_ENABLE_UBSAN, OPENDKIM_ENABLE_LSAN, or OPENDKIM_ENABLE_MSAN.
+# IMPORTANT: do NOT combine either option with PHOENIXDKIM_ENABLE_ASAN,
+# PHOENIXDKIM_ENABLE_UBSAN, PHOENIXDKIM_ENABLE_LSAN, or PHOENIXDKIM_ENABLE_MSAN.
 # ASan's shadow-memory layout is incompatible with Valgrind's instrumentation
 # and the process will crash at startup.
 #
 # Recommended build directories:
-#   build-valgrind/  — cmake -DOPENDKIM_ENABLE_VALGRIND=ON  -DCMAKE_BUILD_TYPE=Debug ...
-#   build-helgrind/  — cmake -DOPENDKIM_ENABLE_HELGRIND=ON  -DCMAKE_BUILD_TYPE=Debug ...
+#   build-valgrind/  — cmake -DPHOENIXDKIM_ENABLE_VALGRIND=ON  -DCMAKE_BUILD_TYPE=Debug ...
+#   build-helgrind/  — cmake -DPHOENIXDKIM_ENABLE_HELGRIND=ON  -DCMAKE_BUILD_TYPE=Debug ...
 
 # ── Options ───────────────────────────────────────────────────────────────────
 
-option(OPENDKIM_ENABLE_VALGRIND
+option(PHOENIXDKIM_ENABLE_VALGRIND
     "Run tests under Valgrind Memcheck: uninitialised reads, heap errors, leaks. \
 Mutually exclusive with ASan/UBSan/MSan and with HELGRIND. Use a plain Debug build."
     OFF)
 
-option(OPENDKIM_ENABLE_HELGRIND
+option(PHOENIXDKIM_ENABLE_HELGRIND
     "Run tests under Valgrind Helgrind: thread-race and lock-order detection. \
 Mutually exclusive with ASan/UBSan/MSan and with VALGRIND. Use a plain Debug build."
     OFF)
 
 # ── Mutual-exclusion checks ────────────────────────────────────────────────────
 
-if(OPENDKIM_ENABLE_VALGRIND AND OPENDKIM_ENABLE_HELGRIND)
+if(PHOENIXDKIM_ENABLE_VALGRIND AND PHOENIXDKIM_ENABLE_HELGRIND)
     message(FATAL_ERROR
-        "OPENDKIM_ENABLE_VALGRIND and OPENDKIM_ENABLE_HELGRIND cannot both be ON: "
+        "PHOENIXDKIM_ENABLE_VALGRIND and PHOENIXDKIM_ENABLE_HELGRIND cannot both be ON: "
         "they select different Valgrind tools (memcheck vs helgrind). "
         "Use two separate build directories if you want to run both.")
 endif()
 
 foreach(_san IN ITEMS
-        OPENDKIM_ENABLE_ASAN OPENDKIM_ENABLE_UBSAN
-        OPENDKIM_ENABLE_LSAN OPENDKIM_ENABLE_MSAN)
-    if((OPENDKIM_ENABLE_VALGRIND OR OPENDKIM_ENABLE_HELGRIND) AND ${_san})
+        PHOENIXDKIM_ENABLE_ASAN PHOENIXDKIM_ENABLE_UBSAN
+        PHOENIXDKIM_ENABLE_LSAN PHOENIXDKIM_ENABLE_MSAN)
+    if((PHOENIXDKIM_ENABLE_VALGRIND OR PHOENIXDKIM_ENABLE_HELGRIND) AND ${_san})
         message(FATAL_ERROR
             "${_san} and Valgrind are mutually exclusive. "
             "ASan/UBSan shadow memory conflicts with Valgrind's instrumentation "
@@ -65,7 +65,7 @@ endforeach()
 
 # ── Bail early when neither tool is requested ──────────────────────────────────
 
-if(NOT OPENDKIM_ENABLE_VALGRIND AND NOT OPENDKIM_ENABLE_HELGRIND)
+if(NOT PHOENIXDKIM_ENABLE_VALGRIND AND NOT PHOENIXDKIM_ENABLE_HELGRIND)
     return()
 endif()
 
@@ -85,7 +85,7 @@ endif()
 
 set(_supp_file "${CMAKE_SOURCE_DIR}/cmake/valgrind.supp")
 
-if(OPENDKIM_ENABLE_VALGRIND)
+if(PHOENIXDKIM_ENABLE_VALGRIND)
     set(_vg_tool "memcheck")
     set(_vg_opts
         --tool=memcheck
@@ -96,7 +96,7 @@ if(OPENDKIM_ENABLE_VALGRIND)
         --errors-for-leak-kinds=definite,indirect
         --num-callers=30
     )
-elseif(OPENDKIM_ENABLE_HELGRIND)
+elseif(PHOENIXDKIM_ENABLE_HELGRIND)
     set(_vg_tool "helgrind")
     set(_vg_opts
         --tool=helgrind
@@ -126,12 +126,12 @@ endif()
 
 # ── Generate integration-test wrapper script ──────────────────────────────────
 # The Lua test drivers call:
-#   os.getenv("OPENDKIM_BINPATH") .. "/opendkim"
+#   os.getenv("PHOENIXDKIM_BINPATH") .. "/phoenixdkim"
 # We generate a wrapper script at that path that execs the real daemon under
 # Valgrind, so the daemon is instrumented even though miltertest itself is not.
 
-set(OPENDKIM_VALGRIND_BIN_DIR "${CMAKE_BINARY_DIR}/valgrind-bin")
-set(_real_bin                 "${CMAKE_BINARY_DIR}/opendkim/opendkim")
+set(PHOENIXDKIM_VALGRIND_BIN_DIR "${CMAKE_BINARY_DIR}/valgrind-bin")
+set(_real_bin                 "${CMAKE_BINARY_DIR}/phoenixdkim/phoenixdkim")
 
 # Build a properly-quoted exec line for the shell wrapper.
 # Each argument goes on its own line for readability.
@@ -146,13 +146,13 @@ string(APPEND _exec_line " \\\n    \"${_real_bin}\"")
 set(VALGRIND_WRAPPER_EXEC_LINE "${_exec_line}")
 set(VALGRIND_TOOL_NAME         "${_vg_tool}")
 
-file(MAKE_DIRECTORY "${OPENDKIM_VALGRIND_BIN_DIR}")
+file(MAKE_DIRECTORY "${PHOENIXDKIM_VALGRIND_BIN_DIR}")
 configure_file(
     "${CMAKE_SOURCE_DIR}/cmake/valgrind-wrapper.sh.in"
-    "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
+    "${PHOENIXDKIM_VALGRIND_BIN_DIR}/phoenixdkim"
     @ONLY
 )
-file(CHMOD "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
+file(CHMOD "${PHOENIXDKIM_VALGRIND_BIN_DIR}/phoenixdkim"
     PERMISSIONS
         OWNER_READ OWNER_WRITE OWNER_EXECUTE
         GROUP_READ GROUP_EXECUTE
@@ -161,4 +161,4 @@ file(CHMOD "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim"
 
 message(STATUS
     "Valgrind ${_vg_tool}: integration-test wrapper → "
-    "${OPENDKIM_VALGRIND_BIN_DIR}/opendkim")
+    "${PHOENIXDKIM_VALGRIND_BIN_DIR}/phoenixdkim")

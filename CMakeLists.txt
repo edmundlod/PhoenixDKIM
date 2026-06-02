@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(opendkim
-    VERSION 3.0.0
-    DESCRIPTION "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519"
+project(phoenixdkim
+    VERSION 1.0.0
+    DESCRIPTION "PhoenixDKIM — a security-focused DKIM signing and verifying milter"
     LANGUAGES C
 )
 
@@ -70,8 +70,8 @@ if(SSL_ROOT_DIR AND NOT OPENSSL_ROOT_DIR)
     set(OPENSSL_ROOT_DIR "${SSL_ROOT_DIR}")
 endif()
 
-add_subdirectory(libopendkim)
-add_subdirectory(opendkim)
+add_subdirectory(libphoenixdkim)
+add_subdirectory(phoenixdkim)
 add_subdirectory(miltertest)
 
 # Probe SHA1 RSA verify support after OpenSSL has been found by the
@@ -79,10 +79,10 @@ add_subdirectory(miltertest)
 include(CheckSHA1Verify)
 
 # CPack for creating .deb files
-set(CPACK_PACKAGE_NAME "opendkim")
+set(CPACK_PACKAGE_NAME "phoenixdkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
-set(CPACK_PACKAGE_VERSION "3.0.0")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519")
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PhoenixDKIM — a security-focused DKIM signing and verifying milter")
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Edmund Lodewijks <edmund@proteamail.com>")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libmilter1.0.1, libssl3, libc6")

@@ -16,16 +16,15 @@ Rules-Requires-Root: no
 Package: phoenixdkim
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
-Depends: libopendkim13 (= ${binary:Version}), ${shlibs:Depends},
+Depends: libphoenixdkim0 (= ${binary:Version}), ${shlibs:Depends},
  ${misc:Depends}, adduser, dns-root-data
-Provides: opendkim
-Conflicts: opendkim
-Replaces: opendkim
-Recommends: opendkim-tools
+Recommends: phoenixdkim-tools
 Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
- PhoenixDKIM is a modernised, OpenDKIM-compatible DKIM signing and
- verification filter, with a focus on security, correctness, and
- compatibility with current platforms.
+ PhoenixDKIM is a standalone DKIM signing and verification milter, descended
+ from OpenDKIM, with a focus on security and correctness. It uses the OpenSSL 3
+ EVP API, signs with RSA and Ed25519 (RFC 8463), and drops weak crypto
+ (no RSA-SHA1 signing; 2048-bit key minimum). It reads OpenDKIM-style key and
+ signing tables.
  .
  DKIM provides a way for senders to confirm their identity when sending
  email by adding a cryptographic signature to the headers of the message.
@@ -33,21 +32,17 @@ Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
  This package contains the PhoenixDKIM mail filter for plugging into
  Milter-aware MTAs. It implements both signing and verification.
 
-Package: opendkim-tools
+Package: phoenixdkim-tools
 Architecture: any
 Depends: ${shlibs:Depends}, ${perl:Depends}, ${misc:Depends}
-Breaks: opendkim (<< 2.5.2+dfsg-2~)
-Replaces: opendkim (<< 2.5.2+dfsg-2~)
 Description: Utilities for administering the PhoenixDKIM milter
  Command line tools for the PhoenixDKIM mail filter. The following
  tools are included:
-   - opendkim-genkey
-   - opendkim-genzone
-   - opendkim-testkey
-   - opendkim-testmsg
-   - opendkim-spam
+   - phoenixdkim-genzone
+   - phoenixdkim-testkey
+   - phoenixdkim-testmsg
 
-Package: libopendkim13
+Package: libphoenixdkim0
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -58,11 +53,11 @@ Description: DomainKeys Identified Mail (DKIM) library
  signing and verifying signatures according to RFC 4871, and supports both
  DomainKeys signing policy and DKIM ADSP.
 
-Package: libopendkim-dev
+Package: libphoenixdkim-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
-Depends: libopendkim13 (= ${binary:Version}), ${misc:Depends}
+Depends: libphoenixdkim0 (= ${binary:Version}), ${misc:Depends}
 Description: DomainKeys Identified Mail (DKIM) library (development files)
  Header files and development libraries for building against the
  PhoenixDKIM DKIM library.
@@ -77,7 +72,7 @@ Description: Utility for testing milter applications
  miltertest is a test driver for milter application tests. It executes
  milter test scripts written in the Lua programming language.
 
-Package: opendkim-keygen
+Package: phoenixdkim-keygen
 Architecture: all
 Depends: ${shlibs:Depends}, ${python3:Depends}, ${misc:Depends}
 Description: Utility for generating DKIM and ARC keys (RSA and Ed25519)

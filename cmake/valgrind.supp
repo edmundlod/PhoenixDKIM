@@ -1,6 +1,6 @@
 # cmake/valgrind.supp
 #
-# Valgrind suppressions for PhoenixDKIM / OpenDKIM.
+# Valgrind suppressions for PhoenixDKIM.
 #
 # Covers known false positives from:
 #   • OpenSSL 3 — one-time init, thread-local error state, PRNG seeding

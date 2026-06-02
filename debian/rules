@@ -23,7 +23,7 @@ override_dh_auto_test:
 	dh_auto_test
 
 override_dh_installsystemd:
-	dh_installsystemd --name=opendkim
+	dh_installsystemd --name=phoenixdkim
 
 override_dh_installchangelogs:
 	dh_installchangelogs RELEASE_NOTES
