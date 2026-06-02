@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(phoenixdkim
     VERSION 1.0.0
-    DESCRIPTION "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519"
+    DESCRIPTION "PhoenixDKIM — a security-focused DKIM signing and verifying milter"
     LANGUAGES C
 )
 
@@ -82,7 +82,7 @@ include(CheckSHA1Verify)
 set(CPACK_PACKAGE_NAME "phoenixdkim")
 set(CPACK_PACKAGE_VENDOR "Edmund Lodewijks")
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PhoenixDKIM — modernised OpenDKIM fork with OpenSSL3 and Ed25519")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PhoenixDKIM — a security-focused DKIM signing and verifying milter")
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Edmund Lodewijks <edmund@proteamail.com>")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libmilter1.0.1, libssl3, libc6")
