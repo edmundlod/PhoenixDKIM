@@ -1,0 +1,43 @@
+# PhoenixDKIM socket-activation unit (example).
+#
+# This is OPT-IN and is not installed automatically: it pairs by name with
+# phoenixdkim.service so that systemd creates, binds and listens on the milter
+# socket and hands the already-listening descriptor to phoenixdkim as fd 3
+# (SD_LISTEN_FDS_START).  phoenixdkim adopts that descriptor instead of opening
+# one itself, so the shipped phoenixdkim.service needs no -p/Socket value.
+#
+# To use:
+#   1. copy this file alongside phoenixdkim.service (e.g. /etc/systemd/system/);
+#   2. ensure phoenixdkim.conf has NO "Socket" line (the fd is provided here);
+#   3. systemctl daemon-reload && systemctl enable --now phoenixdkim.socket
+#
+# Start the SOCKET, not the service: the service is activated on the first
+# connection and adopts the inherited descriptor.  Starting phoenixdkim.service
+# directly gives it no descriptor, so it exits with "milter socket must be
+# specified" -- that is expected.
+#
+# Requires a libmilter built with the "fd:N" conn type (_FFR_MILTER_LISTEN_FD).
+
+[Unit]
+Description=PhoenixDKIM milter socket
+Documentation=man:phoenixdkim(8) man:phoenixdkim.conf(5)
+
+[Socket]
+# UNIX socket the MTA connects to.  For TCP instead, use e.g.
+# ListenStream=127.0.0.1:8891 and drop the SocketUser/Group/Mode and
+# RuntimeDirectory lines below.
+ListenStream=/run/phoenixdkim/phoenixdkim.sock
+SocketUser=phoenixdkim
+SocketGroup=phoenixdkim
+SocketMode=0660
+
+# Create /run/phoenixdkim for the socket above.
+RuntimeDirectory=phoenixdkim
+RuntimeDirectoryMode=0750
+
+# Accept=no (the default) passes the *listening* descriptor so phoenixdkim runs
+# its own accept loop.  Do NOT set Accept=yes (that is inetd-per-connection
+# style and is not how a milter expects to be invoked).
+
+[Install]
+WantedBy=sockets.target
