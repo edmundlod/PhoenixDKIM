@@ -1,21 +1,32 @@
 # PhoenixDKIM
 
-PhoenixDKIM is a modernised, somehwat OpenDKIM-compatible (see Removed section
-below) DKIM signing and verification daemon, focused on security, correctness,
-and modern platform support. It originated as a fork of
+PhoenixDKIM is a standalone DKIM signing and verification milter, focused on
+security and correctness. It began as a fork of
 [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM)
-and is a drop-in replacement for existing OpenDKIM deployments.
+and has since become its own project — **not** a drop-in replacement. It reads
+OpenDKIM-style key and signing tables, so migration is straightforward (see the
+Removed section below for what is no longer accepted).
 
-## What's New in 3.0
+## Highlights
 
 - **OpenSSL 3+** — all cryptography ported to the EVP high-level API
 - **Ed25519** — signing and verification per RFC 8463
-- **LMDB** — replaces unmaintained BerkeleyDB for key storage
+- **LMDB** — replaces BerkeleyDB for key storage
 - **CMake** — replaces autoconf/automake
 - **Lua 5.4** — updated from Lua 5.1
-- RSA-SHA1 signing and verifying dropped per RFC 8301 sub 3.1
-- Minimum RSA signing key size: 2048 bits (this is deliberately chosen in
-  PhoenixDKIM - RFC 8301 allows 1024 bits)
+- **Dynamic key backends** — `http:`/`https:` and HashiCorp Vault (`vault:`)
+  data sets, plus Redis, alongside flat files and LMDB. The native SQL and LDAP
+  drivers are gone; point the HTTP backend at a small bridge to reach those
+  stores (optional, `-DWITH_CURL=ON`)
+- **Zero-downtime key rotation** — a Vault secret can list several
+  currently-valid selectors, and PhoenixDKIM signs with all of them at once (old
+  + new, RSA + Ed25519) across the overlap window, so a rollover needs no flag
+  day. The secret layout matches Rspamd's, so the same store works in both
+- RSA-SHA1 signing removed; an RSA-SHA1 signature is never treated as valid on
+  verification (reported `dkim=neutral`, never `dkim=pass`) per RFC 8301 §3.1,
+  with `On-WeakAlgorithm` choosing only the message disposition
+- Minimum RSA signing key size: 2048 bits (a deliberate choice — RFC 8301
+  permits 1024)
 
 ## Removed from pre-fork OpenDKIM 2.11.0-beta2 (d.d. 15-NOV-2018)
 
@@ -212,7 +223,7 @@ The work focused on what matters for a long-lived, security-sensitive daemon:
 - Removed obsolete and unmaintained subsystems (VBR, ATPS, RBL, LDAP, GnuTLS,
   BerkeleyDB, and others) — less code means fewer vulnerabilities and an easier
   codebase to reason about
-- Modernised cryptography: ported to the OpenSSL 3 EVP API, added Ed25519
+- Updated the cryptography: ported to the OpenSSL 3 EVP API, added Ed25519
   signing and verification
 - Replaced the autoconf/automake build system with CMake
 - Updated the systemd unit files to current best practices

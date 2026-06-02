@@ -1,3 +1,17 @@
+phoenixdkim (1.0.0~beta1-1) trixie; urgency=medium
+
+  * Rename: library libopendkim -> libphoenixdkim with a fresh SONAME
+    (libphoenixdkim.so.0); runtime package libopendkim13 -> libphoenixdkim0,
+    dev package libopendkim-dev -> libphoenixdkim-dev; headers move to
+    /usr/include/phoenixdkim/; pkg-config opendkim.pc -> phoenixdkim.pc.
+  * Version: reset the release line to 1.0.0 as the first PhoenixDKIM release.
+    This is a deliberate decrease from the 3.0.0~beta line (inherited from the
+    OpenDKIM 2.11 base); no epoch is used, as the earlier betas had no users.
+    PHOENIXDKIM_LIB_VERSION (formerly OPENDKIM_LIB_VERSION) tracks the ABI
+    triple, now 0:0:0.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Mon, 01 Jun 2026 09:21:26 +0200
+
 phoenixdkim (3.0.0~beta14-ng1) trixie; urgency=medium
 
   * Fix: systemd Type=notify hang when built without libsystemd —
