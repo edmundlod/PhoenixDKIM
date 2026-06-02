@@ -40,15 +40,19 @@ policies on RHEL-family distros.</p>
 
 <h3>RSA-SHA1 signing</h3>
 
-<p><tt>rsa-sha1</tt> has been removed from the signing-algorithm table.
-Verification of RSA-SHA1 signatures is retained so that mail signed
-by older signers still in operation can still be verified.</p>
+<p><tt>rsa-sha1</tt> has been removed from the signing-algorithm table, and an
+RSA-SHA1 signature is never treated as valid on verification: per RFC&nbsp;8301 it
+can never be reported <tt>dkim=pass</tt> and is instead reported
+<tt>dkim=neutral</tt> — a permanently-failed signature, treated as unsigned. The
+<tt>On-WeakAlgorithm</tt> setting selects only what the milter tells the MTA to do
+with such a message, not whether the signature is trusted.</p>
 
 <p><strong>Reasoning:</strong></p>
 
 <ul>
 <li>SHA1 is no longer collision-resistant by current standards.</li>
-<li>RFC 8301 (2018) deprecated <tt>rsa-sha1</tt> for DKIM signing.</li>
+<li>RFC 8301 (2018) states <tt>rsa-sha1</tt> MUST NOT be used for DKIM signing or
+  verifying, and that such a signature has permanently failed evaluation.</li>
 </ul>
 
 <hr>

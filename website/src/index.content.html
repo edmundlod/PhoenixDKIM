@@ -25,15 +25,20 @@ configuration may need changes. </p>
   Rust at some point. </li>
   <li> <strong>Performance.</strong> The signing and verification hot paths
   are optimised so PhoenixDKIM is not a bottleneck at high mail volumes. </li>
-  <li> <strong>Modern crypto only.</strong> RSA-SHA256 (2048-bit minimum) and
+  <li> <strong>Strong crypto only.</strong> RSA-SHA256 (2048-bit minimum) and
   Ed25519, via the OpenSSL 3 / LibreSSL EVP APIs. </li>
   <li> <strong>DKIM2 readiness.</strong> Tracking the emerging DKIM2
   specification so support can land when the RFC matures. </li>
-  <li> <strong>Flexible key storage.</strong> Flat-file, LMDB, Lua, and
+  <li> <strong>Flexible key storage.</strong> Flat-file, LMDB, Lua, Redis, and
   optional HTTP / Vault backends. The native SQL and LDAP drivers have been
   retired, but those systems are still reachable: point the HTTP backend at a
   small custom bridge (in any language) that wraps your SQL or LDAP store, and
   PhoenixDKIM queries it over HTTP. </li>
+  <li> <strong>Zero-downtime key rotation.</strong> A HashiCorp Vault secret can
+  list several currently-valid selectors, and PhoenixDKIM signs with all of them
+  at once — old and new, RSA and Ed25519 — across the overlap window, so a key
+  rollover needs no flag day. The secret layout matches Rspamd's, so the same
+  store works in both. </li>
 </ul>
 
 <p> PhoenixDKIM was forked from
