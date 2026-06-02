@@ -1,3 +1,11 @@
+Remove libbsd dependency for Debian >= 13 (Trixie). strlcpy/strlcat are in
+glibc 2.38, which ships with Debian 13 but not Debian 12. Once Debian 12
+support is dropped, libbsd-dev can be removed from Build-Depends and the
+cmake libbsd detection can be conditioned or dropped accordingly.
+Ref: https://sourceware.org/pipermail/libc-alpha/2023-July/150524.html
+
+========================
+
 Audit opendkim-db.c for more dead code
 
 ========================
