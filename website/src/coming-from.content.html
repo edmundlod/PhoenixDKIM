@@ -100,16 +100,25 @@ validate against your existing DNS because the selector and key are unchanged.</
 
 <pre>install -d /etc/phoenixdkim
 cp  /etc/opendkim/opendkim.conf  /etc/phoenixdkim/phoenixdkim.conf
-cp  /etc/opendkim/KeyTable /etc/opendkim/SigningTable  /etc/phoenixdkim/     # If used
-cp -a /etc/opendkim/keys  /etc/phoenixdkim/keys     # or point KeyTable at the existing path</pre>
+cp  /etc/opendkim/KeyTable /etc/opendkim/SigningTable  /etc/phoenixdkim/     # If used</pre>
+
+<p>For the keys, choose one of two approaches:</p>
+<ul>
+<li><strong>Copy the keys</strong> into <tt>/etc/phoenixdkim/keys/</tt> (or wherever
+  you prefer), then update the paths in your <tt>KeyTable</tt> to match the new
+  location.</li>
+<li><strong>Leave the keys where they are</strong> (e.g. <tt>/etc/opendkim/keys/</tt>
+  or <tt>/etc/dkimkeys/</tt>) and just change their ownership to
+  <tt>phoenixdkim</tt>. The paths in <tt>KeyTable</tt> then need no change.</li>
+</ul>
 
 <p><strong>Permissions and ownership.</strong> PhoenixDKIM runs as its own
 <tt>phoenixdkim</tt> user, so it must be able to <em>read</em> the private keys —
 and by default (<tt>RequireSafeKeys</tt>) it will <em>refuse</em> a key file that
 is readable or writable by anyone other than its owner or a group the process
 belongs to. OpenDKIM's keys are typically owned by the <tt>opendkim</tt> user, so
-after copying them (or if you point at the originals in place) give them to
-<tt>phoenixdkim</tt> and keep them owner-only:</p>
+after copying or pointing at the originals, hand them to <tt>phoenixdkim</tt> and
+keep them owner-only (adjust the path if you left the keys in place):</p>
 
 <pre>chown -R phoenixdkim:phoenixdkim /etc/phoenixdkim/keys
 chmod 600 /etc/phoenixdkim/keys/*.private</pre>
@@ -119,8 +128,26 @@ the log on first start if a domain is unexpectedly going unsigned. (Setting
 <tt>RequireSafeKeys&nbsp;false</tt> downgrades the refusal to a warning, but
 fixing ownership is the right answer.)</p>
 
-<p>2. In <tt>phoenixdkim.conf</tt>, give it a distinct socket and remove any
-keywords for the dropped subsystems:</p>
+<p>2. In <tt>phoenixdkim.conf</tt>, update the paths that still point at OpenDKIM
+locations and remove any keywords for the dropped subsystems:</p>
+
+<ul>
+<li><strong>Socket</strong> — set a fresh phoenixdkim-specific path.</li>
+<li><strong>UserID</strong> — change <tt>opendkim</tt> to <tt>phoenixdkim</tt>
+  (or remove it entirely if you are using the systemd unit, which sets the user
+  directly).</li>
+<li><strong>PidFile</strong> — if your config has one, update the path (e.g.
+  <tt>/var/run/opendkim/opendkim.pid</tt> &rarr;
+  <tt>/run/phoenixdkim/phoenixdkim.pid</tt>), or remove it — the systemd unit does
+  not need an explicit <tt>PidFile</tt>.</li>
+<li><strong>KeyTable entries</strong> — if you copied the keys to a new directory,
+  open <tt>/etc/phoenixdkim/KeyTable</tt> and update the
+  <tt>/path/to/key.private</tt> column in each row to the new location. If you
+  left the keys in place and only changed ownership, no path change is
+  needed.</li>
+<li><strong>KeyFile</strong> (single-key setups) — same as above: update the path
+  if the key moved.</li>
+</ul>
 
 <pre>Socket            local:/run/phoenixdkim/phoenixdkim.sock
 UserID            phoenixdkim:phoenixdkim
