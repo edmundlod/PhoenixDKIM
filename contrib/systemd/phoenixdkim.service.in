@@ -21,7 +21,7 @@ Restart=on-failure
 @SD_WATCHDOG_BLOCK@
 User=phoenixdkim
 Group=phoenixdkim
-Umask=007
+UMask=007
 
 # As the file system is mounted read-only with ProtectSystem=strict, adding
 # /var/spool/postfix/phoenixdkim by default makes it possible to use phoenixdkim
