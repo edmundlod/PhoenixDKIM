@@ -60,9 +60,11 @@ few keywords for subsystems that no longer exist.</p>
 <li><strong>Library and man pages:</strong> <tt>libphoenixdkim</tt>,
   <tt>phoenixdkim(8)</tt>, <tt>phoenixdkim.conf(5)</tt>,
   <tt>phoenixdkim-genkey</tt>, and so on.</li>
-<li><strong>Security defaults.</strong> RSA-SHA1 <em>signing</em> is gone (legacy
-  RSA-SHA1 verification is retained, subject to <tt>On-WeakAlgorithm</tt>), and
-  keys below 2048 bits are refused.</li>
+<li><strong>Security defaults.</strong> RSA-SHA1 <em>signing</em> is gone, and an
+  RSA-SHA1 signature is never treated as valid on verification — per RFC&nbsp;8301
+  it is reported <tt>dkim=neutral</tt>, never <tt>dkim=pass</tt>, with
+  <tt>On-WeakAlgorithm</tt> setting only the message disposition. Keys below 2048
+  bits are refused.</li>
 <li><strong>Removed subsystems and their keywords.</strong> LDAP, SQL (OpenDBX),
   BerkeleyDB, VBR, ATPS, RBL, reputation, statistics, ADSP and GnuTLS are gone.
   If your config sets any of their keywords (<tt>Statistics</tt>, <tt>LDAP*</tt>,
