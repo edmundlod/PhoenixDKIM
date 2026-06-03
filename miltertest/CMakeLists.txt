@@ -7,7 +7,7 @@ if(NOT WITH_LUA)
     return()
 endif()
 
-find_package(Lua 5.4 EXACT REQUIRED)
+find_package(Lua 5.4 REQUIRED)
 
 add_executable(miltertest miltertest.c)
 
