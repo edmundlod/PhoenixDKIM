@@ -1,11 +1,11 @@
 # PhoenixDKIM
 
-PhoenixDKIM is a standalone DKIM signing and verification milter, focused on
-security and correctness. It began as a fork of
-[trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM)
-and has since become its own project — **not** a drop-in replacement. It reads
-OpenDKIM-style key and signing tables, so migration is straightforward (see the
-Removed section below for what is no longer accepted).
+PhoenixDKIM is a standalone DKIM signing and verification milter, descended
+from [trusteddomainproject/OpenDKIM](https://github.com/trusteddomainproject/OpenDKIM),
+with a focus on security and correctness.
+
+It reads OpenDKIM-style key and signing tables, so migration is straightforward
+(see the Removed section below for what is no longer accepted).
 
 ## Highlights
 
