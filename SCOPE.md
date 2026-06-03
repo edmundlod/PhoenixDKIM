@@ -510,35 +510,6 @@ out of scope until the WG resolves the open design issues.
 Standard and has a document shepherd and IESG date. Track the mailing list at
 `ietf-dkim@ietf.org`. See `ai/dkim2-readiness.md`.
 
-### Performance optimization
-
-Tracked in `ai/optimization-roadmap.md`. Three items with clear implementation paths:
-
-1. **Body hash sharing** (highest impact): Share the `EVP_MD_CTX` body hash
-   across multiple signatures on the same message when they use the same
-   canonicalization parameters. Currently each `DKIM_CANON` runs a separate
-   pass. Directly enables efficient dual-signing for both DKIM1 key rotation
-   and the DKIM1+DKIM2 transition period.
-
-2. **`sha_tmpbio` removal** (zero-risk quick win): The debug BIO path in
-   `dkim_canon_write()` runs a pointer load and branch on every body chunk.
-   Wrap in `#ifdef DKIM_DEBUG` or remove entirely.
-
-3. **Pre-sized signature buffer** (trivial): Pre-allocate 512 bytes for
-   `dkim_dstring` when constructing the DKIM-Signature header. Eliminates
-   2–4 reallocs per signed message.
-
-### HTTP/HTTPS/Vault backend
-
-Implementation plan in `ai/backend-extension-plan.md`. Summary:
-- `http:` and `https:` URIs as data set backends, using existing `WITH_CURL`
-  libcurl detection. Synchronous GET, Bearer token auth, 404 = miss.
-- `vault:` URI as a convenience wrapper: translates to `https:`, adds
-  `X-Vault-Token` header, extracts from KVv2 JSON envelope.
-- `pdkim.http_get()` exposed to the Lua sandbox when both `WITH_LUA` and
-  `WITH_CURL` are enabled.
-- Type IDs: `http/https` = 13, `vault` = 14.
-
 ### Stats / metrics
 
 If implemented, emit via StatsD or Prometheus, not a proprietary SQL schema.
@@ -577,26 +548,13 @@ These rules apply to every Claude Code session on this project.
    frozen. If a test appears wrong, raise it for human review — never
    silently fix the test to match the implementation.
 
-2. **Audit before rewriting.** Session 1 produces `AUDIT.md`: a complete
-   inventory of all OpenSSL 1.x / GnuTLS API calls in scope, all deprecated
-   functions, all Lua C API calls (flagging any 5.1-specific usage), and
-   a module dependency map. No code changes in Session 1.
-
-3. **Tests before implementation changes.** Session 2 produces the
-   conformance test suite (RFC 6376 test vectors + real-world signed email
-   corpora), validated against the running 2.11.0 beta. No crypto porting
-   until Session 3.
-
-4. **Crypto layer first.** Port `libopendkim` crypto to OpenSSL 3 EVP APIs
-   before touching anything else. Get the test suite green on the new
-   crypto before proceeding.
+3. **Tests before implementation changes.** Use available test suites
+   for testing; otherwise ask if tests need to be added so that there is a
+   reference for the produced code, to check it for compliance.
 
 5. **Use EVP APIs exclusively.** No direct `RSA_*`, `DSA_*`, low-level
    struct access, or `ENGINE_*` API. Every operation through
    `EVP_DigestSign*`, `EVP_DigestVerify*`, `EVP_PKEY_*`.
-
-6. **GnuTLS path deleted, not ifdef'd out.** Remove all `#ifdef USE_GNUTLS`
-   blocks and their contents. Do not leave dead code.
 
 7. **One concern per session.** Do not mix crypto porting with build system
    changes or subsystem removal in the same session.
@@ -625,4 +583,4 @@ These rules apply to every Claude Code session on this project.
 
 ---
 
-*Last updated: May 2026. Human review required before any changes.*
+*Last updated: June 2026. Human review required before any changes.*
