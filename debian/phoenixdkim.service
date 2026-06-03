@@ -1,7 +1,7 @@
 [Unit]
 Description=PhoenixDKIM Milter
 Documentation=man:phoenixdkim(8) man:phoenixdkim.conf(5) man:phoenixdkim-lua(3) man:phoenixdkim-genkey(8) man:phoenixdkim-genzone(8) man:phoenixdkim-testkey(8) man:phoenixdkim-testmsg(8)
-After=network-online.target nss-lookup.target
+After=network-online.target nss-lookup.target syslog.target
 Wants=network-online.target
 
 # Best-effort ordering so phoenixdkim is ready before a local MTA starts
@@ -24,12 +24,12 @@ Restart=on-failure
 WatchdogSec=30
 User=phoenixdkim
 Group=phoenixdkim
+UMask=007
 
 # As the file system is mounted read-only with ProtectSystem=strict, adding
 # /var/spool/postfix/phoenixdkim by default makes it possible to use phoenixdkim
 # with postfix without further configuration.
 ReadWritePaths=-/var/spool/postfix/phoenixdkim
-RuntimeDirectory=phoenixdkim
 
 # Hardening - see systemd.exec(5)
 CapabilityBoundingSet=
