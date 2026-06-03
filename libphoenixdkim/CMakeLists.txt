@@ -104,7 +104,7 @@ endif()
 option(WITH_LUA "Build with Lua 5.4 scripting support" ON)
 
 if(WITH_LUA)
-    find_package(Lua 5.4 EXACT REQUIRED)
+    find_package(Lua 5.4 REQUIRED)
     set(USE_LUA 1)
 endif()
 
