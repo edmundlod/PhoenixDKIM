@@ -220,6 +220,7 @@ struct dkimf_config
 	_Bool		conf_enablecores;	/* enable coredumps */
 	_Bool		conf_noheaderb;		/* suppress "header.b" */
 	_Bool		conf_safekeys;		/* check key permissions */
+	_Bool		conf_weakkey_warned;	/* already warned about weak key */
 	_Bool		conf_strictsignalg;	/* fail on KeyTable alg mismatch */
 	_Bool		conf_checksigningtable; /* check keys on dkimf_config_load */
 	_Bool		conf_resignall;		/* resign unverified mail */
@@ -4422,6 +4423,65 @@ dkimf_keytype(const char *keydata, size_t keylen)
 }
 
 /*
+**  DKIMF_WARN_WEAK_KEY -- warn (once per loaded config) when an RSA signing
+**                         key is shorter than the RFC 8301 2048-bit minimum
+**
+**  Parameters:
+**  	conf -- configuration handle (holds the once-only flag)
+**  	name -- key name / file path for the log message
+**  	keydata -- PEM-encoded private-key material
+**  	keylen -- length of keydata
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	Advisory only; we still sign with the key.  RFC 8301 recommends
+**  	a minimum of 2048 bits for RSA.  Ed25519 and unparseable/DER keys
+**  	are silently ignored here.  The flag lives on the config struct, so
+**  	it resets naturally on reload (a fresh config is allocated zeroed).
+*/
+
+static void
+dkimf_warn_weak_key(struct dkimf_config *conf, const char *name,
+                    const void *keydata, size_t keylen)
+{
+	BIO *keybio;
+	EVP_PKEY *pkey;
+
+	assert(conf != NULL);
+	assert(keydata != NULL);
+
+	if (conf->conf_weakkey_warned)
+		return;
+
+	keybio = BIO_new_mem_buf(keydata, (int) keylen); /* key << INT_MAX */
+	if (keybio == NULL)
+		return;
+
+	pkey = PEM_read_bio_PrivateKey(keybio, NULL, NULL, NULL);
+	BIO_free(keybio);
+
+	if (pkey == NULL)
+		return;
+
+	if (EVP_PKEY_base_id(pkey) == EVP_PKEY_RSA &&
+	    EVP_PKEY_bits(pkey) < 2048)
+	{
+		if (conf->conf_dolog)
+		{
+			syslog(LOG_WARNING,
+			       "%s: %d-bit RSA signing key is below the 2048-bit minimum recommended by RFC 8301",
+			       name, EVP_PKEY_bits(pkey));
+		}
+
+		conf->conf_weakkey_warned = TRUE;
+	}
+
+	EVP_PKEY_free(pkey);
+}
+
+/*
 **  DKIMF_SIGNREQ_APPEND -- allocate a signreq and append it to the message
 **
 **  Parameters:
@@ -4791,6 +4851,9 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 
 			return 2;
 		}
+
+		dkimf_warn_weak_key(conf, keyname, dbd[2].dbdata_buffer,
+		                    keydatasz);
 
 		if (insecure)
 		{
@@ -7463,6 +7526,9 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		close(fd);
 		s33krit[s.st_size] = '\0';
 		conf->conf_seckey = s33krit;
+
+		dkimf_warn_weak_key(conf, conf->conf_keyfile, s33krit,
+		                    (size_t) s.st_size);
 	}
 
 	/* confirm signing mode parameters */
