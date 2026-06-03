@@ -128,10 +128,25 @@ in various forms as described under the
 .I SigningTable
 setting (below).  This feature of the protocol exists to improve the
 likelihood that a signature will survive transit through a mailing list
-server, as they commonly append footers to messages.  Note, however,
-that this creates a potential security issue since someone could add
-arbitrary text to the signed message and the signature would still validate.
-See the DKIM specification for details.
+server, as they commonly append footers to messages.
+.B Use of this option is strongly discouraged in new deployments.
+The "l=" tag declares that only the first
+.I N
+bytes of the body are covered by the signature; any bytes beyond that
+point are unsigned, yet the message still verifies as a DKIM "pass".  An
+attacker who obtains a signed message can therefore append arbitrary
+content \(em a new MIME part, replacement HTML, a forged "rest of message"
+\(em and the result still validates as having been signed by your domain.
+The receiver cannot tell where the signed portion ends, so a DKIM (and
+hence DMARC) "pass" no longer means the content is intact.  This is the
+"body length limit" / DKIM truncation attack described in RFC 6376
+.B Section 8.2
+("Misuse of Body Length Limits"); the "l=" tag definition in RFC 6376
+Section 3.5 carries the same warning.  For this reason the related ARC
+implementation (OpenARC) removed support for signing with "l=" entirely.
+If you do not specifically need to survive footer-appending mailing lists,
+leave this option unset.  A startup warning is logged whenever it is
+configured.
 
 .TP
 .I BogusKey (string)
@@ -570,7 +585,17 @@ Specifies the maximum number of bytes of message body to be signed.
 Messages shorter than this limit will be signed in their entirety.
 Setting this value implies use of
 .I BodyLengthDB
-for all addresses.
+for all addresses, and so carries the same security caveat: any body
+content beyond the signed limit is unsigned but still verifies as a DKIM
+"pass", enabling the content-append (DKIM truncation) attack described
+under
+.I BodyLengthDB
+above and in RFC 6376 Section 8.2.  Because this setting applies to
+.B every
+outbound signature rather than selected recipients, its exposure is
+correspondingly broader.
+.B Use of this option is strongly discouraged in new deployments.
+A startup warning is logged whenever it is configured.
 
 .TP
 .I MilterDebug (integer)

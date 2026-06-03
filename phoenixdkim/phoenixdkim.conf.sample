@@ -127,8 +127,14 @@
 ##  	default (none)
 ##
 ##  A data set that is checked against envelope recipients to see if a
-##  body length tag should be included in the generated signature.
-##  This has security implications; see phoenixdkim.conf(5) for details.
+##  body length tag ("l=") should be included in the generated signature.
+##
+##  STRONGLY DISCOURAGED in new deployments.  The "l=" tag leaves any body
+##  content beyond the signed length unsigned while the message still
+##  verifies as a DKIM "pass", enabling content-append (DKIM truncation)
+##  attacks (RFC 6376 sec. 8.2).  Only use this if you must survive
+##  footer-appending mailing lists.  A startup warning is logged when set.
+##  See phoenixdkim.conf(5) for details.
 
 # BodyLengthDB		dataset
 
@@ -330,8 +336,11 @@ KeyFile			/var/db/dkim/example.private
 
 ##  MaximumSignedBytes n
 ##
-##  Don't sign more than "n" bytes of the message.  The default is to 
-##  sign the entire message.  Setting this implies "BodyLengths".
+##  Don't sign more than "n" bytes of the message.  The default is to
+##  sign the entire message.  Setting this implies "BodyLengthDB" for all
+##  addresses and carries the same security caveat (DKIM truncation, RFC
+##  6376 sec. 8.2), applied to every outbound signature.  STRONGLY
+##  DISCOURAGED; a startup warning is logged when set.
 
 # MaximumSignedBytes	n
 

@@ -6739,7 +6739,7 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		const char *dberr = NULL;
 
 		status = dkimf_db_open(&conf->conf_bldb, str,
-		                       (dbflags | 
+		                       (dbflags |
 		                        DKIMF_DB_FLAG_ICASE |
 		                        DKIMF_DB_FLAG_READONLY),
 		                       NULL, &dberr);
@@ -6749,6 +6749,12 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			         str, dberr);
 			return -1;
 		}
+
+		syslog(LOG_WARNING,
+		       "BodyLengthDB is set: matched messages will be signed "
+		       "with an \"l=\" body length tag, leaving appended body "
+		       "content unsigned but still DKIM-passing (RFC 6376 "
+		       "sec. 8.2 truncation attack); use is discouraged");
 	}
 
 	str = NULL;
@@ -7251,6 +7257,12 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 	{
 		conf->conf_signbytes = (long) maxsign;
 		conf->conf_blen = TRUE;
+
+		syslog(LOG_WARNING,
+		       "MaximumSignedBytes is set: every outbound signature "
+		       "will carry an \"l=\" body length tag, leaving appended "
+		       "body content unsigned but still DKIM-passing (RFC 6376 "
+		       "sec. 8.2 truncation attack); use is discouraged");
 	}
 
 	if (conf->conf_modestr == NULL)
