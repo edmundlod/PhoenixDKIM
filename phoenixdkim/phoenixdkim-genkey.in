@@ -264,6 +264,21 @@ while (<$keyin>)
 
 close($keyin);
 
+## Compute the SHA-256 SPKI fingerprint of the public key: the SHA-256 digest
+## of the DER-encoded SubjectPublicKeyInfo, base64-encoded ("SHA256:..." form,
+## the same value "ssh-keygen -l" reports).  This is done with openssl rather
+## than a Perl module so genkey gains no new dependency beyond the openssl it
+## already requires (perl-MIME-Base64 / perl-Digest-SHA would otherwise have to
+## be packaged on some distributions).
+my $fingerprint;
+my $fpr = `openssl pkey -pubin -in $selector.public -outform DER 2>/dev/null | openssl dgst -sha256 -binary 2>/dev/null | openssl base64 2>/dev/null`;
+$fpr =~ s/\s+//g;			# strip newlines/whitespace
+$fpr =~ s/=+$//;			# strip base64 padding, ssh-keygen style
+if ($fpr ne "")
+{
+	$fingerprint = "SHA256:" . $fpr;
+}
+
 ## output the record
 if ($testmode)
 {
@@ -336,6 +351,10 @@ if (!open($txtout, ">", $selector . ".txt"))
 }
 
 my $keytype_tag = (lc($keytype) eq "ed25519") ? "ed25519" : "rsa";
+if (defined($fingerprint))
+{
+	print $txtout "; public key fingerprint: " . $fingerprint . "\n";
+}
 print $txtout $selector . "._domainkey" . ${domstr} . "\tIN\tTXT\t( \"v=DKIM1;" . $noteout . $hashout . " k=" . $keytype_tag . "; " . $flags . "\"\n\t  \"p=";
 
 $len = length($keydata);
@@ -364,6 +383,13 @@ close($txtout);
 if ($verbose)
 {
 	print STDERR "$progname: DNS TXT record written to " . $selector . ".txt\n";
+}
+
+## report the public key fingerprint so it can be cross-checked against the
+## record actually published in DNS without decoding base64 by hand
+if (defined($fingerprint))
+{
+	print STDOUT "$progname: public key fingerprint: $fingerprint\n";
 }
 
 ## all done!

@@ -17,6 +17,15 @@ The filenames are based on the selector (see
 below); the private key will have a suffix of ".private" and the TXT
 record will have a suffix of ".txt".
 
+After the key is generated the SHA-256 fingerprint of the public key
+is printed to standard output and recorded as a comment at the top of
+the ".txt" file.  This is the SPKI fingerprint (the SHA-256 digest of
+the DER-encoded SubjectPublicKeyInfo, base64-encoded and prefixed with
+"SHA256:"), the same value reported by
+.I ssh-keygen \-l .
+It allows the published DNS record to be cross-checked against the key
+that was generated without decoding the base64 "p=" value by hand.
+
 Both long and short names are supported for most options.
 .SH OPTIONS
 .TP
