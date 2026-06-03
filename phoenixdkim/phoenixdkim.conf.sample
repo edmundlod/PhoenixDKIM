@@ -771,6 +771,16 @@ Syslog			Yes
 
 # SyslogSuccess		No
 
+##  StdoutLog { yes | no }
+##  	default "no"
+##
+##  Log interesting activity to standard output (stdout) as well as, or
+##  instead of, syslog.  Each line is prefixed with a severity word
+##  (e.g. "error:", "info:").  Useful for container deployments where stdout
+##  is the conventional log sink.  The -O command line flag does the same.
+
+# StdoutLog		No
+
 ##  TemporaryDirectory path
 ##  	default /tmp
 ##

@@ -145,6 +145,7 @@ struct configdef dkimf_config[] =
 	{ "SyslogFacility",		CONFIG_TYPE_STRING,	FALSE },
 	{ "SyslogName",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SyslogSuccess",		CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "StdoutLog",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "TemporaryDirectory",		CONFIG_TYPE_STRING,	FALSE },
 	{ "TestDNSData",		CONFIG_TYPE_STRING,	FALSE },
 	{ "TestPublicKeys",		CONFIG_TYPE_STRING,	FALSE },
