@@ -14,6 +14,10 @@ Canonicalization	relaxed/simple
 #Mode			sv
 #SubDomains		no
 OversignHeaders		From
+# Also sign MIME structure headers so an in-transit attacker cannot rewrite
+# the MIME structure (e.g. text/plain -> text/html, or inject multipart
+# content) without invalidating the signature.
+SignHeaders		*,+Content-Type,+MIME-Version,+Content-Transfer-Encoding
 
 # Signing domain, selector, and key (required). For example, perform signing
 # for domain "example.com" with selector "2020" (2020._domainkey.example.com),
