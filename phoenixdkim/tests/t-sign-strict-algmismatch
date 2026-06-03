@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# StrictSignAlgorithm fail-closed test
+
+if [ x"$srcdir" = x"" ]
+then
+	srcdir=`pwd`
+fi
+
+../../miltertest/miltertest $MILTERTESTFLAGS -s $srcdir/t-sign-strict-algmismatch.lua

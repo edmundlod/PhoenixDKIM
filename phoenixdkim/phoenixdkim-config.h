@@ -138,6 +138,7 @@ struct configdef dkimf_config[] =
 	{ "Socket",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SoftwareHeader",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "StrictSignAlgorithm",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictTestMode",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "SubDomains",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "Syslog",			CONFIG_TYPE_BOOLEAN,	FALSE },

@@ -682,6 +682,23 @@ Socket			inet:port@localhost
 
 # StrictHeaders		no
 
+##  StrictSignAlgorithm { yes | no }
+##  	default "no"
+##
+##  Controls what happens when a KeyTable entry's optional fourth field
+##  names a signing algorithm that is unrecognized, or that contradicts the
+##  type of the key it is attached to (for example "ed25519-sha256" on an RSA
+##  key).  The declared algorithm is advisory only -- the actual algorithm is
+##  always derived from the key material -- so by default such a mismatch is
+##  logged as a warning and signing proceeds with the key-derived algorithm.
+##  When this option is set, the mismatch is instead fatal for that key: the
+##  message is not signed with it (the milter returns a temporary failure),
+##  so a divergence between the declared intent and the key in use cannot
+##  pass silently.  Useful for catching botched key rotations or swapped key
+##  files in security-conscious deployments.
+
+# StrictSignAlgorithm	no
+
 ##  StrictTestMode { yes | no }
 ##  	default "no"
 ##
