@@ -220,6 +220,7 @@ struct dkimf_config
 	_Bool		conf_enablecores;	/* enable coredumps */
 	_Bool		conf_noheaderb;		/* suppress "header.b" */
 	_Bool		conf_safekeys;		/* check key permissions */
+	_Bool		conf_strictsignalg;	/* fail on KeyTable alg mismatch */
 	_Bool		conf_checksigningtable; /* check keys on dkimf_config_load */
 	_Bool		conf_resignall;		/* resign unverified mail */
 	unsigned int	conf_mode;		/* operating mode */
@@ -4813,10 +4814,12 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		**  algorithm (for compatibility with configs written for
 		**  upstream OpenDKIM).  We do not use it to select the
 		**  algorithm -- libphoenixdkim derives that from the key material
-		**  itself, which is authoritative -- but if it is present and
-		**  contradicts the actual key, warn so the admin can fix the
-		**  table.  Signing still proceeds with the key-derived
-		**  algorithm.
+		**  itself, which is authoritative.  By default, if the field is
+		**  present and contradicts (or cannot be matched to) the actual
+		**  key, we only warn and proceed with the key-derived algorithm.
+		**  When StrictSignAlgorithm is set, such a mismatch is fatal for
+		**  this key (we refuse to sign with it) so the divergence between
+		**  declared intent and key material cannot pass silently.
 		*/
 
 		if (algorithm[0] != '\0' &&
@@ -4825,6 +4828,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		{
 			int declared;
 			int keytype;
+			_Bool strict = conf->conf_strictsignalg;
 			_Bool declared_ed25519 = FALSE;
 
 			declared = dkimf_lookup_strtoint(algorithm, dkimf_sign);
@@ -4838,20 +4842,30 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 			{
 				if (dolog)
 				{
-					syslog(LOG_WARNING,
-					       "key '%s': unrecognized signing algorithm '%s' in KeyTable; signing with key-derived algorithm",
-					       keyname, algorithm);
+					syslog(strict ? LOG_ERR : LOG_WARNING,
+					       "key '%s': unrecognized signing algorithm '%s' in KeyTable%s",
+					       keyname, algorithm,
+					       strict ? "; refusing to sign (StrictSignAlgorithm)"
+					              : "; signing with key-derived algorithm");
 				}
+
+				if (strict)
+					return 2;
 			}
 			else if (keytype != -1 &&
 			         declared_ed25519 != (keytype == 1))
 			{
 				if (dolog)
 				{
-					syslog(LOG_WARNING,
-					       "key '%s': KeyTable algorithm '%s' does not match the key type; signing with key-derived algorithm",
-					       keyname, algorithm);
+					syslog(strict ? LOG_ERR : LOG_WARNING,
+					       "key '%s': KeyTable algorithm '%s' does not match the key type%s",
+					       keyname, algorithm,
+					       strict ? "; refusing to sign (StrictSignAlgorithm)"
+					              : "; signing with key-derived algorithm");
 				}
+
+				if (strict)
+					return 2;
 			}
 		}
 	}
@@ -6272,6 +6286,10 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		(void) config_get(data, "AllowSHA1Only",
 		                  &conf->conf_allowsha1only,
 		                  sizeof conf->conf_allowsha1only);
+
+		(void) config_get(data, "StrictSignAlgorithm",
+		                  &conf->conf_strictsignalg,
+		                  sizeof conf->conf_strictsignalg);
 
 		(void) config_get(data, "Nameservers",
 		                  &conf->conf_nslist,

@@ -1160,6 +1160,22 @@ If set, instructs the DKIM library to refuse processing of a message if the
 header field count does not conform to RFC5322 Section 3.6.
 
 .TP
+.I StrictSignAlgorithm (Boolean)
+Controls handling of the optional fourth (algorithm) field of a
+.I KeyTable
+entry when it is unrecognized or contradicts the type of the key it is
+attached to (for example
+.B ed25519-sha256
+on an RSA key).  That field is advisory only \(em the signing algorithm is
+always derived from the key material \(em so by default such a mismatch is
+logged as a warning and signing proceeds with the key-derived algorithm.
+When this option is set, the mismatch is instead fatal for that key: the
+message is not signed with it (a temporary failure is returned), so a
+divergence between the declared intent and the key actually in use cannot
+pass silently.  The default is
+.B No.
+
+.TP
 .I StrictTestMode (Boolean)
 Selects strict CRLF mode during testing (see the
 .I -t
