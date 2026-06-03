@@ -1252,6 +1252,17 @@ man page); messages for which all header fields and body lines are not
 CRLF-terminated are considered malformed and will produce an error.
 
 .TP
+.I StdoutLog (Boolean)
+Log any interesting activity to standard output (stdout), with each line
+prefixed by a severity word (for example "error:" or "info:").  This can be
+used together with
+.I Syslog
+or on its own, and is intended for container deployments where stdout is the
+conventional log sink.  The
+.I -O
+command line flag enables the same behaviour.  The default is "false".
+
+.TP
 .I SubDomains (Boolean)
 Sign subdomains of those listed by the
 .I Domain
