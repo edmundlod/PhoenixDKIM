@@ -509,6 +509,24 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim-genkey
     DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
 
+# ── phoenixdkim-testmsg signing regression test ──────────────────────────────
+# Drives the testmsg binary in signing mode for an RSA and an Ed25519 key,
+# guarding against the class of bug where a hardcoded signing algorithm rots
+# after a library policy change (a stale DKIM_SIGN_RSASHA1 default once broke
+# all signing).  Self-contained: genkey + openssl, no DNS or daemon.  Skips
+# (exit 77) if a prerequisite is missing.
+add_test(
+    NAME t-testmsg-sign
+    COMMAND ${CMAKE_COMMAND} -E env
+            sh ${CMAKE_CURRENT_SOURCE_DIR}/tests/t-testmsg-sign.sh
+            $<TARGET_FILE:phoenixdkim-testmsg>
+            ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim-genkey
+)
+set_tests_properties(t-testmsg-sign PROPERTIES
+    TIMEOUT 30
+    SKIP_RETURN_CODE 77
+)
+
 # ── Man pages ─────────────────────────────────────────────────────────────────
 include(GNUInstallDirs)
 # Only phoenixdkim* man pages are installed -- no legacy phoenixdkim* stubs, so the
