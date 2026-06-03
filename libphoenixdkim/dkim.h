@@ -291,6 +291,29 @@ typedef int dkim_opts_t;
 #define DKIM_DNSSEC_SECURE	2
 
 /*
+**  DNSSEC validation availability tracking.
+**
+**  The stock resolver reports a key record's DNSSEC status from the AD
+**  (Authenticated Data) bit of the reply.  An absent AD bit is ambiguous: it
+**  can mean the queried zone is genuinely unsigned, OR that the local resolver
+**  is not performing DNSSEC validation at all (a plain stub, AD stripped in
+**  transit, etc.).  These flags record, for the life of the process, whether
+**  validation has been observed -- mirroring Postfix's dns_sec_probe(3).
+*/
+
+#define DKIM_DNSSEC_FLAG_AVAILABLE	(1 << 0)	/* saw a validated reply */
+#define DKIM_DNSSEC_FLAG_DONT_PROBE	(1 << 1)	/* probe sent or disabled */
+
+/*
+**  dkim_dnssec_probe() result codes.
+*/
+
+#define DKIM_DNSSEC_PROBE_VALIDATED	0	/* reply was DNSSEC validated */
+#define DKIM_DNSSEC_PROBE_UNVALIDATED	1	/* reply, but not validated */
+#define DKIM_DNSSEC_PROBE_NORESPONSE	2	/* no usable reply */
+#define DKIM_DNSSEC_PROBE_SKIPPED	3	/* already probed or disabled */
+
+/*
 **  DKIM_ATPS -- ATPS result codes
 */
 
@@ -1776,6 +1799,39 @@ extern int dkim_dns_config(DKIM_LIB *, const char *);
 */
 
 extern int dkim_dns_trustanchor(DKIM_LIB *, const char *);
+
+/*
+**  DKIM_DNSSEC_AVAIL -- report whether DNSSEC validation has been observed
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**
+**  Return value:
+**  	Non-zero if at least one DNSSEC-validated reply (AD bit set) has been
+**  	received since the process started; zero otherwise.
+*/
+
+extern int dkim_dnssec_avail(DKIM_LIB *);
+
+/*
+**  DKIM_DNSSEC_PROBE -- actively test whether the resolver validates DNSSEC
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	spec -- probe target as "qtype:qname" (e.g. "ns:."); NULL or empty
+**  	        disables probing
+**  	err -- buffer for a human-readable reason (may be NULL)
+**  	errlen -- bytes available at "err"
+**
+**  Return value:
+**  	A DKIM_DNSSEC_PROBE_* constant.
+**
+**  Notes:
+**  	The probe is sent at most once per process; subsequent calls return
+**  	DKIM_DNSSEC_PROBE_SKIPPED without generating traffic.
+*/
+
+extern int dkim_dnssec_probe(DKIM_LIB *, const char *, char *, size_t);
 
 /*
 **  DKIM_ADD_QUERYMETHOD -- add a query method

@@ -51,6 +51,17 @@ the features that matter most when you run it.
   <li><strong>Hardened by default</strong> — compiled with modern protections
   (<code>_FORTIFY_SOURCE</code>, stack-protector and stack-clash protection, a
   non-executable stack, and Intel CET where the hardware supports it).</li>
+  <li><strong>DNSSEC-aware key verification</strong> — a passing signature whose
+  key record is <em>not</em> DNSSEC-protected can be downgraded or rejected
+  (<code>UnprotectedKey</code>), a control most DKIM implementations don't
+  expose. It works with the stock validating resolver via the reply's AD bit, so
+  libunbound is not required. A missing AD bit is treated as
+  <em>ambiguous</em> rather than "insecure": before penalising a signature,
+  PhoenixDKIM runs a <code>DNSSECProbe</code> (modelled on
+  <a href="https://www.postfix.org/">Postfix</a>'s <code>dnssec_probe</code>) to
+  confirm the resolver actually validates, logs the disposition it applies, and
+  suppresses the penalty when validation can't be confirmed — so a
+  non-validating resolver never silently fails every message.</li>
 </ul>
 
 <h2><a name="extensible" href="#extensible">Extensible</a></h2>

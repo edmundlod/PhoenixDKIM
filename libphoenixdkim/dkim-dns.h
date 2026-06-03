@@ -18,5 +18,8 @@ extern int dkim_res_query(void *, int, unsigned char *, unsigned char *,
                                size_t, void **);
 extern int dkim_res_waitreply(void *, void *, struct timeval *,
                                    size_t *, int *, int *);
+extern int dkim_res_dnssec_stats(void);
+extern int dkim_res_dnssec_probe(void *, int, const char *, char *, size_t);
+extern int dkim_dns_nametotype(const char *);
 
 #endif /* ! _DKIM_DNS_H_ */

@@ -278,6 +278,7 @@ struct dkimf_config
 	char *		conf_identityhdr;	/* identity header */
 	_Bool		conf_rmidentityhdr;	/* remove identity header */
 	char *		conf_diagdir;		/* diagnostics directory */
+	char *		conf_dnssecprobe;	/* DNSSEC probe spec (qtype:qname) */
 	char *		conf_reportaddr;	/* report sender address */
 	char *		conf_reportaddrbcc;	/* report repcipient address as bcc */
 	const char *	conf_mtacommand;	/* MTA command (reports) */
@@ -6334,6 +6335,17 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 			conf->conf_unprotectedkey = DKIMF_KEYACTIONS_NONE;
 		}
 
+		/*
+		**  DNSSEC validation probe target, as "qtype:qname".  The
+		**  default queries the (always-signed) root NS set so that an
+		**  absent AD bit on a key record can be told apart from a
+		**  resolver that simply isn't validating.  An empty value
+		**  disables probing and restores blind trust in the AD bit.
+		*/
+		conf->conf_dnssecprobe = (char *) DEFDNSSECPROBE;
+		(void) config_get(data, "DNSSECProbe", &conf->conf_dnssecprobe,
+		                  sizeof conf->conf_dnssecprobe);
+
 #ifdef USE_LUA
 		str = NULL;
 		(void) config_get(data, "SetupPolicyScript", &str, sizeof str);
@@ -9760,6 +9772,78 @@ dkimf_sigreport(connctx cc, struct dkimf_config *conf, const char *hostname)
 }
 
 /*
+**  DKIMF_DNSSEC_VALIDATING -- decide whether AD=0 can be trusted as "insecure"
+**
+**  An absent AD bit on a key record means the zone is genuinely unsigned only
+**  if the local resolver actually performs DNSSEC validation.  Mirroring
+**  Postfix's dnssec_probe, the first time we encounter an unvalidated key
+**  result without ever having seen a validated one, we probe a known-signed
+**  name to find out which case we are in, logging the outcome once.
+**
+**  Parameters:
+**  	conf -- config object
+**
+**  Return value:
+**  	TRUE if the resolver is known to validate (so AD=0 is trustworthy and
+**  	the UnprotectedKey disposition should apply); FALSE if validation is
+**  	unavailable or could not be confirmed (so penalties are suppressed).
+**
+**  Notes:
+**  	Returns TRUE when probing is disabled, preserving the historical
+**  	behaviour of trusting the AD bit unconditionally.
+*/
+
+static _Bool
+dkimf_dnssec_validating(struct dkimf_config *conf)
+{
+	char err[BUFRSZ];
+
+	/* probing disabled: trust the AD bit as before */
+	if (conf->conf_dnssecprobe == NULL || conf->conf_dnssecprobe[0] == '\0')
+		return TRUE;
+
+	/* already have first-hand evidence the resolver validates */
+	if (dkim_dnssec_avail(conf->conf_libphoenixdkim))
+		return TRUE;
+
+	/* probe at most once; the library guards against repeat traffic */
+	memset(err, '\0', sizeof err);
+	switch (dkim_dnssec_probe(conf->conf_libphoenixdkim,
+	                          conf->conf_dnssecprobe, err, sizeof err))
+	{
+	  case DKIM_DNSSEC_PROBE_VALIDATED:
+		if (conf->conf_dolog)
+		{
+			syslog(LOG_INFO,
+			       "DNSSEC probe %s confirmed resolver validation",
+			       conf->conf_dnssecprobe);
+		}
+		return TRUE;
+
+	  case DKIM_DNSSEC_PROBE_UNVALIDATED:
+		syslog(LOG_WARNING,
+		       "local resolver does not appear to validate DNSSEC: probe %s answered without the authenticated-data (AD) bit; UnprotectedKey actions are suppressed",
+		       conf->conf_dnssecprobe);
+		return FALSE;
+
+	  case DKIM_DNSSEC_PROBE_NORESPONSE:
+		syslog(LOG_WARNING,
+		       "local resolver does not appear to validate DNSSEC: probe %s got no usable answer (%s); UnprotectedKey actions are suppressed",
+		       conf->conf_dnssecprobe, err);
+		return FALSE;
+
+	  case DKIM_DNSSEC_PROBE_SKIPPED:
+	  default:
+		/*
+		**  Probe already spent this run and validation was never
+		**  observed: keep treating AD=0 as inconclusive.
+		*/
+		return dkim_dnssec_avail(conf->conf_libphoenixdkim) ? TRUE
+		                                                     : FALSE;
+	}
+}
+
+/*
 **  DKIMF_AR_ALL_SIGS -- append Authentication-Results items for all signatures
 **
 **  Parameters:
@@ -9915,16 +9999,39 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 				break;
 
 			  case DKIM_DNSSEC_INSECURE:
+				/*
+				**  AD=0 only means "genuinely unsigned" if the
+				**  resolver actually validates; otherwise it just
+				**  means validation was unavailable.  Don't punish
+				**  a signature for the latter (and don't mislabel
+				**  it "insecure" in Authentication-Results).
+				*/
+				if (!dkimf_dnssec_validating(conf))
+				{
+					dnssec = NULL;
+					break;
+				}
+
 				dnssec = "insecure";
 				if (conf->conf_unprotectedkey == DKIMF_KEYACTIONS_FAIL)
 				{
 					*status = DKIMF_STATUS_BAD;
 					result = "policy";
+					syslog(LOG_NOTICE,
+					       "%s: key record for signature from %s (selector %s) is not DNSSEC-protected; applying UnprotectedKey=fail",
+					       dkim_getid(dkim),
+					       dkim_sig_getdomain(sigs[c]),
+					       dkim_sig_getselector(sigs[c]));
 				}
 				else if (conf->conf_unprotectedkey == DKIMF_KEYACTIONS_NEUTRAL)
 				{
 					*status = DKIMF_STATUS_VERIFYERR;
 					result = "neutral";
+					syslog(LOG_NOTICE,
+					       "%s: key record for signature from %s (selector %s) is not DNSSEC-protected; applying UnprotectedKey=neutral",
+					       dkim_getid(dkim),
+					       dkim_sig_getdomain(sigs[c]),
+					       dkim_sig_getselector(sigs[c]));
 				}
 				break;
 
