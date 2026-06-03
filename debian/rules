@@ -1,7 +1,11 @@
 #!/usr/bin/make -f
 
-# Enable full hardening
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+# Enable full hardening and reproducible-build flags.
+# reproducible=+all makes dpkg-buildflags inject -ffile-prefix-map so the package
+# build path does not leak into the binaries; combined with debhelper deriving
+# SOURCE_DATE_EPOCH from the changelog date and Debian's deterministic binutils,
+# this yields a bit-for-bit reproducible package.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all reproducible=+all
 
 # Tell debhelper to use the CMake build system
 %:
