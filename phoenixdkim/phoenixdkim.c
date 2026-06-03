@@ -10002,7 +10002,31 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			else if ((u_int) sigerror != DKIM_SIGERROR_UNKNOWN &&
 			         (u_int) sigerror != DKIM_SIGERROR_OK)
 			{
+				const char *err;
+
 				result = "permerror";
+
+				/*
+				**  These are parse-time rejections: the signature
+				**  was short-circuited before any DNS lookup or
+				**  crypto, so it was never actually verified.  Emit
+				**  a "reason" so the bare "permerror" is explained.
+				**  An expired signature is a permitted permanent
+				**  failure (RFC 6376 s3.5, "x="); spell out that we
+				**  declined to verify it rather than that the crypto
+				**  failed, since the two are easily confused.
+				*/
+
+				if (sigerror == DKIM_SIGERROR_EXPIRED)
+					err = "signature expired; not verified";
+				else
+					err = dkim_sig_geterrorstr(sigerror);
+
+				if (err != NULL)
+				{
+					snprintf(comment, sizeof comment,
+					         " reason=\"%s\"", err);
+				}
 			}
 			else
 			{
