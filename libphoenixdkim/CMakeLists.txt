@@ -99,9 +99,9 @@ if(NOT LMDB_FOUND)
     endif()
 endif()
 
-# ── Lua 5.4 (optional, default OFF) ──────────────────────────────────────────
+# ── Lua 5.4 (optional, default ON) ───────────────────────────────────────────
 
-option(WITH_LUA "Build with Lua 5.4 scripting support" OFF)
+option(WITH_LUA "Build with Lua 5.4 scripting support" ON)
 
 if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
