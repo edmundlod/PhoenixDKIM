@@ -62,7 +62,7 @@ To build the library and filter you will need:
 
 Optional:
 
-- Lua 5.4+ — policy scripting hooks (`-DWITH_LUA=ON`)
+- Lua 5.4+ — policy scripting hooks (default ON)
 - libunbound — DNSSEC-aware DNS resolution (`-DWITH_UNBOUND=ON`)
 - libcurl >= 7.20.0 — SMTP report delivery via the `SMTPURI` config option (`-DWITH_CURL=ON`)
 - hiredis or libvalkey — Redis/Valkey signing-table backend (`-DWITH_REDIS=ON`)
@@ -109,7 +109,7 @@ CMake automatically searches `/usr/local` on OpenBSD, so no extra `-D` flags are
 needed for milter. A minimal build:
 
 ```
-cmake -B build -DSSL_PROVIDER=libressl -DWITH_LUA=ON
+cmake -B build -DSSL_PROVIDER=libressl
 cmake --build build -j$(sysctl -n hw.ncpuonline)
 ctest --test-dir build
 ```
@@ -127,7 +127,7 @@ Common build options:
 |---|---|---|
 | `-DSSL_PROVIDER=auto` | auto | Crypto provider: `auto` (system default — OpenSSL on Linux, LibreSSL on OpenBSD), `openssl`, or `libressl`. Non-`auto` values validate that the located library is that provider |
 | `-DSSL_ROOT_DIR=<prefix>` | (unset) | Build against a non-default OpenSSL/LibreSSL install. Handy for compat testing against, say, a side-installed OpenSSL 4 or a specific LibreSSL: `-DSSL_PROVIDER=openssl -DSSL_ROOT_DIR=/opt/openssl-4` |
-| `-DWITH_LUA=ON` | OFF | Enable Lua 5.4 policy scripting |
+| `-DWITH_LUA=ON` | ON | Enable Lua 5.4 policy scripting |
 | `-DWITH_UNBOUND=ON` | ON | Enable libunbound DNSSEC resolver |
 | `-DWITH_CURL=ON` | OFF | Enable libcurl SMTP report delivery (`SMTPURI`) |
 | `-DWITH_REDIS=ON` | OFF | Enable Redis/Valkey signing-table backend |

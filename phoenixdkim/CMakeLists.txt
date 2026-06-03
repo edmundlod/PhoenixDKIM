@@ -49,7 +49,7 @@ find_path(MILTER_INCLUDE_DIR NAMES libmilter/mfapi.h)
 
 # ── Lua 5.4 (optional) ────────────────────────────────────────────────────────
 
-option(WITH_LUA "Build with Lua 5.4 scripting support" OFF)
+option(WITH_LUA "Build with Lua 5.4 scripting support" ON)
 
 if(WITH_LUA)
     find_package(Lua 5.4 EXACT REQUIRED)
