@@ -27,6 +27,10 @@ Removed section below for what is no longer accepted).
   with `On-WeakAlgorithm` choosing only the message disposition
 - Minimum RSA signing key size: 2048 bits (a deliberate choice — RFC 8301
   permits 1024)
+- **Reproducible builds** — both the source tarball and the Debian package
+  produce bit-for-bit identical artifacts regardless of build path or time
+  (`-ffile-prefix-map`, `-Wdate-time`, deterministic archives by default;
+  `reproducible=+all` on the `.deb`)
 
 ## Removed from pre-fork OpenDKIM 2.11.0-beta2 (d.d. 15-NOV-2018)
 
