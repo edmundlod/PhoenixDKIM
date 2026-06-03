@@ -27,7 +27,6 @@ UMask=007
 # /var/spool/postfix/phoenixdkim by default makes it possible to use phoenixdkim
 # with postfix without further configuration.
 ReadWritePaths=-/var/spool/postfix/phoenixdkim
-RuntimeDirectory=phoenixdkim
 
 # Hardening - see systemd.exec(5)
 CapabilityBoundingSet=
