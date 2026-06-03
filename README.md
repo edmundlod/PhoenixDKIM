@@ -150,6 +150,9 @@ A sample configuration file, which needs editing, is installed at
 For an example on using multiple signatures per e-mail (e.g. Ed25519 with
 an RSA key as fall-back), see `docs/multisigning.md`.
 
+For a step-by-step procedure to rotate signing keys without a verification
+gap, see `docs/key-rotation.md`.
+
 The filter integrates with Postfix and Sendmail via the milter protocol.
 For Postfix, add to `main.cf`:
 
