@@ -38,7 +38,7 @@ OversignHeaders		From
 #KeyTable                /etc/phoenixdkim/key.table
 #SigningTable            refile:/etc/phoenixdkim/signing.table
 
-# In Debian, phoenixdkim runs as user "phoenixdkim". A umask of 007 is required when
+# In Fedora, phoenixdkim runs as user "phoenixdkim". A umask of 007 is required when
 # using a local socket with MTAs that access the socket as a non-privileged
 # user (for example, Postfix).
 # User and Umask are handled via Systemd these days, so leave them commented out.
@@ -62,7 +62,7 @@ Socket			local:/run/phoenixdkim/phoenixdkim.sock
 #InternalHosts          /etc/phoenixdkim/trusted.hosts
 #ExternalIgnoreList     /etc/phoenixdkim/trusted.hosts
 
-# The trust anchor enables DNSSEC. In Debian, the trust anchor file is provided
+# The trust anchor enables DNSSEC. In Fedora, the trust anchor file is provided
 # by the package dns-root-data.
 #TrustAnchorFile		/usr/share/dns/root.key
 #Nameservers		127.0.0.1
