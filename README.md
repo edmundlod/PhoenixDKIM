@@ -27,6 +27,16 @@ Removed section below for what is no longer accepted).
   with `On-WeakAlgorithm` choosing only the message disposition
 - Minimum RSA signing key size: 2048 bits (a deliberate choice — RFC 8301
   permits 1024)
+- **DNSSEC-aware key verification** — a passing signature whose key record is
+  *not* DNSSEC-protected can be downgraded or rejected (`UnprotectedKey`), a
+  control most DKIM implementations don't expose. It works with the stock
+  validating resolver via the reply's AD bit; no libunbound required. Crucially,
+  an absent AD bit is treated as *ambiguous* rather than "insecure": before
+  penalising a signature the filter runs a Postfix-style `DNSSECProbe` to
+  confirm the resolver actually validates, logs `dkim=policy`/`neutral`
+  decisions and "DNSSEC validation may be unavailable" warnings, and suppresses
+  the penalty when validation can't be confirmed — so a non-validating resolver
+  never silently fails every message
 - **Reproducible builds** — both the source tarball and the Debian package
   produce bit-for-bit identical artifacts regardless of build path or time
   (`-ffile-prefix-map`, `-Wdate-time`, deterministic archives by default;

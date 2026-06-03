@@ -8680,6 +8680,93 @@ dkim_dns_trustanchor(DKIM_LIB *lib, const char *trust)
 }
 
 /*
+**  DKIM_DNSSEC_AVAIL -- report whether DNSSEC validation has been observed
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**
+**  Return value:
+**  	Non-zero if a DNSSEC-validated reply has been seen this process.
+*/
+
+int
+dkim_dnssec_avail(DKIM_LIB *lib)
+{
+	assert(lib != NULL);
+
+	(void) lib;	/* availability is process-wide; lib kept for API symmetry */
+
+	return (dkim_res_dnssec_stats() & DKIM_DNSSEC_FLAG_AVAILABLE) != 0;
+}
+
+/*
+**  DKIM_DNSSEC_PROBE -- actively test whether the resolver validates DNSSEC
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	spec -- probe target as "qtype:qname"; NULL or empty disables probing
+**  	err -- buffer for a human-readable reason (may be NULL)
+**  	errlen -- bytes available at "err"
+**
+**  Return value:
+**  	A DKIM_DNSSEC_PROBE_* constant.
+*/
+
+int
+dkim_dnssec_probe(DKIM_LIB *lib, const char *spec, char *err, size_t errlen)
+{
+	int qtype;
+	char *colon;
+	char specbuf[256];
+
+	assert(lib != NULL);
+
+	/* an empty or absent spec disables probing */
+	if (spec == NULL || *spec == '\0')
+		return DKIM_DNSSEC_PROBE_SKIPPED;
+
+	/*
+	**  The probe issues a query directly against the stock resolver's
+	**  service handle; if a caller has installed a custom DNS backend we
+	**  cannot reach into it, so quietly decline.
+	*/
+	if (lib->dkiml_dns_start != dkim_res_query)
+		return DKIM_DNSSEC_PROBE_SKIPPED;
+
+	if (lib->dkiml_dns_service == NULL &&
+	    lib->dkiml_dns_init != NULL &&
+	    lib->dkiml_dns_init(&lib->dkiml_dns_service) != 0)
+	{
+		if (err != NULL)
+			strlcpy(err, "cannot initialize resolver", errlen);
+		return DKIM_DNSSEC_PROBE_NORESPONSE;
+	}
+
+	/* parse "qtype:qname" */
+	strlcpy(specbuf, spec, sizeof specbuf);
+	colon = strchr(specbuf, ':');
+	if (colon == NULL || colon[1] == '\0')
+	{
+		if (err != NULL)
+			strlcpy(err, "malformed probe spec (want qtype:qname)",
+			        errlen);
+		return DKIM_DNSSEC_PROBE_NORESPONSE;
+	}
+	*colon = '\0';
+
+	qtype = dkim_dns_nametotype(specbuf);
+	if (qtype < 0)
+	{
+		if (err != NULL)
+			strlcpy(err, "unknown probe query type", errlen);
+		return DKIM_DNSSEC_PROBE_NORESPONSE;
+	}
+
+	return dkim_res_dnssec_probe(lib->dkiml_dns_service, qtype,
+	                             colon + 1, err, errlen);
+}
+
+/*
 **  DKIM_ADD_QUERYMETHOD -- add a query method
 **
 **  Parameters:

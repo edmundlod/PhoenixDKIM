@@ -167,6 +167,16 @@
 
 # Diagnostics		No
 
+##  DNSSECProbe qtype:qname
+##  	default ns:.
+##
+##  Name and type queried to confirm that the local resolver performs DNSSEC
+##  validation, used to disambiguate a missing AD bit (unsigned zone vs.
+##  non-validating resolver) before UnprotectedKey acts.  Empty disables the
+##  probe and trusts the AD bit unconditionally.
+
+# DNSSECProbe		ns:.
+
 ##  DNSTimeout n
 ##  	default 10
 ##

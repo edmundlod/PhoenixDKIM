@@ -143,7 +143,16 @@ Instructs the filter to treat a passing signature associated with a bogus
 (take no special action) and
 .I fail
 (return a "fail" result; this is the default).
-(Requires libunbound; enabled with -DWITH_UNBOUND=ON.)
+A key is reported as bogus only by a DNSSEC-validating resolver library
+that distinguishes a validation failure from an unsigned answer.  The stock
+resolver back end does not report this state: a validating resolver returns
+SERVFAIL for data that fails validation, which surfaces as an ordinary key
+lookup failure (the signature cannot be verified) rather than a "bogus"
+disposition.  This option therefore has an effect only when built against
+such a library (enabled with -DWITH_UNBOUND=ON); see also
+.I UnprotectedKey ,
+which handles the more common "unsigned key record" case with the stock
+resolver.
 
 .TP
 .I CaptureUnknownErrors (Boolean)
@@ -218,6 +227,28 @@ library phoenixdkim is using will do the required initialization and shutdown.
 Requests that the asynchronous resolver start using TCP immediately
 rather than using UDP until TCP is actually needed.  Does not work with
 all resolvers.
+
+.TP
+.I DNSSECProbe (string)
+Sets the name and type used to confirm that the local resolver actually
+performs DNSSEC validation, expressed as
+.I qtype:qname
+(for example
+.I ns:.
+\(em the always-signed root NS set, which is the default).  Recognised
+query types are
+.IR a ", " aaaa ", " ns ", " soa ", " mx ", " txt ", " cname ", " ptr ", "
+.IR dnskey " and " ds .
+The probe is modelled on Postfix's
+.I dnssec_probe
+parameter.  When a key record arrives without the AD bit and no validated
+reply has yet been seen this run, the filter queries this name once; if the
+response is itself validated the resolver is trusted and the
+.I UnprotectedKey
+disposition is applied to unsigned key records, otherwise a warning is
+logged and that disposition is suppressed.  Setting this to an empty value
+disables probing and restores unconditional trust in the AD bit.  The probe
+is issued at most once per process.
 
 .TP
 .I DNSTimeout (integer)
@@ -1230,7 +1261,19 @@ a special way.  Possible values are
 (take no special action; this is the default) and
 .I fail
 (return a "fail" result).
-(Requires libunbound; enabled with -DWITH_UNBOUND=ON.)
+A key record is judged insecure when the resolver's reply does not carry
+the AD (Authenticated Data) bit.  This works with the stock validating
+resolver and does
+.B not
+require libunbound; the AD bit is only meaningful when queries are sent to
+a local DNSSEC-validating resolver over a trusted channel (for example a
+validating resolver on the loopback interface).  An absent AD bit is
+otherwise ambiguous \(em it can equally mean the zone is genuinely
+unsigned or that the resolver is not validating at all \(em so before a
+penalty is applied the filter confirms that the resolver validates; see
+.I DNSSECProbe .
+If validation cannot be confirmed, the special action is suppressed and a
+warning is logged rather than silently failing every signature.
 
 .TP
 .I UserID (string)

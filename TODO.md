@@ -101,6 +101,8 @@ FEATURES to consider:
   
   The UnprotectedKey option (treating a DKIM key retrieved without DNSSEC differently) is something most DKIM implementations don't expose at all. It's exactly right that it's there.
   Consider making it more prominent in documentation — it's a real differentiator for security-conscious deployments.
+  DONE: documented as a README highlight; man page corrected (works with the stock validating resolver via the AD bit, no libunbound needed).
+  DONE: added a Postfix-style DNSSECProbe (default "ns:.") so a missing AD bit is disambiguated (unsigned zone vs. non-validating resolver) before UnprotectedKey acts; insecure dispositions now log symmetrically with bogus, and the penalty is suppressed + a "DNSSEC validation may be unavailable" warning logged when validation can't be confirmed.
 
 ===============
 

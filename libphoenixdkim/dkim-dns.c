@@ -49,6 +49,17 @@
 # define MAXPACKET      8192
 #endif /* ! MAXPACKET */
 
+/* RR type codes that predate some <arpa/nameser.h> headers */
+#ifndef T_AAAA
+# define T_AAAA		28
+#endif /* ! T_AAAA */
+#ifndef T_DS
+# define T_DS		43
+#endif /* ! T_DS */
+#ifndef T_DNSKEY
+# define T_DNSKEY	48
+#endif /* ! T_DNSKEY */
+
 /*
 **  Standard UNIX resolver stub functions
 */
@@ -59,6 +70,13 @@ struct dkim_res_qh
 	int		rq_dnssec;
 	size_t		rq_buflen;
 };
+
+/*
+**  Process-wide record of whether the resolver has ever returned a
+**  DNSSEC-validated reply.  A monotonic bitmask of DKIM_DNSSEC_FLAG_*; updated
+**  with a plain OR (a benign race at worst, as in Postfix's dns_sec module).
+*/
+static int dkim_dns_sec_stats = 0;
 
 #ifdef HAVE_RES_NINIT
 /*
@@ -279,9 +297,14 @@ dkim_res_query(void *srv, int type, unsigned char *query, unsigned char *buf,
 		HEADER hdr_tmp;
 		memcpy(&hdr_tmp, buf, sizeof hdr_tmp);
 		if (hdr_tmp.ad)
+		{
 			rq->rq_dnssec = DKIM_DNSSEC_SECURE;
+			dkim_dns_sec_stats |= DKIM_DNSSEC_FLAG_AVAILABLE;
+		}
 		else
+		{
 			rq->rq_dnssec = DKIM_DNSSEC_INSECURE;
+		}
 	}
 	if (ret == -1)
 	{
@@ -338,6 +361,133 @@ dkim_res_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 		*dnssec = rq->rq_dnssec;
 
 	return DKIM_DNS_SUCCESS;
+}
+
+/*
+**  DKIM_RES_DNSSEC_STATS -- return the process-wide DNSSEC status flags
+**
+**  Parameters:
+**  	None.
+**
+**  Return value:
+**  	A bitmask of DKIM_DNSSEC_FLAG_* values.
+*/
+
+int
+dkim_res_dnssec_stats(void)
+{
+	return dkim_dns_sec_stats;
+}
+
+/*
+**  DKIM_DNS_NAMETOTYPE -- map a textual RR type to its numeric value
+**
+**  Parameters:
+**  	name -- type name (case-insensitive), e.g. "ns"
+**
+**  Return value:
+**  	The T_* constant, or -1 if unrecognised.
+*/
+
+int
+dkim_dns_nametotype(const char *name)
+{
+	static const struct
+	{
+		const char	*name;
+		int		 type;
+	} types[] =
+	{
+		{ "a",		T_A		},
+		{ "aaaa",	T_AAAA		},
+		{ "ns",		T_NS		},
+		{ "soa",	T_SOA		},
+		{ "mx",		T_MX		},
+		{ "txt",	T_TXT		},
+		{ "cname",	T_CNAME		},
+		{ "ptr",	T_PTR		},
+		{ "dnskey",	T_DNSKEY	},
+		{ "ds",		T_DS		},
+		{ NULL,		-1		},
+	};
+	int c;
+
+	if (name == NULL)
+		return -1;
+
+	for (c = 0; types[c].name != NULL; c++)
+	{
+		if (strcasecmp(name, types[c].name) == 0)
+			return types[c].type;
+	}
+
+	return -1;
+}
+
+/*
+**  DKIM_RES_DNSSEC_PROBE -- query a known-signed name to test the resolver
+**
+**  Parameters:
+**  	srv -- service handle
+**  	qtype -- RR type to query
+**  	qname -- name to query (a known DNSSEC-signed name)
+**  	err -- buffer for a human-readable reason (may be NULL)
+**  	errlen -- bytes available at "err"
+**
+**  Return value:
+**  	A DKIM_DNSSEC_PROBE_* constant.
+**
+**  Notes:
+**  	The probe is sent at most once per process.  On a validated reply the
+**  	process-wide DKIM_DNSSEC_FLAG_AVAILABLE flag is set, after which the
+**  	stock resolver's AD=0 results can be trusted to mean "genuinely
+**  	insecure" rather than "validation unavailable".
+*/
+
+int
+dkim_res_dnssec_probe(void *srv, int qtype, const char *qname,
+                      char *err, size_t errlen)
+{
+	int ret;
+	unsigned char buf[MAXPACKET];
+	HEADER hdr;
+#ifdef HAVE_RES_NINIT
+	struct dkim_res_svc *svc = srv;
+#endif /* HAVE_RES_NINIT */
+
+	assert(qname != NULL);
+
+	/* send the probe at most once per process */
+	if ((dkim_dns_sec_stats & DKIM_DNSSEC_FLAG_DONT_PROBE) != 0)
+		return DKIM_DNSSEC_PROBE_SKIPPED;
+	dkim_dns_sec_stats |= DKIM_DNSSEC_FLAG_DONT_PROBE;
+
+#ifdef HAVE_RES_NINIT
+	assert(svc != NULL);
+	pthread_mutex_lock(&svc->rs_lock);
+	ret = res_nquery(&svc->rs_state, qname, C_IN, qtype, buf, sizeof buf);
+	pthread_mutex_unlock(&svc->rs_lock);
+#else /* HAVE_RES_NINIT */
+	ret = res_query(qname, C_IN, qtype, buf, sizeof buf);
+#endif /* HAVE_RES_NINIT */
+
+	if (ret < (int) HFIXEDSZ)
+	{
+		if (err != NULL)
+			strlcpy(err, hstrerror(h_errno), errlen);
+		return DKIM_DNSSEC_PROBE_NORESPONSE;
+	}
+
+	memcpy(&hdr, buf, sizeof hdr);
+	if (hdr.ad)
+	{
+		dkim_dns_sec_stats |= DKIM_DNSSEC_FLAG_AVAILABLE;
+		return DKIM_DNSSEC_PROBE_VALIDATED;
+	}
+
+	if (err != NULL)
+		strlcpy(err, "reply not DNSSEC-validated (no AD bit)", errlen);
+	return DKIM_DNSSEC_PROBE_UNVALIDATED;
 }
 
 /*

@@ -48,6 +48,7 @@ struct configdef dkimf_config[] =
 	{ "DiagnosticDirectory",	CONFIG_TYPE_STRING,	FALSE },
 	{ "DisableCryptoInit",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DNSConnect",			CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "DNSSECProbe",		CONFIG_TYPE_STRING,	FALSE },
 	{ "DNSTimeout",			CONFIG_TYPE_INTEGER,	FALSE },
 	{ "Domain",			CONFIG_TYPE_STRING,	FALSE },
 	{ "DomainKeysCompat",		CONFIG_TYPE_BOOLEAN,	FALSE },
