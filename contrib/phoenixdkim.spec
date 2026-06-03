@@ -124,10 +124,12 @@ find %{buildroot}%{_libdir} -name '*.a' -delete
 
 %files tools
 %license LICENSE LICENSE.Sendmail
+%{_bindir}/miltertest
 %{_sbindir}/%{name}-genkey
 %{_sbindir}/%{name}-genzone
 %{_sbindir}/%{name}-testkey
 %{_sbindir}/%{name}-testmsg
+%{_mandir}/man8/miltertest.8*
 %{_mandir}/man8/%{name}-genkey.8*
 %{_mandir}/man8/%{name}-genzone.8*
 %{_mandir}/man8/%{name}-testkey.8*
