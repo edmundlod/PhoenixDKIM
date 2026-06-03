@@ -199,7 +199,16 @@ main(int argc, char **argv)
 	ssize_t rlen;
 	ssize_t wlen;
 	ssize_t l = (ssize_t) -1;
-	dkim_alg_t sa = DKIM_SIGN_RSASHA1;
+	/*
+	**  Let the library pick the signing algorithm rather than naming one
+	**  here.  dkim_sign() resolves DKIM_SIGN_DEFAULT to the current default
+	**  (rsa-sha256) and dkim_privkey_load() then upgrades it to
+	**  ed25519-sha256 when the key is Ed25519, so this stays correct for
+	**  both key types and does not rot if the default ever changes.  (A
+	**  previous hardcoded DKIM_SIGN_RSASHA1 here silently broke all signing
+	**  once RSA-SHA1 signing was removed.)
+	*/
+	dkim_alg_t sa = DKIM_SIGN_DEFAULT;
 	dkim_canon_t bc = DKIM_CANON_SIMPLE;
 	dkim_canon_t hc = DKIM_CANON_RELAXED;
 	DKIM_LIB *lib;
