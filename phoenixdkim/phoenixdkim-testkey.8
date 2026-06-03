@@ -20,6 +20,29 @@ named and attempt to confirm that the private key specified by
 .I keypath
 (or in the key table)
 and the public DKIM key retrieved from DNS match.
+.SH BATCH (WHOLE KEYTABLE) MODE
+When a
+.I KeyTable
+is configured and none of
+.I \-d,
+.I \-s
+or
+.I \-k
+is given on the command line, every entry in the key table is tested in
+turn rather than a single domain/selector pair.  Each key is checked
+exactly as in single-key mode (its public record is retrieved and, where a
+key file is named, compared against the private key).  With
+.I \-v
+a one-line summary reporting the number of keys checked and the pass and
+fail counts is printed at the end.
+.PP
+The exit status summarises the batch: it is
+.I EX_OK
+(0) only if every key passed, and
+.I EX_DATAERR
+(65) if any key failed.  This makes the whole-table run suitable for
+deployment verification and cron-driven monitoring without having to loop
+over domains externally.
 .SH OPTIONS
 .TP
 .I \-d domain
