@@ -51,6 +51,7 @@ PHOENIXDKIM_VERSION := $(shell sed -n 's/^set(VERSION_RELEASE *\([0-9][0-9]*\)).
 
 PAGES = \
     index \
+    features \
     announcements \
     download \
     documentation \

@@ -1,0 +1,71 @@
+<h1>Features</h1>
+
+<p>
+PhoenixDKIM is a DKIM signing and verifying milter built around modern
+cryptography, safe defaults, and verifiable builds. The highlights below are
+the features that matter most when you run it.
+</p>
+
+<p class="page-index">
+<a href="#crypto">Cryptography</a> |
+<a href="#keys">Key management</a> |
+<a href="#safe-defaults">Safe defaults</a> |
+<a href="#extensible">Extensible</a> |
+<a href="#reproducible">Reproducible builds</a>
+</p>
+
+<h2><a name="crypto" href="#crypto">Cryptography</a></h2>
+
+<ul>
+  <li><strong>OpenSSL 3 (and LibreSSL)</strong> — all cryptography uses the
+  modern EVP high-level API.</li>
+  <li><strong>Ed25519</strong> — signing and verification per RFC 8463,
+  alongside RSA.</li>
+  <li><strong>Dual signing</strong> — sign a single message with both Ed25519
+  and RSA in one pass, so you can adopt Ed25519 while RSA verifiers catch
+  up.</li>
+</ul>
+
+<h2><a name="keys" href="#keys">Key management</a></h2>
+
+<ul>
+  <li><strong>Many key backends</strong> — flat files, LMDB, Redis, an
+  <code>http:</code>/<code>https:</code> service, and HashiCorp Vault
+  (<code>vault:</code>), all interchangeable.</li>
+  <li><strong>Zero-downtime key rotation</strong> — a Vault secret can list
+  several currently-valid selectors, and PhoenixDKIM signs with all of them at
+  once (old + new, RSA + Ed25519) across the overlap window, so a rollover needs
+  no flag day. The secret layout matches Rspamd's, so the same store works in
+  both.</li>
+</ul>
+
+<h2><a name="safe-defaults" href="#safe-defaults">Safe defaults</a></h2>
+
+<ul>
+  <li><strong>No weak RSA-SHA1</strong> — an RSA-SHA1 signature is never treated
+  as valid (reported <code>dkim=neutral</code>, never <code>dkim=pass</code>)
+  per RFC 8301, with <code>On-WeakAlgorithm</code> choosing only the message
+  disposition.</li>
+  <li><strong>2048-bit minimum RSA keys</strong> — a deliberate choice; RFC 8301
+  permits 1024.</li>
+  <li><strong>Hardened by default</strong> — compiled with modern protections
+  (<code>_FORTIFY_SOURCE</code>, stack-protector and stack-clash protection, a
+  non-executable stack, and Intel CET where the hardware supports it).</li>
+</ul>
+
+<h2><a name="extensible" href="#extensible">Extensible</a></h2>
+
+<ul>
+  <li><strong>Lua 5.4 scripting</strong> — drive signing and verifying policy
+  from Lua, updated from the older Lua 5.1.</li>
+  <li><strong>Runs where you do</strong> — UNIX-like systems; tested by the
+  author on Linux and BSD.</li>
+</ul>
+
+<h2><a name="reproducible" href="#reproducible">Reproducible builds</a></h2>
+
+<ul>
+  <li>The source tarball and the Debian package build bit-for-bit identical,
+  so anyone can rebuild from source and confirm the published binaries
+  match.</li>
+</ul>
