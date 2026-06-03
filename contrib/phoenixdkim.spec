@@ -137,5 +137,5 @@ find %{buildroot}%{_libdir} -name '*.a' -delete
 %{_mandir}/man8/%{name}-testmsg.8*
 
 %changelog
-* Tue Jun 03 2026 Edmund Lodewijks <edmund@proteamail.com> - 1.0.0-0.1
+* Wed Jun 03 2026 Edmund Lodewijks <edmund@proteamail.com> - 1.0.0-0.1
 - Initial package (1.0.0-beta2 pre-release)
