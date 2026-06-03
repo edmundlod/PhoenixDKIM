@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sysexits.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -30,12 +31,89 @@
 
 #define	BUFRSZ		1024
 #define	DEFTMPDIR	"/tmp"
-#define	CMDLINEOPTS	"Cd:Kk:s:t:"
+#define	CMDLINEOPTS	"Cd:Kk:s:t:v"
 #define STRORNULL(x)	((x) == NULL ? "(null)" : (x))
 #define	TMPTEMPLATE	"dkimXXXXXX"
 
 /* prototypes */
 int usage(void);
+
+/*
+**  SIGALG_NAME -- printable name for a DKIM signing algorithm
+**
+**  Parameters:
+**  	alg -- a DKIM_SIGN_* value
+**
+**  Return value:
+**  	A constant string.
+*/
+
+static const char *
+sigalg_name(dkim_alg_t alg)
+{
+	switch (alg)
+	{
+	  case DKIM_SIGN_RSASHA1:
+		return "rsa-sha1";
+	  case DKIM_SIGN_RSASHA256:
+		return "rsa-sha256";
+	  case DKIM_SIGN_ED25519SHA256:
+		return "ed25519-sha256";
+	  default:
+		return "(unknown)";
+	}
+}
+
+/*
+**  CANON_NAME -- printable name for a canonicalization mode
+**
+**  Parameters:
+**  	canon -- a DKIM_CANON_* value
+**
+**  Return value:
+**  	A constant string.
+*/
+
+static const char *
+canon_name(dkim_canon_t canon)
+{
+	switch (canon)
+	{
+	  case DKIM_CANON_SIMPLE:
+		return "simple";
+	  case DKIM_CANON_RELAXED:
+		return "relaxed";
+	  default:
+		return "(unknown)";
+	}
+}
+
+/*
+**  DNSSEC_NAME -- printable name for a DNSSEC disposition
+**
+**  Parameters:
+**  	dnssec -- a DKIM_DNSSEC_* value
+**
+**  Return value:
+**  	A constant string.
+*/
+
+static const char *
+dnssec_name(int dnssec)
+{
+	switch (dnssec)
+	{
+	  case DKIM_DNSSEC_BOGUS:
+		return "bogus";
+	  case DKIM_DNSSEC_INSECURE:
+		return "insecure";
+	  case DKIM_DNSSEC_SECURE:
+		return "secure";
+	  case DKIM_DNSSEC_UNKNOWN:
+	  default:
+		return "unknown";
+	}
+}
 
 /* globals */
 char *progname;
@@ -60,7 +138,8 @@ usage(void)
 	        "\t-K         \tkeep temporary files\n"
 	        "\t-k keyfile \tprivate key file\n"
 	        "\t-s selector\tset signing selector\n"
-	        "\t-t path    \tdirectory for temporary files\n",
+	        "\t-t path    \tdirectory for temporary files\n"
+	        "\t-v         \tincrease verbosity (report verify details)\n",
 	        progname, progname);
 
 	return EX_CONFIG;
@@ -112,6 +191,8 @@ main(int argc, char **argv)
 	_Bool testkey = FALSE;
 	int c;
 	int n = 0;
+	int verbose = 0;
+	int retval = EX_OK;
 	int tfd;
 	u_int flags;
 	DKIM_STAT status;
@@ -163,6 +244,10 @@ main(int argc, char **argv)
 
 		  case 't':
 			tmpdir = optarg;
+			break;
+
+		  case 'v':
+			verbose++;
 			break;
 
 		  default:
@@ -347,7 +432,18 @@ main(int argc, char **argv)
 	}
 
 	status = dkim_eom(dkim, &testkey);
-	if (status != DKIM_STAT_OK)
+	/*
+	**  In verify mode a failed-but-fully-evaluated signature
+	**  (BADSIG/NOKEY/REVOKED/KEYFAIL) is a verification result we want to
+	**  report, not a library error; let those statuses fall through to the
+	**  reporting block below.  Everything else, and any error while signing,
+	**  is fatal.
+	*/
+	if (status != DKIM_STAT_OK &&
+	    !(n == 0 && (status == DKIM_STAT_BADSIG ||
+	                 status == DKIM_STAT_NOKEY ||
+	                 status == DKIM_STAT_REVOKED ||
+	                 status == DKIM_STAT_KEYFAIL)))
 	{
 		fprintf(stderr, "%s: dkim_eom(): %s\n",
 		        progname, dkim_getresultstr(status));
@@ -361,7 +457,79 @@ main(int argc, char **argv)
 
 	if (n == 0)
 	{
-		/* XXX -- do a policy query */
+		_Bool pass;
+		int bh;
+		int dnssec;
+		unsigned int sigflags;
+		unsigned int keybits = 0;
+		uint64_t sigtime = 0;
+		dkim_alg_t alg = DKIM_SIGN_RSASHA256;
+		dkim_canon_t hcanon = DKIM_CANON_SIMPLE;
+		dkim_canon_t bcanon = DKIM_CANON_SIMPLE;
+		DKIM_SIGINFO *sig;
+		u_char *sigdomain;
+		u_char *sigselector;
+
+		sig = dkim_getsignature(dkim);
+		if (sig == NULL)
+		{
+			fprintf(stderr, "%s: no signature found\n", progname);
+			dkim_free(dkim);
+			dkim_close(lib);
+			close(tfd);
+			if (keydata != NULL)
+				free(keydata);
+			return EX_UNAVAILABLE;
+		}
+
+		sigflags = dkim_sig_getflags(sig);
+		bh = dkim_sig_getbh(sig);
+		dnssec = dkim_sig_getdnssec(sig);
+		sigdomain = dkim_sig_getdomain(sig);
+		sigselector = dkim_sig_getselector(sig);
+		(void) dkim_sig_getsignalg(sig, &alg);
+		(void) dkim_sig_getcanons(sig, &hcanon, &bcanon);
+		(void) dkim_sig_getkeysize(sig, &keybits);
+		(void) dkim_sig_getsigntime(sig, &sigtime);
+
+		pass = ((sigflags & DKIM_SIGFLAG_PASSED) != 0 &&
+		        bh == DKIM_SIGBH_MATCH);
+
+		if (verbose > 0)
+		{
+			fprintf(stdout, "%s: verification details:\n", progname);
+			fprintf(stdout, "\tdomain:          %s\n",
+			        STRORNULL((char *) sigdomain));
+			fprintf(stdout, "\tselector:        %s\n",
+			        STRORNULL((char *) sigselector));
+			fprintf(stdout, "\talgorithm:       %s\n",
+			        sigalg_name(alg));
+			fprintf(stdout, "\tcanon. (hdr/body): %s/%s\n",
+			        canon_name(hcanon), canon_name(bcanon));
+			if (keybits > 0)
+				fprintf(stdout, "\tkey size:        %u bits\n",
+				        keybits);
+			fprintf(stdout, "\tbody hash:       %s\n",
+			        bh == DKIM_SIGBH_MATCH ? "match" :
+			        bh == DKIM_SIGBH_MISMATCH ? "MISMATCH" :
+			        "untested");
+			if (sigtime > 0)
+				fprintf(stdout, "\tsignature time:  %llu\n",
+				        (unsigned long long) sigtime);
+			fprintf(stdout, "\tDNSSEC:          %s\n",
+			        dnssec_name(dnssec));
+			fprintf(stdout, "\tresult:          %s\n",
+			        pass ? "pass" : "fail");
+		}
+
+		if (!pass)
+		{
+			if (verbose == 0)
+				fprintf(stderr, "%s: verification failed: %s\n",
+				        progname,
+				        dkim_sig_geterrorstr(dkim_sig_geterror(sig)));
+			retval = EX_DATAERR;
+		}
 	}
 	else
 	{
@@ -414,5 +582,5 @@ main(int argc, char **argv)
 	if (keydata != NULL)
 		free(keydata);
 
-	return EX_OK;
+	return retval;
 }
