@@ -30,6 +30,7 @@ endif()
 include(Sanitizers)   # must precede Hardening — defines options checked there
 include(Hardening)
 include(Valgrind)     # must follow Sanitizers — checks for conflicting asan/ubsan options
+include(Reproducible) # must precede add_subdirectory — add_compile_options() is directory-scoped
 
 enable_testing()
 
