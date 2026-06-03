@@ -4,7 +4,7 @@
 \- DKIM message test tool
 .SH SYNOPSIS
 .B phoenixdkim-testmsg
-[\-C] [\-d domain] [\-K] [\-k keypath] [\-s selector] [\-t path]
+[\-C] [\-d domain] [\-K] [\-k keypath] [\-s selector] [\-t path] [\-v]
 .SH DESCRIPTION
 .B phoenixdkim-testmsg
 signs or verifies an input message.  This is similar to the test mode
@@ -16,7 +16,11 @@ those functions out of the way.
 
 The message is read from standard input.  In signing mode, the
 complete signed message will then be written to standard output.
-When verifying, there will be no output unless an error occurred.
+When verifying, there will be no output on success unless
+.I \-v
+is given, in which case a summary of the signature that was evaluated
+is printed; a verification failure is always reported and reflected in
+the exit status.
 
 To sign a message, the
 .I \-d,
@@ -56,6 +60,23 @@ in the signature.
 Specifies the directory in which temporary files are to be created.
 The default is
 .I /tmp.
+.TP
+.I \-v
+Increases verbosity.  In verify mode this reports, for the signature
+that was evaluated, the signing domain and selector, the signing
+algorithm, the header and body canonicalization pair, the key size,
+whether the body hash matched, the signature timestamp, the DNSSEC
+disposition of the key record, and the overall pass/fail result.
+.SH EXIT STATUS
+In verify mode the exit status is
+.I EX_OK
+(0) when the signature verifies and
+.I EX_DATAERR
+(65) when a signature was evaluated but did not pass (bad signature,
+missing or revoked key).  A message carrying no signature, along with
+other library and I/O errors, yields one of the other
+.I sysexits (3)
+codes.
 .SH VERSION
 This man page covers the version of
 .I phoenixdkim-testmsg
