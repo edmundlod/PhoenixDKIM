@@ -1,13 +1,14 @@
-%global upname PhoenixDKIM
+%global upname  PhoenixDKIM
+%global betaver beta2
 
 Name:           phoenixdkim
 Version:        1.0.0
-Release:        1%{?dist}
+Release:        0.1%{?dist}
 Summary:        Security-focused DKIM signing and verifying milter
 
 License:        BSD-3-Clause AND Sendmail-Open-Source-1.1
 URL:            https://github.com/edmundlod/PhoenixDKIM
-Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
+Source0:        %{url}/archive/v%{version}-%{betaver}/%{name}-%{version}-%{betaver}.tar.gz
 Source1:        phoenixdkim.conf.sample
 
 BuildRequires:  cmake >= 3.20
@@ -65,7 +66,7 @@ Command-line tools for PhoenixDKIM: %{name}-genkey, %{name}-genzone,
 %{name}-testkey, and %{name}-testmsg.
 
 %prep
-%autosetup -n %{upname}-%{version}
+%autosetup -n %{upname}-%{version}-%{betaver}
 
 cat > %{name}.sysusers.conf << 'EOF'
 u phoenixdkim - 'PhoenixDKIM Milter' /run/phoenixdkim -
@@ -136,5 +137,5 @@ find %{buildroot}%{_libdir} -name '*.a' -delete
 %{_mandir}/man8/%{name}-testmsg.8*
 
 %changelog
-* Tue Jun 03 2026 Edmund Lodewijks <imnaym9vr@mozmail.com> - 1.0.0-1
-- Initial package
+* Tue Jun 03 2026 Edmund Lodewijks <edmund@proteamail.com> - 1.0.0-0.1
+- Initial package (1.0.0-beta2 pre-release)
