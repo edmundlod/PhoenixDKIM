@@ -433,12 +433,12 @@ if(STRL_LIBRARY)
 endif()
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/phoenixdkim.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.pc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libphoenixdkim.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libphoenixdkim.pc
     @ONLY
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/phoenixdkim.pc
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libphoenixdkim.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
