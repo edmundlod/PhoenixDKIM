@@ -593,7 +593,12 @@ main(int argc, char **argv)
 
 		(void) dkim_close(lib);
 
-		return 0;
+		/*
+		**  Summarise the whole batch in the exit status so the
+		**  KeyTable-wide run is usable from cron / deployment checks:
+		**  zero only if every key passed.
+		*/
+		return (fail == 0) ? EX_OK : EX_DATAERR;
 	}
 
 	if (domain[0] == '\0' || selector[0] == '\0')
