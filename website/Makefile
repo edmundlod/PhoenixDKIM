@@ -79,18 +79,23 @@ ANN_HTML := $(patsubst src/announcements/%.content.html,$(OUTDIR)/announcements/
 RN_SRCS := $(wildcard src/release_notes/*)
 RN_OUT  := $(patsubst src/release_notes/%,$(OUTDIR)/release_notes/%,$(RN_SRCS))
 
+# ── favicon files ────────────────────────────────────────────────────────────
+
+FAVICON_SRCS := $(wildcard src/favicon/*)
+FAVICON_OUT  := $(patsubst src/favicon/%,$(OUTDIR)/%,$(FAVICON_SRCS))
+
 # ── well-known / static assets ───────────────────────────────────────────────
 
 WELLKNOWN_DIR   = $(OUTDIR)/.well-known
 WELLKNOWN_FILES = $(WELLKNOWN_DIR)/security.txt
 
-STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-logo.png
+STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-releases.asc $(OUTDIR)/phoenixdkim-logo.png
 
 # ── targets ───────────────────────────────────────────────────────────────────
 
 all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
      $(WELLKNOWN_DIR) \
-     $(HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
+     $(HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
@@ -115,11 +120,19 @@ $(OUTDIR)/phoenixdkim-security.asc: src/phoenixdkim-security.asc | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
-$(OUTDIR)/phoenixdkim-logo.png: phoenixdkim-logo.png | $(OUTDIR)
+$(OUTDIR)/phoenixdkim-releases.asc: src/phoenixdkim-releases.asc | $(OUTDIR)
+	cp $< $@
+	@echo "  built $@"
+
+$(OUTDIR)/phoenixdkim-logo.png: src/phoenixdkim-logo.png | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
 $(OUTDIR)/release_notes/%: src/release_notes/% | $(OUTDIR)/release_notes
+	cp $< $@
+	@echo "  built $@"
+
+$(OUTDIR)/%: src/favicon/% | $(OUTDIR)
 	cp $< $@
 	@echo "  built $@"
 
