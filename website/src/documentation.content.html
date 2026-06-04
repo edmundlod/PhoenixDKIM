@@ -2,6 +2,7 @@
 
 <p class="page-index">
 <a href="#manpages">Man pages</a> |
+<a href="#guides">Guides</a> |
 <a href="#config">Configuration examples</a>
 </p>
 
@@ -15,6 +16,28 @@
   <li><a href="/man/phoenixdkim-testkey.8.html">phoenixdkim-testkey(8)</a> — test a DKIM key in DNS</li>
   <li><a href="/man/phoenixdkim-testmsg.8.html">phoenixdkim-testmsg(8)</a> — test a DKIM-signed message</li>
   <li><a href="/man/phoenixdkim-lua.3.html">phoenixdkim-lua(3)</a> — Lua scripts for PhoenixDKIM</li>
+</ul>
+
+<h2><a name="guides" href="#guides">Guides</a></h2>
+
+<p>
+In-depth how-tos. They complement the man pages and the examples below.
+</p>
+
+<ul>
+  <li><a href="/quickstart.html">Quick start</a> — sign your first message end
+  to end: generate keys, publish DNS, configure, wire to Postfix, verify.</li>
+  <li><a href="/guides/key-rotation.html">Key rotation</a> — roll signing keys
+  with no window in which mail fails verification.</li>
+  <li><a href="/guides/multisigning.html">Multiple signatures</a> — sign with
+  several keys and algorithms at once.</li>
+  <li><a href="/guides/crypto-policy.html">Crypto policy</a> — supported
+  algorithms and key sizes, and the controls that enforce them.</li>
+  <li><a href="/guides/metrics.html">Metrics &amp; observability</a> — Prometheus
+  and StatsD exporters, the per-message summary log line, and the exported
+  series.</li>
+  <li><a href="/removed-features.html">Removed features</a> — subsystems dropped
+  from pre-fork OpenDKIM and why.</li>
 </ul>
 
 <h2><a name="config" href="#config">Configuration examples</a></h2>

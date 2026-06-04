@@ -57,35 +57,46 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
 
 - PKCS#11 / HSM / KMS key storage (already noted below) — accept a pkcs11: URI
   in KeyFile via the OpenSSL 3 provider model; no crypto-code change needed.
-- Metrics (StatsD/Prometheus, already noted below) — minimum useful set:
-  dkim_signatures_total{result,algorithm}, dkim_dns_lookups_total{result}.
+- [DONE] Metrics (StatsD/Prometheus). New dep-free phoenixdkim-stats.c holds
+  lock-free atomic counters; exporters are a Prometheus textfile writer
+  (MetricsFile/MetricsInterval) and a StatsD UDP pusher (StatsDHost/
+  StatsDPrefix). Series: phoenixdkim_{messages,signatures{result,algorithm},
+  verifications{result},dns_queries,dns_responses{result}}_total +
+  dns_duration_seconds histogram + build_info. See docs/metrics.md. Remaining
+  follow-ups: (a) DNS series cover the libunbound resolver only — the file
+  resolver (TestDNSData) is uninstrumented; (b) verifications are counted once
+  per message by determinative result, not per-signature — revisit if
+  per-signature granularity is wanted; (c) optional embedded /metrics HTTP
+  endpoint behind a future WITH_METRICS_HTTP if operators ask; (d) ship a
+  contrib/grafana/ dashboard JSON.
 - DKIM key-record DNSSEC reporting clarity: we already downgrade/penalise
   non-DNSSEC key records (UnprotectedKey). Confirm the AR output distinguishes
   "key record unprotected" from "validation unavailable" so operators can tell
   the two apart (the warning text exists; verify the AR comment does too).
-- Per-result logging/observability: a structured (key=value) one-line summary
-  per message (signed/verified, algo, d=, result) would help operators and
-  feeds naturally into the metrics work above. Aligns with the logging
-  convention initiative.
+- [DONE] Per-result logging/observability: LogResults now also emits a
+  structured one-line "summary action=... result=... d=... a=... sigs=..."
+  per message (signing and verifying), the human-readable companion to the
+  metrics counters. See docs/metrics.md.
 - Verify-side: confirm we honour and report key-record flags t=s / t=y
   (testing) and that g= legacy granularity is correctly ignored per RFC 6376.
 
 ========================
 
-GETTING STARTED / DOCS IMPROVEMENTS
+GETTING STARTED / DOCS IMPROVEMENTS  [DONE]
 
 README is thorough but reference-shaped; there is no short "sign your first
 message in 5 minutes" path. Consider:
 
-- A docs/quickstart.md: minimal signing setup end to end — generate key,
-  publish the one DNS TXT line (show the exact record), 6-line phoenixdkim.conf,
-  wire to Postfix, send a test, verify with phoenixdkim-testmsg /
-  phoenixdkim-testkey. README links to it from a new "Quick Start" section near
-  the top.
-- Add a "Verifying an installation" snippet (testkey against the published
-  record; testmsg round-trip) so a new user can confirm success.
-- docs/ has key-rotation.md and multisigning.md but they are not linked from a
-  docs index; a short docs/README.md index would help discovery.
+- [DONE] A docs/quickstart.md: minimal signing setup end to end — generate key,
+  publish the DNS TXT line, ~6-line phoenixdkim.conf, wire to Postfix, send a
+  test, verify with phoenixdkim-testmsg / phoenixdkim-testkey. README links to
+  it from a new "Quick Start" section near the top. (Debian 13 focused; signs
+  with two keys, Ed25519 + RSA-2048, via KeyTable + SigningTable.)
+- [DONE] Added a "Verify it works" section (testkey against the published
+  record; testmsg round-trip; real Postfix send) so a new user can confirm
+  success.
+- [DONE] Added docs/README.md as a docs index linking quickstart, key-rotation,
+  multisigning, crypto-policy, and removed-features.
 
 ========================
 

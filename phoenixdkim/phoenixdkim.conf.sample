@@ -822,3 +822,46 @@ Syslog			Yes
 ##  a group ID as well, separated from the userid by a colon.
 
 # UserID		userid
+
+##
+## ===========================================================================
+## METRICS / OBSERVABILITY
+## ===========================================================================
+##
+## Counters are always maintained in-process at negligible cost; the settings
+## below only turn on the optional outputs.  See the phoenixdkim.conf(5) man
+## page for the full list of exported series.  Per-message detail (signing
+## domain, algorithm) is logged via LogResults rather than carried as metric
+## labels, to keep label cardinality bounded.
+
+##  MetricsFile filename
+##  	default (none)
+##
+##  Write metrics in Prometheus text exposition format to this file, rewritten
+##  atomically every MetricsInterval seconds and on clean shutdown.  Scrape it
+##  with the node_exporter "textfile" collector; no network listener is added.
+
+# MetricsFile		/run/phoenixdkim/metrics.prom
+
+##  MetricsInterval seconds
+##  	default 15
+##
+##  Interval between rewrites of MetricsFile.
+
+# MetricsInterval	15
+
+##  StatsDHost host[:port]
+##  	default (none)
+##
+##  Push the same events to a StatsD collector over UDP (default port 8125).
+##  Packets are dropped silently if the collector is unreachable.  A literal
+##  IPv6 address must be enclosed in square brackets.
+
+# StatsDHost		127.0.0.1:8125
+
+##  StatsDPrefix prefix
+##  	default "phoenixdkim"
+##
+##  Prefix applied to every StatsD metric name.
+
+# StatsDPrefix		phoenixdkim
