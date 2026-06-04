@@ -54,6 +54,7 @@ PAGES = \
     features \
     announcements \
     download \
+    quickstart \
     documentation \
     coming-from \
     removed-features \

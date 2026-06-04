@@ -72,20 +72,21 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
 
 ========================
 
-GETTING STARTED / DOCS IMPROVEMENTS
+GETTING STARTED / DOCS IMPROVEMENTS  [DONE]
 
 README is thorough but reference-shaped; there is no short "sign your first
 message in 5 minutes" path. Consider:
 
-- A docs/quickstart.md: minimal signing setup end to end — generate key,
-  publish the one DNS TXT line (show the exact record), 6-line phoenixdkim.conf,
-  wire to Postfix, send a test, verify with phoenixdkim-testmsg /
-  phoenixdkim-testkey. README links to it from a new "Quick Start" section near
-  the top.
-- Add a "Verifying an installation" snippet (testkey against the published
-  record; testmsg round-trip) so a new user can confirm success.
-- docs/ has key-rotation.md and multisigning.md but they are not linked from a
-  docs index; a short docs/README.md index would help discovery.
+- [DONE] A docs/quickstart.md: minimal signing setup end to end — generate key,
+  publish the DNS TXT line, ~6-line phoenixdkim.conf, wire to Postfix, send a
+  test, verify with phoenixdkim-testmsg / phoenixdkim-testkey. README links to
+  it from a new "Quick Start" section near the top. (Debian 13 focused; signs
+  with two keys, Ed25519 + RSA-2048, via KeyTable + SigningTable.)
+- [DONE] Added a "Verify it works" section (testkey against the published
+  record; testmsg round-trip; real Postfix send) so a new user can confirm
+  success.
+- [DONE] Added docs/README.md as a docs index linking quickstart, key-rotation,
+  multisigning, crypto-policy, and removed-features.
 
 ========================
 
