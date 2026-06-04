@@ -56,6 +56,7 @@ extern void dkimf_stats_record_dns_result(int dnsclass, double seconds);
 /* exporters */
 extern int dkimf_stats_set_statsd(const char *hostport, const char *prefix);
 extern int dkimf_stats_start_writer(const char *path, unsigned int interval);
+extern int dkimf_stats_start_http(const char *hostport);
 extern int dkimf_stats_render_prom(char *buf, size_t buflen);
 
 /* write the Prometheus textfile once now (e.g. on clean shutdown) */

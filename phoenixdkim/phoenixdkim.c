@@ -286,6 +286,7 @@ struct dkimf_config
 	char *		conf_diagdir;		/* diagnostics directory */
 	char *		conf_metricsfile;	/* Prometheus textfile path */
 	int		conf_metricsinterval;	/* Prometheus write interval (s) */
+	char *		conf_metricsaddr;	/* Prometheus HTTP "host:port" */
 	char *		conf_statsdhost;	/* StatsD "host:port" */
 	char *		conf_statsdprefix;	/* StatsD metric name prefix */
 	char *		conf_dnssecprobe;	/* DNSSEC probe spec (qtype:qname) */
@@ -6140,6 +6141,10 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		(void) config_get(data, "MetricsInterval",
 		                  &conf->conf_metricsinterval,
 		                  sizeof conf->conf_metricsinterval);
+
+		(void) config_get(data, "MetricsAddr",
+		                  &conf->conf_metricsaddr,
+		                  sizeof conf->conf_metricsaddr);
 
 		(void) config_get(data, "StatsDHost",
 		                  &conf->conf_statsdhost,
@@ -15215,6 +15220,16 @@ main(int argc, char **argv)
 			dkimf_log(curconf, LOG_INFO,
 			       "Prometheus metrics enabled (%s)",
 			       curconf->conf_metricsfile);
+		}
+	}
+
+	if (curconf->conf_metricsaddr != NULL)
+	{
+		if (dkimf_stats_start_http(curconf->conf_metricsaddr) == 0)
+		{
+			dkimf_log(curconf, LOG_INFO,
+			       "Prometheus metrics endpoint listening (http://%s/metrics)",
+			       curconf->conf_metricsaddr);
 		}
 	}
 

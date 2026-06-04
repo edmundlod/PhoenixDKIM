@@ -80,6 +80,7 @@ struct configdef dkimf_config[] =
 	{ "MaximumSignedBytes",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MaximumSignaturesToVerify",	CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MacroList",			CONFIG_TYPE_STRING,	FALSE },
+	{ "MetricsAddr",		CONFIG_TYPE_STRING,	FALSE },
 	{ "MetricsFile",		CONFIG_TYPE_STRING,	FALSE },
 	{ "MetricsInterval",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MilterDebug",		CONFIG_TYPE_INTEGER,	FALSE },
