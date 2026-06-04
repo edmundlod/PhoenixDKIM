@@ -7,6 +7,11 @@ with a focus on security and correctness.
 It reads OpenDKIM-style key and signing tables, so migration is straightforward
 (see the Removed section below for what is no longer accepted).
 
+> **Documentation and guides live on the website:
+> <https://www.phoenixdkim.org/documentation.html>.** That is their authoritative,
+> rendered home; the Markdown sources under [`docs/`](docs/) are what it is built
+> from.
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -236,9 +241,12 @@ phoenixdkim-genkey -t ed25519 -d domain.com -s selector
 
 ## Documentation
 
-The guides in [docs/](docs/README.md) cover getting started
+The guides are published on the website at
+<https://www.phoenixdkim.org/documentation.html>; their Markdown sources are in
+[docs/](docs/README.md) and cover getting started
 ([quickstart](docs/quickstart.md)), [key rotation](docs/key-rotation.md),
-[multi-signing](docs/multisigning.md), and [crypto policy](docs/crypto-policy.md).
+[multi-signing](docs/multisigning.md), [crypto policy](docs/crypto-policy.md),
+and [metrics & observability](docs/metrics.md).
 
 Man pages are installed for `phoenixdkim(8)`, `phoenixdkim.conf(5)`,
 `phoenixdkim-genkey(8)`, `phoenixdkim-genzone(8)`, `phoenixdkim-testkey(8)`,

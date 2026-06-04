@@ -64,6 +64,14 @@ PAGES = \
 
 HTML = $(patsubst %,$(OUTDIR)/%.html,$(PAGES))
 
+# ── guides (rendered from ../docs/*.md, the single source) ────────────────────
+# The Markdown guides live in ../docs so the repository keeps one copy that is
+# also readable on the code host; the website is their authoritative published
+# form. Rendered with pandoc into out/guides/ and wrapped in the site template.
+
+GUIDES    = key-rotation multisigning crypto-policy metrics
+GUIDE_HTML = $(patsubst %,$(OUTDIR)/guides/%.html,$(GUIDES))
+
 # ── man pages ─────────────────────────────────────────────────────────────────
 # Find all .3 .5 .8 files in the repo, excluding build/ directories
 
@@ -95,8 +103,8 @@ STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-releases
 # ── targets ───────────────────────────────────────────────────────────────────
 
 all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
-     $(WELLKNOWN_DIR) \
-     $(HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
+     $(OUTDIR)/guides $(WELLKNOWN_DIR) \
+     $(HTML) $(GUIDE_HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
@@ -106,6 +114,9 @@ $(OUTDIR)/man:
 
 $(OUTDIR)/announcements:
 	mkdir -p $(OUTDIR)/announcements
+
+$(OUTDIR)/guides:
+	mkdir -p $(OUTDIR)/guides
 
 $(OUTDIR)/release_notes:
 	mkdir -p $(OUTDIR)/release_notes
@@ -165,6 +176,28 @@ $(OUTDIR)/%.html: src/%.content.html $(TMPL)
 	    -e "s|%%TITLE%%|$$title|g" \
 	    -e "/%%CONTENT%%/{r src/$$page.content.html" -e "d}" \
 	    $(TMPL) > $@
+	@echo "  built $@"
+
+# Guides: render ../docs/<name>.md with pandoc (GFM in, HTML fragment out) and
+# wrap in the site template. The page title is taken from the document's first
+# level-1 heading. Code highlighting is disabled so code blocks inherit the
+# site's plain <pre> styling.
+
+$(OUTDIR)/guides/%.html: ../docs/%.md $(TMPL) | $(OUTDIR)/guides
+	@title=$$(sed -n 's/^# //p' $< | head -1); \
+	[ -n "$$title" ] || title="$*"; \
+	tmpfile=$$(mktemp); \
+	pandoc -f gfm -t html --no-highlight --wrap=preserve $< -o $$tmpfile; \
+	sed -i 's#href="\([^":]*\)\.md"#href="\1.html"#g' $$tmpfile; \
+	if grep -qE 'href="[^"]*\.md"' $$tmpfile; then \
+	    echo "  WARNING: $< has a .md link the rewrite left alone (external?); check it resolves on the site:"; \
+	    grep -oE 'href="[^"]*\.md"' $$tmpfile | sed 's/^/    /'; \
+	fi; \
+	sed \
+	    -e "s|%%TITLE%%|$$title|g" \
+	    -e "/%%CONTENT%%/{r $$tmpfile" -e "d}" \
+	    $(TMPL) > $@; \
+	rm $$tmpfile
 	@echo "  built $@"
 
 # Man pages: use groff -T html, inject fork notice, wrap in template
