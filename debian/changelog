@@ -1,3 +1,15 @@
+phoenixdkim (1.0.0~beta3-1) trixie; urgency=medium
+
+  * New: metrics and observability — Prometheus textfile exporter
+    (MetricsFile), StatsD UDP exporter (StatsDHost), and a per-message
+    structured log line (LogResults). No extra library; switched on by
+    configuration alone. MetricsFile defaults to the node_exporter textfile
+    collector directory; systemd unit gains ReadWritePaths= for it.
+  * Build: accept Lua >= 5.4 rather than exactly 5.4; fixes builds on
+    distributions shipping Lua 5.5 (e.g. Fedora Rawhide).
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Wed, 04 Jun 2026 00:00:00 +0200
+
 phoenixdkim (1.0.0~beta1-1) trixie; urgency=medium
 
   * Rename: library libopendkim -> libphoenixdkim with a fresh SONAME
