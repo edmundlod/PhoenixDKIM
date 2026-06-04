@@ -360,6 +360,7 @@ add_executable(phoenixdkim_daemon
     phoenixdkim-db.c
     phoenixdkim-dns.c
     phoenixdkim-lua.c
+    phoenixdkim-stats.c
     config.c
     test.c
     util.c
@@ -430,6 +431,7 @@ add_executable(phoenixdkim-testkey
     phoenixdkim-db.c
     phoenixdkim-dns.c
     phoenixdkim-lua.c
+    phoenixdkim-stats.c
     phoenixdkim-testkey.c
     util.c
 )

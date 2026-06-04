@@ -516,7 +516,16 @@ If logging is enabled (see
 .I Syslog
 below), requests that the results of evaluation of all signatures that were
 at least partly intact (i.e., the "d=", "s=", and "b=" tags could be
-extracted).
+extracted).  Also enables a single structured (key=value) summary line per
+message, of the form
+.B "summary action=verify result=pass d=example.com a=rsa-sha256 sigs=1"
+(for verification) or
+.B "summary action=sign d=example.com a=rsa-sha256"
+(for signing), suitable for log-based observability tools.  The per-message
+detail (domain, algorithm) is deliberately carried here rather than in the
+metrics (see
+.IR MetricsFile )
+to keep the metric label cardinality bounded.
 
 .TP
 .I LogWhy (boolean)
@@ -596,6 +605,34 @@ outbound signature rather than selected recipients, its exposure is
 correspondingly broader.
 .B Use of this option is strongly discouraged in new deployments.
 A startup warning is logged whenever it is configured.
+
+.TP
+.I MetricsFile (string)
+Names a file to which operational metrics are written in the Prometheus
+text exposition format.  When set, a background thread rewrites the file
+atomically (via a temporary file and
+.IR rename (2))
+every
+.I MetricsInterval
+seconds and once more on clean shutdown.  Point the Prometheus
+node_exporter "textfile" collector at the containing directory to scrape it;
+no network listener is added to the daemon.  The exported series include
+.BR phoenixdkim_messages_total ,
+.BR phoenixdkim_signatures_total " {result, algorithm},"
+.BR phoenixdkim_verifications_total " {result},"
+.BR phoenixdkim_dns_queries_total ,
+.BR phoenixdkim_dns_responses_total " {result}, and the"
+.B phoenixdkim_dns_duration_seconds
+histogram.  DNS series reflect the asynchronous (libunbound) resolver.
+Disabled by default.
+
+.TP
+.I MetricsInterval (integer)
+Number of seconds between rewrites of the
+.I MetricsFile
+(default 15).  Ignored if
+.I MetricsFile
+is not set.
 
 .TP
 .I MilterDebug (integer)
@@ -1220,6 +1257,29 @@ setting causes the message to be ignored (e.g., if only signing mode is enabled
 and the configuration causes the message not to be signed, or only verify
 mode is enabled and configuration would otherwise have caused the message to
 be signed, then it will not have this header field added).
+
+.TP
+.I StatsDHost (string)
+Enables the StatsD metrics exporter and names the destination as
+.IR host[:port] .
+The same events that drive
+.I MetricsFile
+are additionally pushed as StatsD counters and timers over a non-blocking
+UDP socket (default port 8125); packets are dropped silently if the
+collector is unreachable, so a stalled collector never throttles the daemon.
+Because StatsD has no label concept, label values are folded into dotted
+metric names (e.g.
+.BR phoenixdkim.verifications.pass ).
+A literal IPv6 address must be enclosed in square brackets.  Disabled by
+default.
+
+.TP
+.I StatsDPrefix (string)
+Sets the prefix applied to every StatsD metric name (default
+.BR phoenixdkim ).
+Ignored if
+.I StatsDHost
+is not set.
 
 .TP
 .I StrictHeaders (Boolean)
