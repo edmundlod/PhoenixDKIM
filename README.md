@@ -7,6 +7,31 @@ with a focus on security and correctness.
 It reads OpenDKIM-style key and signing tables, so migration is straightforward
 (see the Removed section below for what is no longer accepted).
 
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Removed from pre-fork OpenDKIM 2.11.0-beta2](#removed-from-pre-fork-opendkim-2110-beta2-dd-15-nov-2018)
+- [Packages and Ports](#packages-and-ports)
+- [Dependencies](#dependencies)
+  - [Debian / Ubuntu](#debian--ubuntu)
+  - [RHEL / AlmaLinux / Rocky](#rhel--almalinux--rocky)
+  - [FreeBSD](#freebsd)
+  - [OpenBSD](#openbsd)
+- [Building](#building)
+- [Configuration](#configuration)
+- [Key Generation](#key-generation)
+- [Platforms](#platforms)
+- [Documentation](#documentation)
+- [Known Runtime Issues](#known-runtime-issues)
+  - [WARNING: symbol 'X' not available](#warning-symbol-x-not-available)
+  - [MTA Timeouts](#mta-timeouts)
+  - [EVP key decode failures](#evp-key-decode-failures)
+  - [Sendmail Header Rewriting](#sendmail-header-rewriting)
+- [Origin](#origin)
+- [Licence](#licence)
+- [Legal notice](#legal-notice)
+- [Bugs and Contributions](#bugs-and-contributions)
+
 ## Highlights
 
 - **OpenSSL 3+** — all cryptography ported to the EVP high-level API
