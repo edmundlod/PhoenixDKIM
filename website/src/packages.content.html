@@ -1,7 +1,8 @@
 <h1>Packages &amp; Ports</h1>
 
 <p class="page-index">
-<a href="#debian">Debian</a>
+<a href="#debian">Debian</a> &middot;
+<a href="#fedora">Fedora / RHEL (COPR)</a>
 </p>
 
 <h2><a name="debian">Debian</a></h2>
@@ -32,3 +33,27 @@ Install PhoenixDKIM:
 </p>
 
 <pre>sudo apt-get install phoenixdkim</pre>
+
+<h2><a name="fedora">Fedora / RHEL (COPR)</a></h2>
+
+<p>
+Packages for Fedora 43, 44, and Rawhide, and EPEL 9 and 10 are available
+from the PhoenixDKIM COPR repository for x86_64 and aarch64.
+</p>
+
+<p>
+Enable the repository:
+</p>
+
+<pre>sudo dnf copr enable edmundlod/PhoenixDKIM</pre>
+
+<p>
+Install PhoenixDKIM:
+</p>
+
+<pre>sudo dnf install phoenixdkim</pre>
+
+<p>
+The COPR project page is at
+<a href="https://copr.fedorainfracloud.org/coprs/edmundlod/PhoenixDKIM/">copr.fedorainfracloud.org/coprs/edmundlod/PhoenixDKIM</a>.
+</p>
