@@ -82,6 +82,15 @@ static const char *st_dns_label[DKIMF_STATS_DNS_MAX] =
 	"error",
 };
 
+static const char *st_dnssec_label[DKIMF_STATS_DNSSEC_MAX] =
+{
+	"secure",
+	"insecure",
+	"bogus",
+	"unavailable",
+	"unknown",
+};
+
 /* DNS latency histogram bucket upper bounds, in seconds */
 static const double st_dns_bounds[] =
 {
@@ -93,6 +102,7 @@ static const double st_dns_bounds[] =
 static atomic_uint_fast64_t st_messages;
 static atomic_uint_fast64_t st_sign[2][ST_ALG_MAX];	/* [ok ? 1 : 0][alg] */
 static atomic_uint_fast64_t st_verify[DKIMF_STATS_V_MAX];
+static atomic_uint_fast64_t st_dnssec[DKIMF_STATS_DNSSEC_MAX];
 static atomic_uint_fast64_t st_dns_queries;
 static atomic_uint_fast64_t st_dns_results[DKIMF_STATS_DNS_MAX];
 static atomic_uint_fast64_t st_dns_bucket[ST_DNS_NBUCKETS];	/* cumulative (le) */
@@ -309,6 +319,22 @@ dkimf_stats_record_verify(int vclass)
 }
 
 void
+dkimf_stats_record_dnssec(int dnssecclass)
+{
+	if (dnssecclass < 0 || dnssecclass >= DKIMF_STATS_DNSSEC_MAX)
+		return;
+
+	atomic_fetch_add_explicit(&st_dnssec[dnssecclass], 1,
+	                          memory_order_relaxed);
+
+	if (st_statsd_fd >= 0)
+	{
+		dkimf_stats_statsd_send("%s.dnssec.%s:1|c", st_prefix,
+		                        st_dnssec_label[dnssecclass]);
+	}
+}
+
+void
 dkimf_stats_record_dns_query(void)
 {
 	atomic_fetch_add_explicit(&st_dns_queries, 1, memory_order_relaxed);
@@ -436,6 +462,18 @@ dkimf_stats_render_prom(char *buf, size_t buflen)
 		          "phoenixdkim_verifications_total{result=\"%s\"} %llu\n",
 		          st_verify_label[i],
 		          (unsigned long long) atomic_load_explicit(&st_verify[i],
+		                                                     memory_order_relaxed));
+	}
+
+	st_append(buf, buflen, &off,
+	          "# HELP phoenixdkim_dnssec_keys_total Key-record DNSSEC status. secure=validated; insecure=provably no DNSSEC (normal for most domains); bogus=DNSSEC present but validation failed; unavailable=local resolver does not validate so the status is unknowable; unknown=not evaluated.\n"
+	          "# TYPE phoenixdkim_dnssec_keys_total counter\n");
+	for (i = 0; i < DKIMF_STATS_DNSSEC_MAX; i++)
+	{
+		st_append(buf, buflen, &off,
+		          "phoenixdkim_dnssec_keys_total{status=\"%s\"} %llu\n",
+		          st_dnssec_label[i],
+		          (unsigned long long) atomic_load_explicit(&st_dnssec[i],
 		                                                     memory_order_relaxed));
 	}
 

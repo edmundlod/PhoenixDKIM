@@ -43,6 +43,19 @@
 #define DKIMF_STATS_DNS_ERROR	2
 #define DKIMF_STATS_DNS_MAX	3
 
+/*
+**  Key-record DNSSEC outcome classes.  These distinguish "the key record is
+**  genuinely not DNSSEC-protected" (the common case -- most domains do not
+**  deploy DNSSEC) from "we could not tell because the local resolver does not
+**  validate", which the single Authentication-Results token cannot express.
+*/
+#define DKIMF_STATS_DNSSEC_SECURE	0	/* key record DNSSEC-validated */
+#define DKIMF_STATS_DNSSEC_INSECURE	1	/* provably no DNSSEC (normal) */
+#define DKIMF_STATS_DNSSEC_BOGUS	2	/* DNSSEC present, validation failed */
+#define DKIMF_STATS_DNSSEC_UNAVAILABLE	3	/* resolver cannot validate */
+#define DKIMF_STATS_DNSSEC_UNKNOWN	4	/* not evaluated */
+#define DKIMF_STATS_DNSSEC_MAX		5
+
 /* lifecycle */
 extern void dkimf_stats_init(const char *version);
 
@@ -50,6 +63,7 @@ extern void dkimf_stats_init(const char *version);
 extern void dkimf_stats_record_message(void);
 extern void dkimf_stats_record_signature(_Bool ok, int signalg);
 extern void dkimf_stats_record_verify(int vclass);
+extern void dkimf_stats_record_dnssec(int dnssecclass);
 extern void dkimf_stats_record_dns_query(void);
 extern void dkimf_stats_record_dns_result(int dnsclass, double seconds);
 

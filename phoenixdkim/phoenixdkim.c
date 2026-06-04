@@ -10134,6 +10134,7 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 			}
 
 			dnssec = NULL;
+			int dnssec_stat = DKIMF_STATS_DNSSEC_UNKNOWN;
 
 			switch (dkim_sig_getdnssec(sigs[c]))
 			{
@@ -10150,11 +10151,20 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 				*/
 				if (!dkimf_dnssec_validating(conf))
 				{
-					dnssec = NULL;
+					/*
+					**  Say "validation unavailable" rather than
+					**  emitting nothing: an empty token reads
+					**  identically to "DNSSEC not evaluated", so
+					**  the operator could not otherwise tell that
+					**  we tried but the resolver cannot validate.
+					*/
+					dnssec = "validation unavailable";
+					dnssec_stat = DKIMF_STATS_DNSSEC_UNAVAILABLE;
 					break;
 				}
 
 				dnssec = "insecure";
+				dnssec_stat = DKIMF_STATS_DNSSEC_INSECURE;
 				if (conf->conf_unprotectedkey == DKIMF_KEYACTIONS_FAIL)
 				{
 					*status = DKIMF_STATUS_BAD;
@@ -10179,6 +10189,7 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 
 			  case DKIM_DNSSEC_BOGUS:
 				dnssec = "bogus";
+				dnssec_stat = DKIMF_STATS_DNSSEC_BOGUS;
 				if (conf->conf_boguskey == DKIMF_KEYACTIONS_FAIL)
 				{
 					*status = DKIMF_STATUS_BAD;
@@ -10197,8 +10208,11 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 
 			  case DKIM_DNSSEC_SECURE:
 				dnssec = "secure";
+				dnssec_stat = DKIMF_STATS_DNSSEC_SECURE;
 				break;
 			}
+
+			dkimf_stats_record_dnssec(dnssec_stat);
 
 			size_t n = 0;
 			int r;
