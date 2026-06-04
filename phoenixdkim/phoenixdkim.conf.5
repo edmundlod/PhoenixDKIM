@@ -607,6 +607,27 @@ correspondingly broader.
 A startup warning is logged whenever it is configured.
 
 .TP
+.I MetricsAddr (string)
+Address on which to serve the Prometheus metrics over a built-in
+HTTP/1.0 endpoint, given as
+.I host
+or
+.IR host:port
+(default port 9323; a literal IPv6 address must be bracketed, e.g.
+.IR [::1]:9323 ).
+A dedicated accept thread answers
+.B GET /metrics
+with the same exposition text produced for
+.I MetricsFile
+and returns
+.B 404
+for any other path; each connection is closed after the response (no
+keep-alive).  This lets Prometheus scrape the daemon directly, without the
+node_exporter "textfile" collector.  There is no authentication or transport
+security, so bind to a loopback or management address and restrict access at
+the network layer.  Disabled by default.
+
+.TP
 .I MetricsFile (string)
 Names a file to which operational metrics are written in the Prometheus
 text exposition format.  When set, a background thread rewrites the file

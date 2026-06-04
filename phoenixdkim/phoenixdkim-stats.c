@@ -613,3 +613,282 @@ dkimf_stats_start_writer(const char *path, unsigned int interval)
 
 	return 0;
 }
+
+/* ========================= Prometheus HTTP endpoint ===================== */
+
+/*
+**  The embedded endpoint is a hand-rolled HTTP/1.0 responder on a dedicated
+**  accept thread -- the same "own a long-lived thread" pattern as the textfile
+**  writer above, and like it pulls in no new library.  It answers GET /metrics
+**  with the exposition text and 404s everything else.  Each connection is
+**  served then closed (no keep-alive), which keeps the single accept loop
+**  simple; a Prometheus scrape is one request per interval, so there is no
+**  concurrency to win back.  A receive timeout guards the loop against a slow
+**  client holding the (single) accept thread.
+*/
+
+#ifndef MSG_NOSIGNAL
+# define MSG_NOSIGNAL	0
+#endif /* ! MSG_NOSIGNAL */
+
+static int st_http_fd = -1;
+
+/*
+**  ST_WRITE_ALL -- send the whole buffer, coping with partial / interrupted
+**                  writes; a dead peer just ends the loop
+*/
+
+static void
+st_write_all(int fd, const char *p, size_t len)
+{
+	while (len > 0)
+	{
+		ssize_t w = send(fd, p, len, MSG_NOSIGNAL);
+
+		if (w < 0)
+		{
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (w == 0)
+			break;
+
+		p += w;
+		len -= (size_t) w;
+	}
+}
+
+/*
+**  DKIMF_STATS_HTTP_SERVE -- handle one accepted connection
+**
+**  We only need the request line, so a single recv() is enough for any sane
+**  client; we never read the body.  The path is matched after stripping the
+**  HTTP version and any query string.
+*/
+
+static void
+dkimf_stats_http_serve(int fd)
+{
+	int blen;
+	int bodylen;
+	ssize_t n;
+	char *path;
+	char *end;
+	char req[1024];
+	char hdr[256];
+	char body[8192];
+
+	n = recv(fd, req, sizeof req - 1, 0);
+	if (n <= 0)
+		return;
+	req[n] = '\0';
+
+	if (strncmp(req, "GET ", 4) != 0)
+	{
+		blen = snprintf(hdr, sizeof hdr,
+		                "HTTP/1.0 405 Method Not Allowed\r\n"
+		                "Allow: GET\r\n"
+		                "Content-Length: 0\r\n"
+		                "Connection: close\r\n\r\n");
+		st_write_all(fd, hdr, (size_t) blen);
+		return;
+	}
+
+	/* isolate the request target: from after "GET " up to the next space */
+	path = req + 4;
+	end = strpbrk(path, " \t\r\n");
+	if (end != NULL)
+		*end = '\0';
+	end = strchr(path, '?');		/* drop any query string */
+	if (end != NULL)
+		*end = '\0';
+
+	if (strcmp(path, "/metrics") != 0)
+	{
+		blen = snprintf(hdr, sizeof hdr,
+		                "HTTP/1.0 404 Not Found\r\n"
+		                "Content-Length: 0\r\n"
+		                "Connection: close\r\n\r\n");
+		st_write_all(fd, hdr, (size_t) blen);
+		return;
+	}
+
+	bodylen = dkimf_stats_render_prom(body, sizeof body);
+	if (bodylen < 0)
+	{
+		blen = snprintf(hdr, sizeof hdr,
+		                "HTTP/1.0 500 Internal Server Error\r\n"
+		                "Content-Length: 0\r\n"
+		                "Connection: close\r\n\r\n");
+		st_write_all(fd, hdr, (size_t) blen);
+		return;
+	}
+
+	/* Prometheus text exposition content type (format version 0.0.4) */
+	blen = snprintf(hdr, sizeof hdr,
+	                "HTTP/1.0 200 OK\r\n"
+	                "Content-Type: text/plain; version=0.0.4; charset=utf-8\r\n"
+	                "Content-Length: %d\r\n"
+	                "Connection: close\r\n\r\n",
+	                bodylen);
+	st_write_all(fd, hdr, (size_t) blen);
+	st_write_all(fd, body, (size_t) bodylen);
+}
+
+/*
+**  DKIMF_STATS_HTTP_THREAD -- accept loop for the /metrics endpoint
+*/
+
+static void *
+dkimf_stats_http_thread(void *arg)
+{
+	(void) arg;
+
+	for (;;)
+	{
+		int cfd;
+		struct timeval tv;
+
+		cfd = accept(st_http_fd, NULL, NULL);
+		if (cfd < 0)
+		{
+			if (errno == EINTR)
+				continue;
+			/* transient listener error: pause to avoid a tight spin */
+			sleep(1);
+			continue;
+		}
+
+		/* a slow client must not stall the single accept loop */
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+		(void) setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+		(void) setsockopt(cfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+
+		dkimf_stats_http_serve(cfd);
+		(void) close(cfd);
+	}
+
+	/* NOTREACHED */
+	return NULL;
+}
+
+/*
+**  DKIMF_STATS_START_HTTP -- bind a listener and spawn the accept thread
+**
+**  Parameters:
+**  	hostport -- "host:port" (default port 9323); a literal IPv6 address
+**  	            must be bracketed, e.g. "[::1]:9323"
+**
+**  Return value:
+**  	0 on success, -1 on failure.
+*/
+
+int
+dkimf_stats_start_http(const char *hostport)
+{
+	int fd = -1;
+	int status;
+	int on = 1;
+	char *colon;
+	const char *port = "9323";
+	char host[256];
+	struct addrinfo hints;
+	struct addrinfo *res = NULL;
+	struct addrinfo *ai;
+	pthread_t tid;
+	pthread_attr_t attr;
+
+	if (hostport == NULL || hostport[0] == '\0')
+		return -1;
+
+	snprintf(host, sizeof host, "%s", hostport);
+
+	/* split off ":port"; cope with bracketed IPv6 literals */
+	if (host[0] == '[')
+	{
+		char *bend = strchr(host, ']');
+
+		if (bend != NULL)
+		{
+			*bend = '\0';			/* terminate the address */
+			if (bend[1] == ':')
+				port = bend + 2;	/* stable: past the address */
+			/* drop the leading '[' in place */
+			memmove(host, host + 1, strlen(host + 1) + 1);
+		}
+	}
+	else
+	{
+		colon = strrchr(host, ':');
+		if (colon != NULL)
+		{
+			*colon = '\0';
+			port = colon + 1;
+		}
+	}
+
+	memset(&hints, '\0', sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;
+
+	status = getaddrinfo(host[0] != '\0' ? host : NULL, port, &hints, &res);
+	if (status != 0 || res == NULL)
+	{
+		syslog(LOG_ERR, "MetricsAddr: cannot resolve \"%s\": %s",
+		       hostport, gai_strerror(status));
+		return -1;
+	}
+
+	for (ai = res; ai != NULL; ai = ai->ai_next)
+	{
+		fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		if (fd < 0)
+			continue;
+
+		(void) setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
+#ifdef IPV6_V6ONLY
+		/* keep an IPv6 bind from silently shadowing IPv4 (or vice versa) */
+		if (ai->ai_family == AF_INET6)
+			(void) setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY,
+			                  &on, sizeof on);
+#endif /* IPV6_V6ONLY */
+
+		if (bind(fd, ai->ai_addr, ai->ai_addrlen) == 0 &&
+		    listen(fd, 16) == 0)
+			break;
+
+		(void) close(fd);
+		fd = -1;
+	}
+
+	freeaddrinfo(res);
+
+	if (fd < 0)
+	{
+		syslog(LOG_ERR, "MetricsAddr: cannot listen on \"%s\": %s",
+		       hostport, strerror(errno));
+		return -1;
+	}
+
+	st_http_fd = fd;
+
+	(void) pthread_attr_init(&attr);
+	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	if (pthread_create(&tid, &attr, dkimf_stats_http_thread, NULL) != 0)
+	{
+		syslog(LOG_ERR, "MetricsAddr: cannot start accept thread: %s",
+		       strerror(errno));
+		(void) pthread_attr_destroy(&attr);
+		(void) close(fd);
+		st_http_fd = -1;
+		return -1;
+	}
+
+	(void) pthread_attr_destroy(&attr);
+
+	return 0;
+}

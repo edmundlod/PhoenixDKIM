@@ -853,6 +853,19 @@ Syslog			Yes
 
 # MetricsInterval	15
 
+##  MetricsAddr host[:port]
+##  	default (none)
+##
+##  Serve the same Prometheus metrics over a built-in HTTP/1.0 endpoint at
+##  GET /metrics, so Prometheus can scrape phoenixdkim directly without the
+##  node_exporter textfile collector.  A dedicated accept thread answers each
+##  request and closes the connection (no keep-alive); every other path returns
+##  404.  The default port is 9323.  Bind to a loopback or management address --
+##  there is NO authentication -- and reach it from Prometheus over a trusted
+##  network only.  A literal IPv6 address must be enclosed in square brackets.
+
+# MetricsAddr		127.0.0.1:9323
+
 ##  StatsDHost host[:port]
 ##  	default (none)
 ##

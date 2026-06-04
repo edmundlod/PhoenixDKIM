@@ -49,6 +49,32 @@ systemctl edit phoenixdkim.service
 # ReadWritePaths=/your/custom/path
 ```
 
+### HTTP endpoint (pull, no textfile collector)
+
+If you would rather have Prometheus scrape PhoenixDKIM directly — no
+node_exporter, no textfile collector, no shared directory and its permissions
+dance — enable the built-in endpoint instead of (or alongside) `MetricsFile`:
+
+```sh
+MetricsAddr  127.0.0.1:9323     # default port 9323; [::1]:9323 for IPv6
+```
+
+A dedicated accept thread answers `GET /metrics` with the same exposition text
+and returns `404` for every other path. It speaks HTTP/1.0 and closes after each
+response (no keep-alive); a Prometheus scrape is one request per interval, so
+there is nothing to gain from connection reuse. No new library is linked.
+
+There is **no authentication or TLS** — bind to a loopback or a dedicated
+management address and let Prometheus reach it over a trusted network (or front
+it with a reverse proxy if you need auth/TLS). A matching scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: phoenixdkim
+    static_configs:
+      - targets: ['127.0.0.1:9323']
+```
+
 ## StatsD
 
 ```sh

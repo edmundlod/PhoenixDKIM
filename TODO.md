@@ -66,14 +66,17 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
   follow-ups: (a) DNS series cover the libunbound resolver only — the file
   resolver (TestDNSData) is uninstrumented; (b) verifications are counted once
   per message by determinative result, not per-signature — revisit if
-  per-signature granularity is wanted; (c) embedded /metrics HTTP endpoint: config keyword MetricsAddr
-  host:port (e.g. 127.0.0.1:9323). Hand-rolled HTTP/1.0, no new library.
-  Dedicated accept thread (same pattern as the writer thread); call
-  dkimf_stats_render_prom() on GET /metrics, 404 everything else, close
-  after each response (no keep-alive). IPv4 and IPv6 via getaddrinfo /
-  SO_REUSEADDR. Update phoenixdkim.conf.sample and docs/metrics.md
-  alongside. This removes the need for the node_exporter textfile
-  collector and its associated permissions dance; (d) ship a
+  per-signature granularity is wanted; (c) [DONE] embedded /metrics HTTP
+  endpoint: config keyword MetricsAddr host:port (default port 9323).
+  Hand-rolled HTTP/1.0, no new library. Dedicated accept thread (same pattern
+  as the writer thread) calls dkimf_stats_render_prom() on GET /metrics, 404s
+  every other path, 405s non-GET, closes after each response (no keep-alive).
+  IPv4 and IPv6 via getaddrinfo / AI_PASSIVE / SO_REUSEADDR (IPV6_V6ONLY so a
+  v6 bind doesn't shadow v4). Per-connection recv/send timeout guards the
+  single accept loop against a slow client. See phoenixdkim-stats.c
+  dkimf_stats_start_http(); documented in phoenixdkim.conf.sample,
+  phoenixdkim.conf.5 and docs/metrics.md. Removes the need for the
+  node_exporter textfile collector and its permissions dance; (d) ship a
   contrib/grafana/ dashboard JSON.
 - DKIM key-record DNSSEC reporting clarity: we already downgrade/penalise
   non-DNSSEC key records (UnprotectedKey). Confirm the AR output distinguishes
