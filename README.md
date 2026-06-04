@@ -13,7 +13,7 @@ It reads OpenDKIM-style key and signing tables, so migration is straightforward
 - **Ed25519** — signing and verification per RFC 8463
 - **LMDB** — replaces BerkeleyDB for key storage
 - **CMake** — replaces autoconf/automake
-- **Lua 5.4** — updated from Lua 5.1
+- **Lua 5.4+** — updated from Lua 5.1
 - **Dynamic key backends** — `http:`/`https:` and HashiCorp Vault (`vault:`)
   data sets, plus Redis, alongside flat files and LMDB. The native SQL and LDAP
   drivers are gone; point the HTTP backend at a small bridge to reach those
@@ -49,6 +49,14 @@ Removed: VBR, ATPS, RBL, reputation subsystems, LDAP, SQL/OpenDBX,
   `diffheaders` (tre dependency).
 See [docs/removed-features.md](docs/removed-features.md) for the
 rationale behind each.
+
+## Packages and Ports
+
+Currently available: **.deb and .rpm**
+
+See: [Packages and Ports](https://www.phoenixdkim.org/packages.html)
+on www.phoenixdkim.org.
+
 
 ## Dependencies
 To build the library and filter you will need:
