@@ -34,23 +34,42 @@ DEAD CODE SWEEP
 
 DKIM2 READINESS
 
-See ai/dkim2-readiness.md (new) — tracks DKIM2-core vs DKIM2-extended
-requirements against where PhoenixDKIM actually is, with a "Latest check" date
-to re-evaluate on a cadence. Headline findings worth acting on now (all are
-also justified for DKIM1 today, so no bet on unstable wire format):
+See ai/dkim2-readiness.md — tracks DKIM2-core vs DKIM2-extended requirements
+against where PhoenixDKIM actually is, with a "Latest check" date to re-evaluate
+on a cadence. The no-regret prep items have now been audited against the tree
+(readiness §4); status:
 
-- Body-hash sharing across multiple signatures (also in the optimisation
-  roadmap) — this is what makes dual-signing DKIM1+DKIM2 cheap. Highest value.
-- Audit envelope-capture completeness: confirm mctx_rcptlist keeps EVERY
-  RCPT TO (not just the first) through to EOM under multi-recipient and
-  multiple-messages-per-connection, and MAIL FROM is preserved verbatim. This
-  is the raw material for DKIM2 envelope binding and is free insurance now.
-- Keep signature-header construction centralised so a second header type is a
-  new emitter, not a fork of the existing path.
-- Keep Authentication-Results emission table-driven so a future dkim2 method
-  clause is a data change, not control flow.
-- Reserve the WITH_DKIM2 compile-flag name and decide the config-keyword
-  namespace, to mirror the existing optional-feature pattern.
+- [DONE] Body-hash sharing across multiple signatures. Already implemented and
+  verified in dkim_add_canon() (libphoenixdkim/dkim-canon.c:734-751): body
+  canons dedup on (hdr,hashtype,canon,length) so the body is hashed once across
+  signatures. Was mis-listed as pending; it isn't. See optimisation-roadmap §2.1.
+- [DONE/AUDITED] Envelope-capture completeness. MAIL FROM is captured on every
+  message (bracket-normalised, MAXADDRESS-truncated — not byte-verbatim).
+  RCPT TO list (mctx_rcptlist) is the one gap: it is built ONLY when
+  dontsigntodb/bldb/redirect/resigndb/Lua is enabled (phoenixdkim.c:10799-10823);
+  a plain signer keeps no recipients. Within that guard every RCPT is kept, but
+  LIFO (reverse) order. Multi-message-per-connection is clean (fresh context per
+  MAIL FROM). No code change now (unconditional capture isn't DKIM1-justified and
+  SCOPE gates the feature); deliverable is the corrected readiness C5 + §4.2.
+  When DKIM2 starts: make capture unconditional/gated, fix ordering, pin MAIL
+  FROM normalisation to the draft.
+- [CONFIRMED] Signature-header construction is centralised — single emit loop
+  over mctx_srhead (phoenixdkim.c:13326-13352). A second header type is a
+  parameterisation, not a fork. Header name is the hardcoded DKIM_SIGNHEADER.
+- [DECIDED] Reserved compile flag WITH_DKIM2 and a Dkim2* config-keyword
+  namespace (readiness §4.4). Reservation only; nothing wired up.
+- [CORRECTION] AR emission is NOT table-driven for emission: the method token is
+  a literal ("dkim=%s", phoenixdkim.c:12470) and result mapping is an if/else
+  chain (dkimf_ar_all_sigs ~9979). Only AR *parsing* has a method table. A
+  method=dkim2 clause needs a small emission refactor; deferred (no DKIM1 win on
+  its own, touches the verifier-reporting path).
+
+When the SCOPE gate opens (draft at Proposed Standard + shepherd/IESG date),
+follow the ordered, WITH_DKIM2-gated implementation checklist in readiness §6:
+Phase 0 build/config scaffold → 1 unconditional envelope capture → 2 AR
+method-token refactor → 3 generalised sig-header emitter (Phases 0-3 contain NO
+wire bytes) → 4 DKIM2-Signature header → 5 dual-signing → 6 verify+AR+chain.
+Phases 4+ are [DRAFT-PINNED]: re-read the draft, don't code them from the doc.
 
 Do NOT implement DKIM2 wire output yet — SCOPE gates that on Proposed Standard.
 
