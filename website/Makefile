@@ -52,6 +52,7 @@ PHOENIXDKIM_VERSION := $(shell sed -n 's/^set(VERSION_RELEASE *\([0-9][0-9]*\)).
 PAGES = \
     index \
     features \
+    blog \
     announcements \
     download \
     documentation \
@@ -86,6 +87,14 @@ MANHTML     := $(patsubst %,$(OUTDIR)/man/%.html,$(notdir $(MANPAGES)))
 ANN_SRCS := $(wildcard src/announcements/*.content.html)
 ANN_HTML := $(patsubst src/announcements/%.content.html,$(OUTDIR)/announcements/%.html,$(ANN_SRCS))
 
+# ── blog posts (rendered from src/blog/*.md, single source) ───────────────────
+# Longer-form posts written in Markdown and rendered with pandoc (same pipeline
+# as the guides). The /blog.html index that links them is a regular page,
+# hand-maintained like /announcements.html.
+
+BLOG_SRCS := $(wildcard src/blog/*.md)
+BLOG_HTML := $(patsubst src/blog/%.md,$(OUTDIR)/blog/%.html,$(BLOG_SRCS))
+
 # ── release notes (plain-text static files) ──────────────────────────────────
 
 RN_SRCS := $(wildcard src/release_notes/*)
@@ -106,8 +115,8 @@ STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-releases
 # ── targets ───────────────────────────────────────────────────────────────────
 
 all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
-     $(OUTDIR)/guides $(WELLKNOWN_DIR) \
-     $(HTML) $(GUIDE_HTML) $(ROOTDOC_HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
+     $(OUTDIR)/guides $(OUTDIR)/blog $(WELLKNOWN_DIR) \
+     $(HTML) $(GUIDE_HTML) $(ROOTDOC_HTML) $(MANHTML) $(ANN_HTML) $(BLOG_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
 	@$(MAKE) --no-print-directory check-links
 
 $(OUTDIR):
@@ -121,6 +130,9 @@ $(OUTDIR)/announcements:
 
 $(OUTDIR)/guides:
 	mkdir -p $(OUTDIR)/guides
+
+$(OUTDIR)/blog:
+	mkdir -p $(OUTDIR)/blog
 
 $(OUTDIR)/release_notes:
 	mkdir -p $(OUTDIR)/release_notes
@@ -208,6 +220,9 @@ rm $$tmpfile
 endef
 
 $(OUTDIR)/guides/%.html: ../docs/%.md $(TMPL) | $(OUTDIR)/guides
+	$(render-md)
+
+$(OUTDIR)/blog/%.html: src/blog/%.md $(TMPL) | $(OUTDIR)/blog
 	$(render-md)
 
 # quickstart and removed-features render from ../docs to their top-level URLs.
