@@ -82,10 +82,6 @@ message in 5 minutes" path. Consider:
   wire to Postfix, send a test, verify with phoenixdkim-testmsg /
   phoenixdkim-testkey. README links to it from a new "Quick Start" section near
   the top.
-- README still refers to opendkim.conf(5), opendkim-genkey, /run/opendkim,
-  opendkim.service.in and the opendkim.conf.sample path in several places,
-  while the tree is renamed to phoenixdkim. Reconcile the README examples with
-  the actual installed names (see rename-plan.md) so copy-paste works.
 - Add a "Verifying an installation" snippet (testkey against the published
   record; testmsg round-trip) so a new user can confirm success.
 - docs/ has key-rotation.md and multisigning.md but they are not linked from a
