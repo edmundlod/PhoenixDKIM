@@ -9,6 +9,7 @@ It reads OpenDKIM-style key and signing tables, so migration is straightforward
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [Highlights](#highlights)
 - [Removed from pre-fork OpenDKIM 2.11.0-beta2](#removed-from-pre-fork-opendkim-2110-beta2-dd-15-nov-2018)
 - [Packages and Ports](#packages-and-ports)
@@ -31,6 +32,14 @@ It reads OpenDKIM-style key and signing tables, so migration is straightforward
 - [Licence](#licence)
 - [Legal notice](#legal-notice)
 - [Bugs and Contributions](#bugs-and-contributions)
+
+## Quick Start
+
+New to PhoenixDKIM and want to sign your first message? Follow
+[docs/quickstart.md](docs/quickstart.md) — generate an Ed25519 and an RSA key,
+publish two DNS records, write a six-line config, wire it to Postfix, and
+verify the result. The rest of this README is reference material you can dip
+into as needed.
 
 ## Highlights
 
@@ -226,6 +235,10 @@ phoenixdkim-genkey -t ed25519 -d domain.com -s selector
 - OpenBSD 7+
 
 ## Documentation
+
+The guides in [docs/](docs/README.md) cover getting started
+([quickstart](docs/quickstart.md)), [key rotation](docs/key-rotation.md),
+[multi-signing](docs/multisigning.md), and [crypto policy](docs/crypto-policy.md).
 
 Man pages are installed for `phoenixdkim(8)`, `phoenixdkim.conf(5)`,
 `phoenixdkim-genkey(8)`, `phoenixdkim-genzone(8)`, `phoenixdkim-testkey(8)`,
