@@ -838,10 +838,13 @@ Syslog			Yes
 ##  	default (none)
 ##
 ##  Write metrics in Prometheus text exposition format to this file, rewritten
-##  atomically every MetricsInterval seconds and on clean shutdown.  Scrape it
-##  with the node_exporter "textfile" collector; no network listener is added.
+##  atomically every MetricsInterval seconds and on clean shutdown.  Place it
+##  in the node_exporter "textfile" collector directory so it is scraped
+##  automatically; no network listener is added to phoenixdkim.
+##  Debian/Ubuntu default: /var/lib/prometheus/node-exporter/phoenixdkim.prom
+##  Other Linux:           /var/lib/node_exporter/textfile_collector/phoenixdkim.prom
 
-# MetricsFile		/run/phoenixdkim/metrics.prom
+# MetricsFile		/var/lib/prometheus/node-exporter/phoenixdkim.prom
 
 ##  MetricsInterval seconds
 ##  	default 15

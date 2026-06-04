@@ -28,6 +28,10 @@ UMask=007
 # with postfix without further configuration.
 ReadWritePaths=-/var/spool/postfix/phoenixdkim
 
+# node_exporter textfile collector directory.  If MetricsFile points elsewhere,
+# add the correct path via: systemctl edit phoenixdkim.service
+ReadWritePaths=-/var/lib/node_exporter/textfile_collector
+
 # Hardening - see systemd.exec(5)
 CapabilityBoundingSet=
 LockPersonality=true

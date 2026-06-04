@@ -28,18 +28,25 @@ purpose — see "A note on labels" below.
 ## Prometheus
 
 ```sh
-MetricsFile      /run/phoenixdkim/metrics.prom
+MetricsFile      /var/lib/prometheus/node-exporter/phoenixdkim.prom
 MetricsInterval  15        # seconds; default 15
 ```
 
-A background thread rewrites the file atomically (temp file + `rename(2)`) every
-`MetricsInterval` seconds and once more on clean shutdown. Scrape it with the
-Prometheus `node_exporter` **textfile collector** by placing it in that
-collector's directory — this adds no network listener to the daemon and so no
-attack surface:
+A background thread writes atomically (temp file + `rename(2)`) every
+`MetricsInterval` seconds and once more on clean shutdown. The file lives
+directly in the Prometheus `node_exporter` **textfile collector** directory,
+which node_exporter watches by default — no extra flag and no network listener
+in the daemon.
+
+On Debian/Ubuntu the textfile directory is `/var/lib/prometheus/node-exporter`;
+on other distributions it is commonly `/var/lib/node_exporter/textfile_collector`.
+The PhoenixDKIM systemd unit already has `ReadWritePaths=` set for both. If you
+configure `MetricsFile` to a different path, add the directory via a drop-in:
 
 ```sh
-node_exporter --collector.textfile.directory=/run/phoenixdkim
+systemctl edit phoenixdkim.service
+# add under [Service]:
+# ReadWritePaths=/your/custom/path
 ```
 
 ## StatsD
