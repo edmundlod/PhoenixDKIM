@@ -16,6 +16,8 @@ building and installing, see the top-level [README](../README.md).
   once, and how verifiers report mixed results.
 - [crypto-policy.md](crypto-policy.md) — supported algorithms, key sizes, and
   the policy controls that enforce them.
+- [metrics.md](metrics.md) — Prometheus and StatsD metrics, the per-message
+  summary log line, and the exported series.
 
 ## Reference
 
