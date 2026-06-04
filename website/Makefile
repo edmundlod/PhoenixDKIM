@@ -105,6 +105,7 @@ STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-releases
 all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
      $(OUTDIR)/guides $(WELLKNOWN_DIR) \
      $(HTML) $(GUIDE_HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
+	@$(MAKE) --no-print-directory check-links
 
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
@@ -236,6 +237,40 @@ $(OUTDIR)/man/%.html: $$(foreach m,$(MANPAGES),$$(if $$(filter $$*,$$(notdir $$m
 check: all
 	linkchecker out/index.html
 
+# Dependency-free internal-link audit over the built site. Warns (never fails)
+# about any on-page href/src that points at a local file missing from $(OUTDIR)
+# -- the case that bit us when a referenced .asc was not copied by the build.
+# Runs automatically at the end of `all`, and can be run on its own.
+# External links (scheme://, mailto:, …) are out of scope; use `check` for
+# those. /releases/ is skipped: release tarballs and their signatures are placed
+# on the server at deploy time and are intentionally absent from a local build.
+check-links:
+	@echo "  checking internal links…"; \
+	n=0; \
+	while IFS= read -r f; do \
+	    dir=$$(dirname "$$f"); \
+	    while IFS= read -r link; do \
+	        case "$$link" in \
+	            ""|"#"*|*"://"*|mailto:*|tel:*|data:*|javascript:*|/releases/*) continue;; \
+	        esac; \
+	        link=$${link%%#*}; link=$${link%%\?*}; \
+	        [ -z "$$link" ] && continue; \
+	        case "$$link" in \
+	            /*) target="$(OUTDIR)$$link";; \
+	            *)  target="$$dir/$$link";; \
+	        esac; \
+	        case "$$link" in */) target="$$target/index.html";; esac; \
+	        target=$$(realpath -m "$$target"); \
+	        [ -d "$$target" ] && target="$$target/index.html"; \
+	        if [ ! -e "$$target" ]; then \
+	            echo "  WARNING: dead link in $$f -> $$link"; \
+	            n=$$((n+1)); \
+	        fi; \
+	    done < <(grep -oE '(href|src)="[^"]+"' "$$f" | sed -E 's/^(href|src)="//; s/"$$//'); \
+	done < <(find $(OUTDIR) -name '*.html'); \
+	if [ $$n -eq 0 ]; then echo "  internal links OK"; \
+	else echo "  $$n dead internal link(s) found — eyeball the warnings above"; fi
+
 deploy: all
 	rsync -avz --delete \
 	    --exclude=/releases/ \
@@ -244,4 +279,4 @@ deploy: all
 clean:
 	rm -rf $(OUTDIR)
 
-.PHONY: all check deploy clean
+.PHONY: all check check-links deploy clean
