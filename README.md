@@ -83,7 +83,7 @@ See: [Packages and Ports](https://www.phoenixdkim.org/packages.html)
 on www.phoenixdkim.org.
 
 
-## Dependencies
+## Build Dependencies
 To build the library and filter you will need:
 
 - A C17-capable compiler (GCC 8+ or Clang 5+)
@@ -100,24 +100,29 @@ Optional:
 - libcurl >= 7.20.0 — SMTP report delivery via the `SMTPURI` config option (`-DWITH_CURL=ON`)
 - hiredis or libvalkey — Redis/Valkey signing-table backend (`-DWITH_REDIS=ON`)
 - libsystemd — `Type=notify` readiness signalling and watchdog (`-DWITH_SYSTEMD`; auto-detected on Linux)
-- libbsd — provides `strlcpy`/`strlcat` on systems without them
+- libbsd — provides `strlcpy`/`strlcat` - only on systems without them
   (not needed on glibc 2.38+, FreeBSD, or OpenBSD)
 
 ### Debian / Ubuntu
 
 ```
 apt install build-essential cmake libssl-dev liblmdb-dev \
-            libmilter-dev liblua5.4-dev
+            libmilter-dev liblua5.4-dev libsystemd-dev
+# Only on Debian 12 or lower, or Ubuntu 23.04 or lower
+apt install libbsd-dev
 # optional
-apt install libcurl4-openssl-dev libhiredis-dev libsystemd-dev
+apt install libcurl4-openssl-dev libhiredis-dev
 ```
 
 ### RHEL / AlmaLinux / Rocky
 
 ```
-dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel lua-devel
+dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel \
+            lua-devel systemd-devel
+# Only on Fedora 37 or lower, or EPEL 9 or lower
+dnf install libbsd-devel
 # optional
-dnf install libcurl-devel hiredis-devel systemd-devel
+dnf install libcurl-devel hiredis-devel 
 ```
 
 ### FreeBSD
@@ -134,7 +139,7 @@ LibreSSL and `strlcpy` are in the base system — no crypto or BSD-compat packag
 
 ```
 pkg_add git cmake lmdb libmilter lua%5.4
-# optional: DNSSEC resolver (libevent is a libunbound dependency)
+# optional
 pkg_add unbound libevent
 ```
 
