@@ -170,7 +170,7 @@ Common build options:
 | `-DWITH_CURL=ON` | OFF | Enable libcurl SMTP report delivery (`SMTPURI`) |
 | `-DWITH_REDIS=ON` | OFF | Enable Redis/Valkey signing-table backend |
 | `-DWITH_SYSTEMD=AUTO` | AUTO | systemd `sd_notify` readiness/watchdog: `AUTO` detects, `ON` requires it (configure fails if libsystemd is absent), `OFF` disables |
-| `-DINSTALL_SYSTEMD_UNIT=ON` | ON on Linux | Install the generated `opendkim.service` (its `Type=`/`WatchdogSec` match the build) |
+| `-DINSTALL_SYSTEMD_UNIT=ON` | ON on Linux | Install the generated `phoenixdkim.service` (its `Type=`/`WatchdogSec` match the build) |
 | `-DCMAKE_BUILD_TYPE=Release` | `RelWithDebInfo` | Build type (Debug/Release/RelWithDebInfo/MinSizeRel) |
 
 To install:
@@ -181,9 +181,9 @@ cmake --install build
 
 ## Configuration
 
-See `opendkim.conf(5)` for the full list of configuration options.
+See `phoenixdkim.conf(5)` for the full list of configuration options.
 A sample configuration file, which needs editing, is installed at
-`/usr/share/doc/phoenixdkim/opendkim.conf.sample`.
+`/usr/share/doc/phoenixdkim/phoenixdkim.conf.sample`.
 
 For an example on using multiple signatures per e-mail (e.g. Ed25519 with
 an RSA key as fall-back), see `docs/multisigning.md`.
@@ -195,12 +195,12 @@ The filter integrates with Postfix and Sendmail via the milter protocol.
 For Postfix, add to `main.cf`:
 
 ```
-smtpd_milters = unix:/run/opendkim/opendkim.sock
-non_smtpd_milters = unix:/run/opendkim/opendkim.sock
+smtpd_milters = unix:/run/phoenixdkim/phoenixdkim.sock
+non_smtpd_milters = unix:/run/phoenixdkim/phoenixdkim.sock
 milter_default_action = accept (or: tempfail)
 ```
 
-The systemd service unit is generated from `contrib/systemd/opendkim.service.in`
+The systemd service unit is generated from `contrib/systemd/phoenixdkim.service.in`
 at build time (so its `Type=`/`WatchdogSec` match what was compiled) and
 installed by `make install`; the Debian package ships its own unit in `debian/`.
 
@@ -209,14 +209,14 @@ installed by `make install`; the Debian package ships its own unit in `debian/`.
 _Note: Run the following in the directory where you want your keys, e.g.
 `/etc/dkimkeys/domain.com/`, or move the files after generating them._
 
-Generate an RSA-2048 or Ed25519 signing keypair with `opendkim-genkey`:
+Generate an RSA-2048 or Ed25519 signing keypair with `phoenixdkim-genkey`:
 
 ```
 # RSA
-opendkim-genkey -b 2048 -d domain.com -s selector
+phoenixdkim-genkey -b 2048 -d domain.com -s selector
 
 # Ed25519
-opendkim-genkey -t ed25519 -d domain.com -s selector
+phoenixdkim-genkey -t ed25519 -d domain.com -s selector
 ```
 
 ## Platforms
@@ -227,9 +227,9 @@ opendkim-genkey -t ed25519 -d domain.com -s selector
 
 ## Documentation
 
-Man pages are installed for `opendkim(8)`, `opendkim.conf(5)`,
-`opendkim-genkey(8)`, `opendkim-genzone(8)`, `opendkim-testkey(8)`,
-`opendkim-testmsg(8)`, and `opendkim-lua(3)`.
+Man pages are installed for `phoenixdkim(8)`, `phoenixdkim.conf(5)`,
+`phoenixdkim-genkey(8)`, `phoenixdkim-genzone(8)`, `phoenixdkim-testkey(8)`,
+`phoenixdkim-testmsg(8)`, and `phoenixdkim-lua(3)`.
 
 RFC and draft reference documents are in the `docs/` directory.
 
@@ -257,7 +257,7 @@ indicates a problem with the published key.
 ### Sendmail Header Rewriting
 
 If you use Sendmail's `MASQUERADE_AS` or `FEATURE(genericstable)`,
-opendkim signs headers before Sendmail rewrites them. The verifying
+phoenixdkim signs headers before Sendmail rewrites them. The verifying
 side will see rewritten headers that do not match the signature.
 Solutions: disable the rewriting features, use a two-MTA setup where
 the signing MTA does no rewriting, or use multiple `DaemonPortOptions`
