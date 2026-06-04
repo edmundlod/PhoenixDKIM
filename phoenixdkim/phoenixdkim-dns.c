@@ -49,6 +49,7 @@
 /* phoenixdkim includes */
 #include "phoenixdkim-dns.h"
 #include "phoenixdkim-db.h"
+#include "phoenixdkim-stats.h"
 #include "util.h"
 
 /* macros */
@@ -93,10 +94,12 @@ struct dkimf_unbound_cb_data
 	int			ubd_id;
 	int			ubd_type;
 	int			ubd_result;
+	_Bool			ubd_counted;	/* terminal result recorded? */
 	DKIM_STAT		ubd_stat;
 	size_t			ubd_buflen;
 	u_char *		ubd_buf;
 	const char *		ubd_strerror;
+	struct timeval		ubd_start;	/* query start (for latency) */
 };
 #endif /* USE_UNBOUND */
 
@@ -518,10 +521,14 @@ dkimf_ub_query(void *srv, int type, unsigned char *query,
 		return DKIM_DNS_ERROR;
 	memset(ubdata, '\0', sizeof *ubdata);
 
+	(void) gettimeofday(&ubdata->ubd_start, NULL);
+	dkimf_stats_record_dns_query();
+
 	status = dkimf_unbound_queue(ub, (char *) query, type, buf, buflen,
 	                             ubdata);
 	if (status != 0)
 	{
+		dkimf_stats_record_dns_result(DKIMF_STATS_DNS_ERROR, 0.0);
 		free(ubdata);
 		return DKIM_DNS_ERROR;
 	}
@@ -570,6 +577,37 @@ dkimf_ub_waitreply(void *srv, void *qh, struct timeval *to, size_t *bytes,
 			*bytes = ubdata->ubd_buflen;
 		if (error != NULL && status == -1)
 			*error = status;	/* XXX -- improve this */
+	}
+
+	/*
+	**  Record the terminal outcome and latency exactly once per query.
+	**  dkimf_unbound_wait() always returns a terminal value (success,
+	**  timeout, or error) -- it blocks until the query completes or the
+	**  budget expires -- and the library does not re-wait after a timeout,
+	**  so the first return is terminal.  The ubd_counted guard makes the
+	**  accounting robust even if waitreply is ever invoked again: a second
+	**  call is ignored rather than double-counted.
+	*/
+
+	if (!ubdata->ubd_counted)
+	{
+		struct timeval now;
+		double elapsed;
+		int dnsclass;
+
+		(void) gettimeofday(&now, NULL);
+		elapsed = (double) (now.tv_sec - ubdata->ubd_start.tv_sec) +
+		          (double) (now.tv_usec - ubdata->ubd_start.tv_usec) / 1e6;
+
+		if (status == 1)
+			dnsclass = DKIMF_STATS_DNS_SUCCESS;
+		else if (status == 0)
+			dnsclass = DKIMF_STATS_DNS_TIMEOUT;
+		else
+			dnsclass = DKIMF_STATS_DNS_ERROR;
+
+		dkimf_stats_record_dns_result(dnsclass, elapsed);
+		ubdata->ubd_counted = TRUE;
 	}
 
 	if (status == 0)

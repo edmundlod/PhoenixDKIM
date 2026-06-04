@@ -113,6 +113,7 @@
 #include "phoenixdkim-ar.h"
 #include "phoenixdkim-arf.h"
 #include "phoenixdkim-dns.h"
+#include "phoenixdkim-stats.h"
 #ifdef USE_LUA
 # include "phoenixdkim-lua.h"
 #endif /* USE_LUA */
@@ -283,6 +284,10 @@ struct dkimf_config
 	char *		conf_identityhdr;	/* identity header */
 	_Bool		conf_rmidentityhdr;	/* remove identity header */
 	char *		conf_diagdir;		/* diagnostics directory */
+	char *		conf_metricsfile;	/* Prometheus textfile path */
+	int		conf_metricsinterval;	/* Prometheus write interval (s) */
+	char *		conf_statsdhost;	/* StatsD "host:port" */
+	char *		conf_statsdprefix;	/* StatsD metric name prefix */
 	char *		conf_dnssecprobe;	/* DNSSEC probe spec (qtype:qname) */
 	char *		conf_reportaddr;	/* report sender address */
 	char *		conf_reportaddrbcc;	/* report repcipient address as bcc */
@@ -6128,6 +6133,22 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  &conf->conf_diagdir,
 		                  sizeof conf->conf_diagdir);
 
+		(void) config_get(data, "MetricsFile",
+		                  &conf->conf_metricsfile,
+		                  sizeof conf->conf_metricsfile);
+
+		(void) config_get(data, "MetricsInterval",
+		                  &conf->conf_metricsinterval,
+		                  sizeof conf->conf_metricsinterval);
+
+		(void) config_get(data, "StatsDHost",
+		                  &conf->conf_statsdhost,
+		                  sizeof conf->conf_statsdhost);
+
+		(void) config_get(data, "StatsDPrefix",
+		                  &conf->conf_statsdprefix,
+		                  sizeof conf->conf_statsdprefix);
+
 		(void) config_get(data, "RedirectFailuresTo",
 		                  &conf->conf_redirect,
 		                  sizeof conf->conf_redirect);
@@ -10225,6 +10246,74 @@ dkimf_ar_all_sigs(char *hdr, size_t hdrlen, DKIM *dkim,
 }
 
 /*
+**  DKIMF_STATUS_TO_VCLASS -- map an internal DKIMF_STATUS_* verdict to the
+**                            RFC 8601 result class used by the metrics
+**
+**  Parameters:
+**  	status -- the message's final DKIMF_STATUS_* code
+**  	eomstatus -- the DKIM_STAT_* returned by dkim_eom() (to disambiguate
+**  	             the no-signature case, which may leave status defaulted)
+**
+**  Return value:
+**  	A DKIMF_STATS_V_* constant.
+*/
+
+static int
+dkimf_status_to_vclass(int status, int eomstatus)
+{
+	if (eomstatus == DKIM_STAT_NOSIG)
+		return DKIMF_STATS_V_NONE;
+
+	switch (status)
+	{
+	  case DKIMF_STATUS_GOOD:
+		return DKIMF_STATS_V_PASS;
+
+	  case DKIMF_STATUS_BAD:
+	  case DKIMF_STATUS_REVOKED:
+		return DKIMF_STATS_V_FAIL;
+
+	  case DKIMF_STATUS_NOSIGNATURE:
+		return DKIMF_STATS_V_NONE;
+
+	  case DKIMF_STATUS_NOKEY:
+	  case DKIMF_STATUS_BADFORMAT:
+	  case DKIMF_STATUS_PARTIAL:
+		return DKIMF_STATS_V_PERMERROR;
+
+	  case DKIMF_STATUS_KEYFAIL:
+	  case DKIMF_STATUS_VERIFYERR:
+		return DKIMF_STATS_V_TEMPERROR;
+
+	  case DKIMF_STATUS_WEAKALG:
+		return DKIMF_STATS_V_NEUTRAL;
+
+	  default:
+		return DKIMF_STATS_V_NEUTRAL;
+	}
+}
+
+/*
+**  DKIMF_SIGNALG_STR -- human label for a DKIM_SIGN_* signing algorithm
+*/
+
+static const char *
+dkimf_signalg_str(int signalg)
+{
+	switch (signalg)
+	{
+	  case DKIM_SIGN_RSASHA256:
+		return "rsa-sha256";
+	  case DKIM_SIGN_ED25519SHA256:
+		return "ed25519-sha256";
+	  case DKIM_SIGN_RSASHA1:
+		return "rsa-sha1";
+	  default:
+		return "unknown";
+	}
+}
+
+/*
 **  END private section
 **  ==================================================================
 **  BEGIN milter section
@@ -12260,6 +12349,9 @@ mlfi_eom(SMFICTX *ctx)
 	_Bool testkey = FALSE;
 	int status = DKIM_STAT_OK;
 	int c;
+	int sumvclass = -1;			/* verify result for the summary line */
+	int sumsignalg = DKIM_SIGN_DEFAULT;	/* algorithm actually signed with */
+	_Bool sumsigned = FALSE;		/* a signature was emitted */
 	sfsistat ret = SMFIS_ACCEPT;
 	connctx cc;
 	msgctx dfc;
@@ -12280,6 +12372,9 @@ mlfi_eom(SMFICTX *ctx)
 	conf = cc->cctx_config;
 
 	dfc->mctx_eom = TRUE;
+
+	/* count every message that reaches end-of-message */
+	dkimf_stats_record_message();
 
 	/*
 	**  If necessary, try again to get the job ID in case it came down
@@ -12796,6 +12891,14 @@ mlfi_eom(SMFICTX *ctx)
 			break;
 		}
 
+		/*
+		**  Count this verification once, by its determinative result.
+		**  Done here while "status" still holds dkim_eom()'s return (the
+		**  diagnostics block below reuses the variable).
+		*/
+		sumvclass = dkimf_status_to_vclass(dfc->mctx_status, status);
+		dkimf_stats_record_verify(sumvclass);
+
 		if (conf->conf_diagdir != NULL &&
 		    dfc->mctx_status == DKIMF_STATUS_BAD)
 		{
@@ -13176,6 +13279,7 @@ mlfi_eom(SMFICTX *ctx)
 		status = dkimf_msr_eom(dfc->mctx_srhead, &lastdkim);
 		if (status != DKIM_STAT_OK)
 		{
+			dkimf_stats_record_signature(FALSE, dfc->mctx_signalg);
 			dkimf_log_ssl_errors(lastdkim, NULL,
 			                     (const char *) dfc->mctx_jobid);
 			return dkimf_libstatus(ctx, lastdkim, "dkim_eom()",
@@ -13233,25 +13337,44 @@ mlfi_eom(SMFICTX *ctx)
 				       "%s: %s header add failed",
 				       dfc->mctx_jobid,
 				       DKIM_SIGNHEADER);
+
+				dkimf_stats_record_signature(FALSE,
+				                             dfc->mctx_signalg);
 			}
-			else if (conf->conf_dolog_success)
+			else
 			{
-				char *d;
-				char *s;
+				DKIM_SIGINFO *ssig;
+				dkim_alg_t salg = dfc->mctx_signalg;
 
-				if (sr->srq_domain != NULL)
-					d = (char *) sr->srq_domain;
-				else
-					d = (char *) dfc->mctx_domain;
+				/* prefer the algorithm actually used for this sig */
+				ssig = dkim_getsignature(sr->srq_dkim);
+				if (ssig != NULL)
+					(void) dkim_sig_getsignalg(ssig, &salg);
 
-				if (sr->srq_selector != NULL)
-					s = (char *) sr->srq_selector;
-				else
-					s = (char *) conf->conf_selector;
+				dkimf_stats_record_signature(TRUE, salg);
+				sumsigned = TRUE;
+				sumsignalg = salg;
 
-				dkimf_log(conf, LOG_INFO,
-				       "%s: %s field added (s=%s, d=%s)",
-				       dfc->mctx_jobid, DKIM_SIGNHEADER, s, d);
+				if (conf->conf_dolog_success)
+				{
+					char *d;
+					char *s;
+
+					if (sr->srq_domain != NULL)
+						d = (char *) sr->srq_domain;
+					else
+						d = (char *) dfc->mctx_domain;
+
+					if (sr->srq_selector != NULL)
+						s = (char *) sr->srq_selector;
+					else
+						s = (char *) conf->conf_selector;
+
+					dkimf_log(conf, LOG_INFO,
+					       "%s: %s field added (s=%s, d=%s)",
+					       dfc->mctx_jobid, DKIM_SIGNHEADER,
+					       s, d);
+				}
 			}
 		}
 
@@ -13368,6 +13491,76 @@ mlfi_eom(SMFICTX *ctx)
 		if (status != DKIM_STAT_OK)
 			ret = dkimf_libstatus(ctx, NULL, "mlfi_eom()", status);
 		break;
+	}
+
+	/*
+	**  Emit a single structured (key=value) summary line per message.  This
+	**  is the human-readable companion to the metrics counters: it carries
+	**  the per-message detail (domain, algorithm) that is deliberately kept
+	**  out of the time series to avoid unbounded label cardinality.
+	*/
+
+	if (conf->conf_logresults && conf->conf_dolog)
+	{
+		static const char *vlabels[DKIMF_STATS_V_MAX] =
+		{
+			"pass", "fail", "none", "neutral",
+			"policy", "temperror", "permerror",
+		};
+		const char *jobid = dfc->mctx_jobid != NULL
+		                    ? (const char *) dfc->mctx_jobid
+		                    : JOBIDUNKNOWN;
+		const char *npart = "";
+		char vpart[BUFRSZ];
+		char spart[BUFRSZ];
+
+		vpart[0] = '\0';
+		spart[0] = '\0';
+
+		if (dfc->mctx_dkimv != NULL && sumvclass >= 0 &&
+		    sumvclass < DKIMF_STATS_V_MAX)
+		{
+			DKIM_SIGINFO *dsig;
+			DKIM_SIGINFO **sl;
+			int ns = 0;
+			const char *vd = "-";
+			const char *va = "-";
+
+			dsig = dkim_getsignature(dfc->mctx_dkimv);
+			if (dsig != NULL)
+			{
+				u_char *t;
+
+				t = dkim_sig_getdomain(dsig);
+				if (t != NULL)
+					vd = (const char *) t;
+				t = dkim_sig_getalgorithm(dsig);
+				if (t != NULL)
+					va = (const char *) t;
+			}
+
+			if (dkim_getsiglist(dfc->mctx_dkimv,
+			                    &sl, &ns) != DKIM_STAT_OK)
+				ns = 0;
+
+			snprintf(vpart, sizeof vpart,
+			         " action=verify result=%s d=%s a=%s sigs=%d",
+			         vlabels[sumvclass], vd, va, ns);
+		}
+
+		if (sumsigned)
+		{
+			snprintf(spart, sizeof spart, " action=sign d=%s a=%s",
+			         dfc->mctx_domain != NULL
+			             ? (const char *) dfc->mctx_domain : "-",
+			         dkimf_signalg_str(sumsignalg));
+		}
+
+		if (dfc->mctx_dkimv == NULL && !sumsigned)
+			npart = " action=none";
+
+		dkimf_log(conf, LOG_INFO, "%s: summary%s%s%s",
+		       jobid, vpart, spart, npart);
 	}
 
 	return ret;
@@ -14994,6 +15187,37 @@ main(int argc, char **argv)
 	       argstr,
 	       argstr[0] == '\0' ? "" : ")");
 
+	/*
+	**  Start the metrics exporters.  The counter core is always live; these
+	**  calls only turn on the optional outputs, and only when configured.
+	**  They are started once here (not on reload) since each owns a socket
+	**  or a long-lived thread; the underlying directives are not reloadable.
+	*/
+
+	dkimf_stats_init(DKIMF_VERSION);
+
+	if (curconf->conf_statsdhost != NULL)
+	{
+		if (dkimf_stats_set_statsd(curconf->conf_statsdhost,
+		                           curconf->conf_statsdprefix) == 0)
+		{
+			dkimf_log(curconf, LOG_INFO,
+			       "StatsD metrics enabled (%s)",
+			       curconf->conf_statsdhost);
+		}
+	}
+
+	if (curconf->conf_metricsfile != NULL)
+	{
+		if (dkimf_stats_start_writer(curconf->conf_metricsfile,
+		                             (unsigned int) curconf->conf_metricsinterval) == 0)
+		{
+			dkimf_log(curconf, LOG_INFO,
+			       "Prometheus metrics enabled (%s)",
+			       curconf->conf_metricsfile);
+		}
+	}
+
 	/* spawn the SIGUSR1 handler */
 	status = pthread_create(&rt, NULL, dkimf_reloader, NULL);
 	if (status != 0)
@@ -15064,6 +15288,9 @@ main(int argc, char **argv)
 	dkimf_log(curconf, LOG_INFO,
 	       "%s v%s terminating with status %d, errno = %d",
 	       DKIMF_PRODUCT, DKIMF_VERSION, status, errno);
+
+	/* flush final metric values to the Prometheus textfile, if enabled */
+	dkimf_stats_flush();
 
 	dkimf_zapkey(curconf);
 

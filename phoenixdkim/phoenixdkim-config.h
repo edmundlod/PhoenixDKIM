@@ -80,6 +80,8 @@ struct configdef dkimf_config[] =
 	{ "MaximumSignedBytes",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MaximumSignaturesToVerify",	CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MacroList",			CONFIG_TYPE_STRING,	FALSE },
+	{ "MetricsFile",		CONFIG_TYPE_STRING,	FALSE },
+	{ "MetricsInterval",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "MilterDebug",		CONFIG_TYPE_INTEGER,	FALSE },
 	{ "Minimum",			CONFIG_TYPE_STRING,	FALSE },
 	{ "MinimumKeyBits",		CONFIG_TYPE_INTEGER,	FALSE },
@@ -137,6 +139,8 @@ struct configdef dkimf_config[] =
 #endif /* HAVE_LIBCURL */
 	{ "Socket",			CONFIG_TYPE_STRING,	FALSE },
 	{ "SoftwareHeader",		CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "StatsDHost",			CONFIG_TYPE_STRING,	FALSE },
+	{ "StatsDPrefix",		CONFIG_TYPE_STRING,	FALSE },
 	{ "StrictHeaders",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictSignAlgorithm",	CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "StrictTestMode",		CONFIG_TYPE_BOOLEAN,	FALSE },
