@@ -7,6 +7,16 @@ phoenixdkim (1.0.0~beta3-1) trixie; urgency=medium
     collector directory; systemd unit gains ReadWritePaths= for it.
   * Build: accept Lua >= 5.4 rather than exactly 5.4; fixes builds on
     distributions shipping Lua 5.5 (e.g. Fedora Rawhide).
+  * Packaging: fix dpkg-gencontrol substvar warnings. phoenixdkim-genkey is
+    a Perl script, so phoenixdkim-keygen now depends on ${perl:Depends}
+    instead of the never-defined ${shlibs:Depends}/${python3:Depends} (it is
+    Architecture: all and ships no ELF binaries); phoenixdkim-tools ships only
+    compiled binaries, so its stray ${perl:Depends} is dropped. Drop the unused
+    dh-python build-dependency (no Python is shipped).
+  * Packaging: gate libbsd-dev on Debian 12 and earlier via
+    "libc6-dev (>= 2.38) | libbsd-dev". strlcpy/strlcat are in glibc 2.38+
+    (Debian 13 Trixie), where CMake already prefers libc and never links
+    libbsd; only bookworm-era glibc (2.36) falls through to libbsd-dev.
 
  -- Edmund Lodewijks <edmund@proteamail.com>  Wed, 04 Jun 2026 00:00:00 +0200
 
