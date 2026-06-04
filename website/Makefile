@@ -54,10 +54,8 @@ PAGES = \
     features \
     announcements \
     download \
-    quickstart \
     documentation \
     coming-from \
-    removed-features \
     packages \
     contributing \
     security
@@ -71,6 +69,11 @@ HTML = $(patsubst %,$(OUTDIR)/%.html,$(PAGES))
 
 GUIDES    = key-rotation multisigning crypto-policy metrics
 GUIDE_HTML = $(patsubst %,$(OUTDIR)/guides/%.html,$(GUIDES))
+
+# quickstart and removed-features are also rendered from ../docs, but keep their
+# established top-level URLs (/quickstart.html, /removed-features.html) rather
+# than moving under /guides/.
+ROOTDOC_HTML = $(OUTDIR)/quickstart.html $(OUTDIR)/removed-features.html
 
 # ── man pages ─────────────────────────────────────────────────────────────────
 # Find all .3 .5 .8 files in the repo, excluding build/ directories
@@ -104,7 +107,7 @@ STATIC_FILES = $(OUTDIR)/phoenixdkim-security.asc $(OUTDIR)/phoenixdkim-releases
 
 all: $(OUTDIR) $(OUTDIR)/man $(OUTDIR)/announcements $(OUTDIR)/release_notes \
      $(OUTDIR)/guides $(WELLKNOWN_DIR) \
-     $(HTML) $(GUIDE_HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
+     $(HTML) $(GUIDE_HTML) $(ROOTDOC_HTML) $(MANHTML) $(ANN_HTML) $(RN_OUT) $(FAVICON_OUT) $(WELLKNOWN_FILES) $(STATIC_FILES)
 	@$(MAKE) --no-print-directory check-links
 
 $(OUTDIR):
@@ -179,27 +182,41 @@ $(OUTDIR)/%.html: src/%.content.html $(TMPL)
 	    $(TMPL) > $@
 	@echo "  built $@"
 
-# Guides: render ../docs/<name>.md with pandoc (GFM in, HTML fragment out) and
-# wrap in the site template. The page title is taken from the document's first
-# level-1 heading. Code highlighting is disabled so code blocks inherit the
-# site's plain <pre> styling.
+# render-md: render $< (a ../docs/*.md file) with pandoc (GFM in, HTML fragment
+# out) and wrap it in the site template. The page title is the document's first
+# level-1 heading. Relative .md cross-links are rewritten to .html so they
+# resolve on the site; any .md link left untouched (e.g. an external one) raises
+# a build warning to check by hand. Highlighting is off so code blocks inherit
+# the site's plain <pre> styling. Shared by the guides and the root-level docs.
+
+define render-md
+@title=$$(sed -n 's/^# //p' $< | head -1); \
+[ -n "$$title" ] || title="$(basename $(notdir $<))"; \
+tmpfile=$$(mktemp); \
+pandoc -f gfm -t html --no-highlight --wrap=preserve $< -o $$tmpfile; \
+sed -i 's#href="\([^":]*\)\.md"#href="\1.html"#g' $$tmpfile; \
+if grep -qE 'href="[^"]*\.md"' $$tmpfile; then \
+    echo "  WARNING: $< has a .md link the rewrite left alone (external?); check it resolves on the site:"; \
+    grep -oE 'href="[^"]*\.md"' $$tmpfile | sed 's/^/    /'; \
+fi; \
+sed \
+    -e "s|%%TITLE%%|$$title|g" \
+    -e "/%%CONTENT%%/{r $$tmpfile" -e "d}" \
+    $(TMPL) > $@; \
+rm $$tmpfile
+@echo "  built $@"
+endef
 
 $(OUTDIR)/guides/%.html: ../docs/%.md $(TMPL) | $(OUTDIR)/guides
-	@title=$$(sed -n 's/^# //p' $< | head -1); \
-	[ -n "$$title" ] || title="$*"; \
-	tmpfile=$$(mktemp); \
-	pandoc -f gfm -t html --no-highlight --wrap=preserve $< -o $$tmpfile; \
-	sed -i 's#href="\([^":]*\)\.md"#href="\1.html"#g' $$tmpfile; \
-	if grep -qE 'href="[^"]*\.md"' $$tmpfile; then \
-	    echo "  WARNING: $< has a .md link the rewrite left alone (external?); check it resolves on the site:"; \
-	    grep -oE 'href="[^"]*\.md"' $$tmpfile | sed 's/^/    /'; \
-	fi; \
-	sed \
-	    -e "s|%%TITLE%%|$$title|g" \
-	    -e "/%%CONTENT%%/{r $$tmpfile" -e "d}" \
-	    $(TMPL) > $@; \
-	rm $$tmpfile
-	@echo "  built $@"
+	$(render-md)
+
+# quickstart and removed-features render from ../docs to their top-level URLs.
+# These explicit rules take precedence over the src/%.content.html pattern rule.
+$(OUTDIR)/quickstart.html: ../docs/quickstart.md $(TMPL) | $(OUTDIR)
+	$(render-md)
+
+$(OUTDIR)/removed-features.html: ../docs/removed-features.md $(TMPL) | $(OUTDIR)
+	$(render-md)
 
 # Man pages: use groff -T html, inject fork notice, wrap in template
 #   groff cleanup:
