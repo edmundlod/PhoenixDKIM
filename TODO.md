@@ -66,8 +66,14 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
   follow-ups: (a) DNS series cover the libunbound resolver only — the file
   resolver (TestDNSData) is uninstrumented; (b) verifications are counted once
   per message by determinative result, not per-signature — revisit if
-  per-signature granularity is wanted; (c) optional embedded /metrics HTTP
-  endpoint behind a future WITH_METRICS_HTTP if operators ask; (d) ship a
+  per-signature granularity is wanted; (c) embedded /metrics HTTP endpoint: config keyword MetricsAddr
+  host:port (e.g. 127.0.0.1:9323). Hand-rolled HTTP/1.0, no new library.
+  Dedicated accept thread (same pattern as the writer thread); call
+  dkimf_stats_render_prom() on GET /metrics, 404 everything else, close
+  after each response (no keep-alive). IPv4 and IPv6 via getaddrinfo /
+  SO_REUSEADDR. Update phoenixdkim.conf.sample and docs/metrics.md
+  alongside. This removes the need for the node_exporter textfile
+  collector and its associated permissions dance; (d) ship a
   contrib/grafana/ dashboard JSON.
 - DKIM key-record DNSSEC reporting clarity: we already downgrade/penalise
   non-DNSSEC key records (UnprotectedKey). Confirm the AR output distinguishes
