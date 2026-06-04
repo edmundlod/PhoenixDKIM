@@ -4,8 +4,9 @@ Priority: optional
 Maintainer: Edmund Lodewijks <edmund@proteamail.com>
 Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  libmilter-dev, liblmdb-dev,  libunbound-dev [linux-any],
- liblua5.4-dev, libssl-dev (>=3.0.0), libbsd-dev,
- libevent-dev, nettle-dev, libhiredis-dev, libcurl4-openssl-dev, dh-python,
+ liblua5.4-dev, libssl-dev (>=3.0.0),
+ libc6-dev (>= 2.38) | libbsd-dev,
+ libevent-dev, nettle-dev, libhiredis-dev, libcurl4-openssl-dev,
  libsystemd-dev [linux-any]
 Standards-Version: 4.6.2
 Homepage: https://github.com/edmundlod/PhoenixDKIM
@@ -34,7 +35,7 @@ Description: DomainKeys Identified Mail (DKIM) signing and verifying milter
 
 Package: phoenixdkim-tools
 Architecture: any
-Depends: ${shlibs:Depends}, ${perl:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Utilities for administering the PhoenixDKIM milter
  Command line tools for the PhoenixDKIM mail filter. The following
  tools are included:
@@ -74,7 +75,7 @@ Description: Utility for testing milter applications
 
 Package: phoenixdkim-keygen
 Architecture: all
-Depends: ${shlibs:Depends}, ${python3:Depends}, ${misc:Depends}
+Depends: ${perl:Depends}, ${misc:Depends}
 Description: Utility for generating DKIM and ARC keys (RSA and Ed25519)
  Command line tool for generating DKIM and ARC signing keypairs,
  part of the PhoenixDKIM suite.
