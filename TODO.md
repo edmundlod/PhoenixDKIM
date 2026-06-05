@@ -113,8 +113,20 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
   structured one-line "summary action=... result=... d=... a=... sigs=..."
   per message (signing and verifying), the human-readable companion to the
   metrics counters. See docs/metrics.md.
-- Verify-side: confirm we honour and report key-record flags t=s / t=y
-  (testing) and that g= legacy granularity is correctly ignored per RFC 6376.
+- [DONE] Verify-side: key-record flags t=s / t=y and legacy g=.
+  * t=s (NOSUBDOMAIN): honoured — dkim.c:5669 fails the signature with
+    DKIM_SIGERROR_SUBDOMAIN ("unauthorized subdomain") when the i= domain is
+    not identical to d=; that reason reaches Authentication-Results.
+  * t=y (TESTKEY): honoured — dkim_eom_verify sets *testkey (dkim.c:4147),
+    and mlfi_eom bypasses the hard BadSignature/WeakAlgorithm dispositions
+    (accepts the message). Previously this override was silent; now it emits a
+    NOTICE log line ("...key record is in test mode (t=y); accepting the
+    message") so operators can see when t=y changed the outcome. RFC 8601 has
+    no AR token for a testing key, so the log is the reporting channel.
+  * g= (legacy granularity, RFC 4871): correctly ignored per RFC 6376 — "g"
+    is not in the keyparams table (dkim-tables.c) so it is never parsed, and
+    the orphan DKIM_KEY_GRANULARITY define is referenced nowhere. No
+    granularity matching is performed.
 
 ========================
 

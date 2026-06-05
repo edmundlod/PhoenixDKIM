@@ -13456,7 +13456,13 @@ mlfi_eom(SMFICTX *ctx)
 		if ((ret == SMFIS_REJECT || ret == SMFIS_TEMPFAIL ||
 		     ret == SMFIS_DISCARD) &&
 		    testkey)
+		{
 			ret = SMFIS_ACCEPT;
+			dkimf_log(conf, LOG_NOTICE,
+			       "%s: signature failed but the key record is in test mode (t=y); accepting the message",
+			       dfc->mctx_jobid != NULL ? dfc->mctx_jobid
+			                               : (const u_char *) JOBIDUNKNOWN);
+		}
 		break;
 
 	  case DKIMF_STATUS_NOKEY:
@@ -13500,7 +13506,13 @@ mlfi_eom(SMFICTX *ctx)
 		if ((ret == SMFIS_REJECT || ret == SMFIS_TEMPFAIL ||
 		     ret == SMFIS_DISCARD) &&
 		    testkey)
+		{
 			ret = SMFIS_ACCEPT;
+			dkimf_log(conf, LOG_NOTICE,
+			       "%s: weak algorithm but the key record is in test mode (t=y); accepting the message",
+			       dfc->mctx_jobid != NULL ? dfc->mctx_jobid
+			                               : (const u_char *) JOBIDUNKNOWN);
+		}
 		break;
 
 	  case DKIMF_STATUS_UNKNOWN:
