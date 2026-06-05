@@ -416,7 +416,6 @@ struct lookup
 #define	HNDL_INTERNAL		4
 #define	HNDL_SECURITY		5
 #define	HNDL_NOKEY		6
-#define	HNDL_POLICYERROR	7
 #define	HNDL_SIGGEN		9
 #define	HNDL_WEAKALG		10
 
@@ -613,9 +612,6 @@ char reportaddr[2 * DKIM_MAXHOSTNAMELEN + 2];	/* reporting address */
 char myhostname[DKIM_MAXHOSTNAMELEN + 1];	/* hostname */
 pthread_mutex_t conf_lock;			/* config lock */
 pthread_mutex_t pwdb_lock;			/* passwd/group lock */
-
-/* Other useful definitions */
-#define CRLF			"\r\n"		/* CRLF */
 
 /* MACROS */
 #define	JOBID(x)	((x) == NULL ? JOBIDUNKNOWN : (const char *) (x))

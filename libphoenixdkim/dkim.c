@@ -118,20 +118,11 @@ void dkim_error(DKIM *, const char *, ...);
 
 #define	BUFRSZ			1024
 #define	CRLF			(const u_char *) "\r\n"
-#define	SP			(const u_char *) " "
 
 #define	DEFCLOCKDRIFT		300
 #define	DEFMINKEYBITS		1024
 #define	DEFTIMEOUT		10
 #define	MINSIGLEN		8
-
-/* local definitions needed for DNS queries */
-#define MAXPACKET		8192
-#if defined(__RES) && (__RES >= 19940415)
-# define RES_UNC_T		char *
-#else /* __RES && __RES >= 19940415 */
-# define RES_UNC_T		unsigned char *
-#endif /* __RES && __RES >= 19940415 */
 
 #ifndef T_AAAA
 # define T_AAAA			28
@@ -146,12 +137,6 @@ void dkim_error(DKIM *, const char *, ...);
 #define	CLOBBER(x)	if ((x) != NULL) \
 			{ \
 				dkim_mfree(dkim->dkim_libhandle, dkim->dkim_closure, (x)); \
-				(x) = NULL; \
-			}
-
-#define	HCLOBBER(x)	if ((x) != NULL) \
-			{ \
-				free((x)); \
 				(x) = NULL; \
 			}
 

@@ -61,9 +61,6 @@
 #include "phoenixdkim-db.h"
 #include "openssl-compat.h"
 
-/* macros */
-#define	DEFARGS		8
-
 /* missing definitions */
 #ifndef INADDR_NONE
 # define INADDR_NONE	((uint32_t) -1)

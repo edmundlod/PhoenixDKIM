@@ -42,13 +42,6 @@
 /* phoenixdkim includes */
 #include "phoenixdkim-stats.h"
 
-#ifndef FALSE
-# define FALSE	0
-#endif /* ! FALSE */
-#ifndef TRUE
-# define TRUE	1
-#endif /* ! TRUE */
-
 /* signing-algorithm label slots */
 #define ST_ALG_RSASHA256	0
 #define ST_ALG_ED25519		1

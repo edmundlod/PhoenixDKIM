@@ -13,21 +13,13 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>
-/* DKIM_PUTSHORT / DKIM_PUTLONG: drop-in replacements for the system
-** PUTSHORT/PUTLONG (NS_PUT16/NS_PUT32) with explicit (unsigned char)
-** casts on each byte store; the system macro body omits them, causing
-** -Wconversion under strict builds. */
+/* DKIM_PUTSHORT: drop-in replacement for the system PUTSHORT (NS_PUT16)
+** with explicit (unsigned char) casts on each byte store; the system
+** macro body omits them, causing -Wconversion under strict builds. */
 #define DKIM_PUTSHORT(s, cp) do { \
 	uint16_t _dps = (uint16_t)(s); \
 	*(cp)++ = (unsigned char)(_dps >> 8); \
 	*(cp)++ = (unsigned char)(_dps); \
-} while (0)
-#define DKIM_PUTLONG(l, cp) do { \
-	uint32_t _dpl = (uint32_t)(l); \
-	*(cp)++ = (unsigned char)(_dpl >> 24); \
-	*(cp)++ = (unsigned char)(_dpl >> 16); \
-	*(cp)++ = (unsigned char)(_dpl >> 8); \
-	*(cp)++ = (unsigned char)(_dpl); \
 } while (0)
 #include <resolv.h>
 #include <netdb.h>
