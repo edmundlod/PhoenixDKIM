@@ -1,3 +1,24 @@
+phoenixdkim (1.0.0~beta4-1) trixie; urgency=medium
+
+  * Feature: RFC 8616 (EAI) support — sign and verify internationalised mail
+    with UTF-8 header field bodies and U-label domains. Header field names and
+    tag names remain ASCII; UTF-8 is validated to RFC 3629 (overlong encodings,
+    surrogates, and lone continuations are rejected). Requires libidn2.
+  * Feature: embedded Prometheus /metrics HTTP endpoint (MetricsAddr) — an
+    opt-in lightweight HTTP server exposing live counters; no external exporter
+    or collector required. Disabled unless MetricsAddr is set.
+  * DNSSEC: distinguish "validation unavailable" (resolver does not perform
+    DNSSEC validation) from "not evaluated"; export the key-record DNSSEC
+    status to the Authentication-Results header and milter macros.
+  * Verify: log the t=y testing-key disposition override with an explicit log
+    line and header token so operators can see why a failing signature was
+    still accepted; audit t=s envelope/header alignment and g= local-part
+    matching against RFC 6376.
+  * Fix: free queued DNS replies in the test harness to silence LeakSanitizer.
+  * Fix: remove dead unreachable code and unused preprocessor macros.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Fri, 05 Jun 2026 16:52:48 +0200
+
 phoenixdkim (1.0.0~beta3-1) trixie; urgency=medium
 
   * New: metrics and observability — Prometheus textfile exporter
