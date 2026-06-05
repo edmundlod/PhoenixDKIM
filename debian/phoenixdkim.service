@@ -1,7 +1,7 @@
 [Unit]
 Description=PhoenixDKIM Milter
 Documentation=man:phoenixdkim(8) man:phoenixdkim.conf(5) man:phoenixdkim-lua(3) man:phoenixdkim-genkey(8) man:phoenixdkim-genzone(8) man:phoenixdkim-testkey(8) man:phoenixdkim-testmsg(8)
-After=network-online.target nss-lookup.target syslog.target
+After=network-online.target nss-lookup.target
 Wants=network-online.target
 
 # Best-effort ordering so phoenixdkim is ready before a local MTA starts

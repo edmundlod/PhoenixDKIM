@@ -16,6 +16,8 @@ phoenixdkim (1.0.0~beta4-1) trixie; urgency=medium
     matching against RFC 6376.
   * Fix: free queued DNS replies in the test harness to silence LeakSanitizer.
   * Fix: remove dead unreachable code and unused preprocessor macros.
+  * Packaging: add libidn2-dev build-dependency for EAI (RFC 8616) support;
+    drop obsolete syslog.target from systemd service After= ordering.
 
  -- Edmund Lodewijks <edmund@proteamail.com>  Fri, 05 Jun 2026 16:52:48 +0200
 
