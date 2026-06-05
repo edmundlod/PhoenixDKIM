@@ -86,12 +86,8 @@ typedef valkeyReply    redisReply;
 
 /* macros */
 #define	BUFRSZ			1024
-#define	DEFARRAYSZ		16
-#define DKIMF_DB_DEFASIZE	8
-#define DKIMF_DB_MODE		0644
 
 #define	DKIMF_DB_IFLAG_FREEARRAY 0x01
-#define	DKIMF_DB_IFLAG_RECONNECT 0x02
 
 #ifndef FALSE
 # define FALSE			0

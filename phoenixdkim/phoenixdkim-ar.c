@@ -35,8 +35,6 @@
 #include "phoenixdkim-ar.h"
 
 /* macros */
-#define	ARES_ENDOF(x)		((x) + sizeof(x) - 1)
-#define	ARES_STRORNULL(x)	((x) == NULL ? "(null)" : (x))
 #define	ARES_TOKENS		";=."
 #define	ARES_TOKENS2		"=."
 
