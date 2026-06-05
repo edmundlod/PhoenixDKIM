@@ -68,7 +68,7 @@ HTML = $(patsubst %,$(OUTDIR)/%.html,$(PAGES))
 # also readable on the code host; the website is their authoritative published
 # form. Rendered with pandoc into out/guides/ and wrapped in the site template.
 
-GUIDES    = key-rotation multisigning crypto-policy metrics
+GUIDES    = key-rotation multisigning crypto-policy metrics internationalization
 GUIDE_HTML = $(patsubst %,$(OUTDIR)/guides/%.html,$(GUIDES))
 
 # quickstart and removed-features are also rendered from ../docs, but keep their

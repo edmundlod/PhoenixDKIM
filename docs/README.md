@@ -18,6 +18,9 @@ building and installing, see the top-level [README](../README.md).
   the policy controls that enforce them.
 - [metrics.md](metrics.md) — Prometheus and StatsD metrics, the per-message
   summary log line, and the exported series.
+- [internationalization.md](internationalization.md) — RFC 8616 (EAI): UTF-8 in
+  header bodies and tag values, and U-label signing domains resolved via
+  libidn2.
 
 ## Reference
 

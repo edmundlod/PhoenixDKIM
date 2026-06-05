@@ -461,6 +461,7 @@ Implementation staging is tracked in `ai/rename-plan.md`.
 | Lua 5.4 | Optional (`-DWITH_LUA=ON`) | Data set scripts and policy hooks. Default OFF. |
 | libcurl | Optional (`-DWITH_CURL=ON`) | Enables two features: (1) SMTP delivery for RFC 6651 failure reports (`SMTPURI`); (2) HTTP/HTTPS/Vault data set backends and `pdkim.http_get()` in the Lua sandbox. Minimum 7.20.0. Default OFF. |
 | libbsd | Optional, auto-detected | Provides `strlcpy`/`strlcat` on older Linux. Not needed on FreeBSD/OpenBSD (in libc) or glibc 2.38+. |
+| libidn2 | Optional (`-DWITH_IDN=ON`, default **on**) | RFC 8616 (EAI): converts U-label signing domains (`d=`) to A-labels for the DNS key lookup. `-DWITH_IDN=OFF` builds without U-label resolution. |
 | pthreads | Required | Thread support. |
 | Rust toolchain | Optional (`-DWITH_RUST_PARSERS=ON`) | Builds the memory-safe parser crate. Pinned via `rust-toolchain.toml`. Default OFF; pure-C parser path is the fallback. See Security section. |
 

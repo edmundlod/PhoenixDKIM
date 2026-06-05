@@ -35,6 +35,8 @@ Required:
   * LMDB
   * libmilter  (from Sendmail or as a standalone package)
   * libresolv
+  * libidn2      -- RFC 8616 U-label (IDN) signing-domain resolution
+                    (-DWITH_IDN=ON, default on; -DWITH_IDN=OFF to omit)
 
 Optional:
 
@@ -50,14 +52,15 @@ Installing prerequisites on common platforms:
 
   Debian / Ubuntu:
     apt install build-essential cmake libssl-dev liblmdb-dev \
-                libmilter-dev liblua5.4-dev libunbound-dev libsystemd-dev
+                libmilter-dev liblua5.4-dev libidn2-dev libunbound-dev \
+                libsystemd-dev
 
   RHEL / AlmaLinux / Rocky:
     dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel \
-                lua-devel unbound-devel systemd-devel
+                lua-devel libidn2-devel unbound-devel systemd-devel
 
   FreeBSD:
-    pkg install cmake openssl lmdb milter lua54 unbound
+    pkg install cmake openssl lmdb milter lua54 libidn2 unbound
 
 
 BUILDING
