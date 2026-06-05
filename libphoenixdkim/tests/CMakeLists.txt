@@ -13,6 +13,9 @@ set(LIBPHOENIXDKIM_TEST_PROGRAMS
     t-conformance
     t-signperf
     t-verifyperf
+    # PhoenixDKIM-modified fork of upstream's t-test209 (RFC 8616 EAI); named
+    # rather than numbered to mark the divergence from upstream.
+    t-test209-phoenixdkim
 )
 
 # ── Numbered conformance tests (t-test16 … t-test154) ─────────────────────────
@@ -35,7 +38,7 @@ set(LIBPHOENIXDKIM_NUMBERED_TESTS
     140 141 142 143 144 145 146 147 148 149
     150 151 152 153 154
     158 159
-    200 201 202 203 204 205 206 207
+    200 201 202 203 204 205 206 207 208
 )
 
 foreach(num IN LISTS LIBPHOENIXDKIM_NUMBERED_TESTS)
