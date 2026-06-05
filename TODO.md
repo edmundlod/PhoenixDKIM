@@ -32,6 +32,38 @@ DEAD CODE SWEEP
 
 ========================
 
+PRE-EXISTING MEMORY LEAKS (LeakSanitizer)
+
+Surfaced by a full-feature build with sanitizers (configure with
+-DPHOENIXDKIM_ENABLE_ASAN=ON -DPHOENIXDKIM_ENABLE_UBSAN=ON plus all WITH_*
+features, then run ctest in build/libphoenixdkim/tests). Four tests fail under
+LeakSanitizer: t-conformance, t-test128, t-test129, t-test151. These PREDATE
+the EAI/U-label work and are separate from the dkim_test_dns_put harness leak
+already fixed (commit "free queued test DNS replies"). Two distinct library
+bugs:
+
+- dkim_resign() split-canonicalization ownership leak (t-test128/129/151).
+  dkim_resign() adds a header canon to the "new" handle and a body canon to the
+  "old" handle (libphoenixdkim/dkim.c, the dkim_add_canon calls around the
+  resign setup); on teardown some canonicalization allocations (dkim_add_canon
+  / dkim_canon_init / dkim_canon_runheaders) are never freed. dkim_free() does
+  call dkim_canon_cleanup(), so the leak is in how the two refcount-linked
+  handles share/own their canon lists. Fix is in the library, not the tests.
+
+- verify-handle key-type/free bug (t-conformance::wrong_keytype). Freeing a
+  verify handle after an Ed25519 signature was matched against a k=rsa key
+  record is unsafe; the test deliberately leaks the handle with the comment
+  "Avoid freeing this handle until keytype/free bug is fixed." Find why
+  dkim_free() on that handle crashes/double-frees (likely the EVP_PKEY / siginfo
+  cleanup on the algorithm-mismatch path) and fix it.
+
+Tests are FROZEN (SCOPE Process Rule 1): fix the library, then remove the
+deliberate dkim_free() omission in t-conformance::wrong_keytype and re-run under
+LSAN to confirm a clean suite. Raise discrepancies for human review rather than
+editing tests to match the implementation.
+
+========================
+
 DKIM2 READINESS
 
 See ai/dkim2-readiness.md — tracks DKIM2-core vs DKIM2-extended requirements
