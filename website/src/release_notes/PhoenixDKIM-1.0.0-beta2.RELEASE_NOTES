@@ -1,0 +1,53 @@
+PhoenixDKIM 1.0.0-beta2 release notes
+======================================
+
+Date: 3 June 2026
+
+Security fix
+------------
+
+  - Fix: out-of-bounds write in dkim_getsighdr_d() tag scan (buffer overwrite
+    during header serialisation in the signing path).
+
+
+New features
+------------
+
+  - StdoutLog configuration option and -O flag: redirect all log output to
+    stdout for container deployments (no syslog required).
+  - StrictSignAlgorithm: fail closed when a KeyTable entry specifies an
+    algorithm that does not match the key type — prevents accidentally signing
+    with a weaker algorithm than intended.
+  - DNSSEC validation probe: PhoenixDKIM tests at startup whether the
+    configured resolver performs DNSSEC validation, so unprotected key lookups
+    can be flagged clearly in Authentication-Results.
+  - phoenixdkim-testkey: summarise whole-KeyTable batch result in the exit
+    status, making it suitable for use in deployment health checks.
+  - phoenixdkim-genkey: print the SHA-256 public key fingerprint alongside the
+    generated key so operators can confirm DNS publication.
+
+
+Diagnostics and policy
+-----------------------
+
+  - Warn on RSA signing keys shorter than 2048 bits (RFC 8301).
+  - Warn when BodyLengthDB or MaximumSignedBytes enable l= body-length signing
+    (a known verification hazard).
+  - Parse-time permerror signatures are now annotated with a human-readable
+    reason in the log.
+
+
+Build and packaging
+-------------------
+
+  - Lua policy module enabled by default (WITH_LUA=ON).
+  - Reproducible-build support: honours SOURCE_DATE_EPOCH.
+  - Initial RPM spec for Fedora / RHEL COPR packaging.
+  - Hardened shipped sample configs: From oversigned, MIME headers signed.
+
+
+Documentation
+-------------
+
+  - Key rotation workflow guide.
+  - Expanded "Coming From OpenDKIM / Rspamd" migration guidance.

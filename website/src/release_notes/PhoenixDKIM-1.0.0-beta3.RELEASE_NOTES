@@ -1,0 +1,53 @@
+PhoenixDKIM 1.0.0-beta3 release notes
+======================================
+
+Date: 4 June 2026
+
+
+Metrics and observability
+--------------------------
+
+  - MetricsFile: Prometheus textfile exporter — PhoenixDKIM writes a
+    Prometheus-format counters file to the node_exporter textfile collector
+    directory; no extra library or daemon required.  Switched on by setting
+    MetricsFile in phoenixdkim.conf.
+  - StatsDHost: UDP StatsD exporter — send counters to a StatsD/Graphite
+    endpoint.
+  - LogResults: emit a structured per-message log line with signing /
+    verification outcome, algorithm, key size, and domain.
+  - systemd unit gains ReadWritePaths= for the MetricsFile directory.
+
+
+Build
+------
+
+  - Accept Lua >= 5.4 (not exactly 5.4); fixes builds on distributions
+    shipping Lua 5.5 (e.g. Fedora Rawhide).
+
+
+Website
+--------
+
+  - Documentation guides in docs/ are now rendered into the website and served
+    as the authoritative reference (Quick Start, Key Rotation, Removed
+    Features, Crypto Policy, Multisigning, Metrics).
+  - Website build now warns on dead internal links.
+
+
+Debian packaging
+-----------------
+
+  - Fix dpkg-gencontrol substvar warnings: phoenixdkim-keygen (Perl script)
+    now depends on ${perl:Depends}; phoenixdkim-tools drops stray
+    ${perl:Depends} and ${python3:Depends}.
+  - Gate libbsd-dev on Debian 12 and earlier via
+    "libc6-dev (>= 2.38) | libbsd-dev" — not needed on Trixie+ where
+    strlcpy/strlcat are in glibc.
+
+
+Documentation
+--------------
+
+  - DKIM2 readiness tracker added to docs.
+  - README: table of contents, packages and ports section, build dependency
+    clarifications.

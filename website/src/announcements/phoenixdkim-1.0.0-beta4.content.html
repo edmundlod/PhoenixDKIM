@@ -1,0 +1,49 @@
+<h1>PhoenixDKIM 1.0.0-beta4</h1>
+
+<p> <b>5 June 2026</b> </p>
+
+<p> Beta4 adds internationalised mail (EAI) support, an embedded Prometheus
+metrics endpoint, improved DNSSEC reporting, and several fixes. </p>
+
+<h2> RFC 8616: internationalised mail (EAI) </h2>
+
+<p> PhoenixDKIM can now sign and verify internationalised mail with UTF-8
+header field bodies and U-label (IDN) domains.  Header field names and DKIM
+tag names remain ASCII; UTF-8 body content is validated to RFC 3629 — overlong
+encodings, surrogates, and lone continuations are rejected.  Requires
+<tt>libidn2</tt>; enabled at build time with <tt>-DWITH_LIBIDN2=ON</tt>. </p>
+
+<h2> Embedded /metrics endpoint </h2>
+
+<p> <b>MetricsAddr</b> adds a lightweight opt-in HTTP server that exposes live
+Prometheus-format counters directly, with no external exporter or collector
+required.  Complements the <tt>MetricsFile</tt> textfile exporter introduced
+in beta3. </p>
+
+<h2> DNSSEC reporting </h2>
+
+<p> PhoenixDKIM now distinguishes "DNSSEC validation unavailable" (the resolver
+does not validate) from "not evaluated", and exports the key-record DNSSEC
+status to the Authentication-Results header and milter macros. </p>
+
+<h2> Verification </h2>
+
+<p> The <tt>t=y</tt> testing-key disposition override is now logged with an
+explicit line and header token so operators can see why a failing signature was
+still accepted.  The <tt>t=s</tt> envelope/header alignment and <tt>g=</tt>
+local-part matching are audited against RFC 6376. </p>
+
+<h2> Fixes </h2>
+
+<ul>
+  <li> <p> Fix: free queued DNS replies in the test harness (silences
+       LeakSanitizer). </p> </li>
+  <li> <p> Fix: remove dead unreachable code and unused preprocessor
+       macros. </p> </li>
+</ul>
+
+<p> Full notes:
+<a href="/release_notes/PhoenixDKIM-1.0.0-beta4.RELEASE_NOTES">1.0.0-beta4 release notes</a>;
+source and signatures on the <a href="/download.html">Download</a> page. </p>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>

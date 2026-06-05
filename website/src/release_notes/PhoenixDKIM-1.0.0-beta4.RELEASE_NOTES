@@ -1,0 +1,60 @@
+PhoenixDKIM 1.0.0-beta4 release notes
+======================================
+
+Date: 5 June 2026
+
+
+New features
+------------
+
+  - RFC 8616 (EAI) support: sign and verify internationalised mail with UTF-8
+    header field bodies and U-label domains (IDN).  Header field names and tag
+    names remain ASCII; UTF-8 body content is validated to RFC 3629 (overlong
+    encodings, surrogates, and lone continuations are rejected).  Requires
+    libidn2.
+
+  - MetricsAddr: embedded Prometheus /metrics HTTP endpoint — an opt-in
+    lightweight HTTP server that exposes live counters directly, with no
+    external exporter or collector required.  Disabled unless MetricsAddr is
+    set.  Complements the existing MetricsFile textfile exporter (beta3).
+
+
+DNSSEC
+-------
+
+  - Distinguish "DNSSEC validation unavailable" (resolver does not validate)
+    from "not evaluated" in all log messages.
+  - Export the key-record DNSSEC status to the Authentication-Results header
+    and milter macros so downstream systems can act on it.
+
+
+Verification
+-------------
+
+  - Log the t=y testing-key disposition override with an explicit log line and
+    header token, so operators can see why a failing signature was still
+    accepted.
+  - Audit t=s envelope/header alignment and g= local-part matching against
+    RFC 6376.
+
+
+Fixes
+------
+
+  - Fix: free queued DNS replies in the test harness to silence LeakSanitizer.
+  - Fix: remove dead unreachable code and unused preprocessor macros.
+
+
+Documentation
+--------------
+
+  - Internationalization guide: covers libidn2 dependency, U-label domain
+    configuration, and EAI verification behaviour.
+  - DKIM2 readiness tracker updated and corrected.
+  - Blog: statistics and observability design post.
+
+
+Website
+--------
+
+  - Fedora / RHEL (COPR) packages section added to the Packages &amp; Ports page.

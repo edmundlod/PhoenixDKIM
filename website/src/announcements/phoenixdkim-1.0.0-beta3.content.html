@@ -1,0 +1,37 @@
+<h1>PhoenixDKIM 1.0.0-beta3</h1>
+
+<p> <b>4 June 2026</b> </p>
+
+<p> Beta3 adds metrics and observability support, renders the docs guides into
+the website, and includes build and packaging fixes. </p>
+
+<h2> Metrics and observability </h2>
+
+<ul>
+  <li> <p> <b>MetricsFile</b> — Prometheus textfile exporter: PhoenixDKIM
+       writes a Prometheus-format counters file to the node_exporter textfile
+       collector directory.  No extra library or daemon required; switched on
+       by setting <tt>MetricsFile</tt> in <tt>phoenixdkim.conf</tt>. </p> </li>
+  <li> <p> <b>StatsDHost</b> — UDP StatsD exporter for Graphite / InfluxDB
+       pipelines. </p> </li>
+  <li> <p> <b>LogResults</b> — structured per-message log line with signing /
+       verification outcome, algorithm, key size, and domain. </p> </li>
+</ul>
+
+<h2> Website </h2>
+
+<p> The guides in <tt>docs/</tt> are now rendered into the website and served
+as the authoritative reference — Quick Start, Key Rotation, Removed Features,
+Crypto Policy, Multisigning, and the new Metrics guide.  The website build now
+warns on dead internal links. </p>
+
+<h2> Build </h2>
+
+<p> Lua version requirement relaxed to <tt>&gt;= 5.4</tt> (was exactly 5.4);
+fixes builds on distributions shipping Lua 5.5 such as Fedora Rawhide. </p>
+
+<p> Full notes:
+<a href="/release_notes/PhoenixDKIM-1.0.0-beta3.RELEASE_NOTES">1.0.0-beta3 release notes</a>;
+source and signatures on the <a href="/download.html">Download</a> page. </p>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
