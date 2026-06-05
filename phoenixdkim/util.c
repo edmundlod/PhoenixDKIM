@@ -708,90 +708,6 @@ dkimf_stripcr(char *str)
 }
 
 /*
-**  DKIMF_MKPATH -- generate a path
-**
-**  Parameters:
-**  	path -- output buffer
-**  	pathlen -- bytes available at "path"
-**  	root -- root to infer; if empty, use getcwd()
-**  	file -- filename to use
-**
-**  Return value:
-**  	None.
-*/
-
-void
-dkimf_mkpath(char *path, size_t pathlen, char *root, char *file)
-{
-	assert(path != NULL);
-	assert(root != NULL);
-	assert(file != NULL);
-
-	if (file[0] == '/')				/* explicit path */
-	{
-		strlcpy(path, file, pathlen);
-	}
-	else if (root[0] == '\0')			/* no root, use cwd */
-	{
-		char *p;
-
-		p = getcwd(path, pathlen);
-		if (p == NULL)
-			strlcpy(path, "./", pathlen);
-		else
-			strlcat(path, "/", pathlen);
-		strlcat(path, file, pathlen);
-	}
-	else						/* use root */
-	{
-		strlcpy(path, root, pathlen);
-		if (root[strlen(root) - 1] != '/')
-			strlcat(path, "/", pathlen);
-		strlcat(path, file, pathlen);
-	}
-}
-
-/*
-**  DKIMF_HOSTLIST -- see if a hostname is in a pattern of hosts/domains
-**
-**  Parameters:
-**  	host -- hostname to compare
-**   	list -- NULL-terminated char * array to search
-**
-**  Return value:
-**  	TRUE iff either "host" was in the list or it match a domain pattern
-**  	found in the list.
-*/
-
-_Bool
-dkimf_hostlist(char *host, char **list)
-{
-	int c;
-	char *p;
-
-	assert(host != NULL);
-	assert(list != NULL);
-
-	/* walk the entire list */
-	for (c = 0; list[c] != NULL; c++)
-	{
-		/* first try a full hostname match */
-		if (strcasecmp(host, list[c]) == 0)
-			return TRUE;
-
-		/* try each domain */
-		for (p = strchr(host, '.'); p != NULL; p = strchr(p + 1, '.'))
-		{
-			if (strcasecmp(p, list[c]) == 0)
-				return TRUE;
-		}
-	}
-
-	/* not found */
-	return FALSE;
-}
-
-/*
 **  DKIMF_DSTRING_RESIZE -- resize a dynamic string (dstring)
 **
 **  Parameters:
@@ -1150,29 +1066,6 @@ dkimf_dstring_blank(struct dkimf_dstring *dstr)
 }
 
 /*
-**  DKIMF_DSTRING_CHOP -- truncate contents of a dstring
-**
-**  Parameters:
-**  	dstr -- DKIMF_DSTRING handle whose string should be cleared
-**  	len -- length after which to clobber
-**
-**  Return value:
-**  	None.
-*/
-
-void
-dkimf_dstring_chop(struct dkimf_dstring *dstr, int len)
-{
-	assert(dstr != NULL);
-
-	if (len < dstr->ds_len)
-	{
-		dstr->ds_len = len;
-		dstr->ds_buf[len] = '\0';
-	}
-}
-
-/*
 **  DKIMF_DSTRING_PRINTF -- write variable length formatted output to a dstring
 **
 **  Parameters:
@@ -1474,40 +1367,6 @@ dkimf_base64_encode_file(int infd, FILE *out, int lm, int rm, int initial)
 			fputc(alphabet[(bits >> 6) & 0x3f], out);
 		fputc('=', out);
 	}
-}
-
-/*
-**  DKIMF_SUBDOMAIN -- determine whether or not one domain is a subdomain
-**                     of the other
-**
-**  Parameters:
-**  	d1 -- candidate domain
-**  	d2 -- possible superdomain
-**
-**  Return value:
-**  	TRUE iff d1 is a subdomain of d2.
-*/
-
-_Bool
-dkimf_subdomain(char *d1, char *d2)
-{
-	char *p;
-
-	assert(d1 != NULL);
-	assert(d2 != NULL);
-
-#if 0
-	if (strcasecmp(d1, d2) == 0)
-		return TRUE;
-#endif /* 0 */
-
-	for (p = strchr(d1, '.'); p != NULL; p = strchr(p + 1, '.'))
-	{
-		if (strcasecmp(d2, p + 1) == 0)
-			return TRUE;
-	}
-
-	return FALSE;
 }
 
 /*
