@@ -100,10 +100,15 @@ MISSING SIGNER / VERIFIER FEATURES TO CONSIDER
   phoenixdkim.conf.5 and docs/metrics.md. Removes the need for the
   node_exporter textfile collector and its permissions dance; (d) ship a
   contrib/grafana/ dashboard JSON.
-- DKIM key-record DNSSEC reporting clarity: we already downgrade/penalise
-  non-DNSSEC key records (UnprotectedKey). Confirm the AR output distinguishes
-  "key record unprotected" from "validation unavailable" so operators can tell
-  the two apart (the warning text exists; verify the AR comment does too).
+- [DONE] DKIM key-record DNSSEC reporting clarity: we already downgrade/penalise
+  non-DNSSEC key records (UnprotectedKey). Verified the AR output now
+  distinguishes the cases (phoenixdkim.c dkimf_ar_all_sigs): "insecure" =
+  provably no DNSSEC, "bogus" = DNSSEC present but validation failed, and the
+  new "validation unavailable" token = the local resolver does not validate so
+  AD=0 is unknowable (previously emitted nothing, which read identically to
+  "not evaluated"). Same outcome is exported as
+  phoenixdkim_dnssec_keys_total{status="secure|insecure|bogus|unavailable|
+  unknown"} for Prometheus/StatsD. (Commit deac76ad.)
 - [DONE] Per-result logging/observability: LogResults now also emits a
   structured one-line "summary action=... result=... d=... a=... sigs=..."
   per message (signing and verifying), the human-readable companion to the
