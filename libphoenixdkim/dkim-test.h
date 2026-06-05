@@ -15,5 +15,6 @@
 extern size_t dkim_test_dns_get(DKIM *, u_char *, size_t);
 extern int dkim_test_dns_put(DKIM *, int, int, int, const u_char *,
                                   const u_char *);
+extern void dkim_test_dns_flush(DKIM *);
 
 #endif /* ! _DKIM_TEST_H_ */

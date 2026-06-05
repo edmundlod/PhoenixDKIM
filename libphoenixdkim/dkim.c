@@ -74,6 +74,7 @@
 #include "dkim-types.h"
 #include "dkim-tables.h"
 #include "dkim-keys.h"
+#include "dkim-test.h"
 #include "dkim-report.h"
 #include "dkim-util.h"
 #include "dkim-canon.h"
@@ -4844,6 +4845,9 @@ dkim_free(DKIM *dkim)
 	{
 		return DKIM_STAT_INVALID;
 	}
+
+	/* release any queued test DNS replies (no-op in production) */
+	dkim_test_dns_flush(dkim);
 
 	/* blast the headers */
 	if (dkim->dkim_resign == NULL && dkim->dkim_hhead != NULL)
