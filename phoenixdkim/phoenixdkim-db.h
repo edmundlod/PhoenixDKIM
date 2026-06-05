@@ -73,14 +73,11 @@ typedef struct dkimf_db_data * DKIMF_DBDATA;
 
 /* prototypes */
 extern int dkimf_db_close(DKIMF_DB);
-extern int dkimf_db_delete(DKIMF_DB, void *, size_t);
-extern void dkimf_db_flags(unsigned int);
 extern int dkimf_db_get(DKIMF_DB, const void *, size_t,
                              DKIMF_DBDATA, unsigned int, _Bool *);
 extern int dkimf_db_mkarray(DKIMF_DB, char ***, const char **);
 extern int dkimf_db_open(DKIMF_DB *, char *, u_int flags,
                               pthread_mutex_t *, const char **);
-extern int dkimf_db_put(DKIMF_DB, void *, size_t, void *, size_t);
 extern int dkimf_db_rewalk(DKIMF_DB, char *, DKIMF_DBDATA, unsigned int,
                                 void **);
 extern int dkimf_db_strerror(DKIMF_DB, char *, size_t);

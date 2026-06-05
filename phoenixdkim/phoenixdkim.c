@@ -603,7 +603,6 @@ _Bool init_checksigningtable;			/* initializing value for CheckSigningTable */
 _Bool use_cf_checksigningtable;			/* use CheckSigningTable from config file? */
 _Bool die;					/* global "die" flag */
 int diesig;					/* signal to distribute */
-int thread_count;				/* thread count */
 char *progname;					/* program name */
 char *sock;					/* listening socket */
 const char *conffile;				/* configuration file */

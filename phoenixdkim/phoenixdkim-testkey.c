@@ -66,9 +66,6 @@ int usage(void);
 
 /* globals */
 char *progname;
-#ifdef USE_UNBOUND
-struct dkimf_unbound *unbound;			/* libunbound handle */
-#endif /* USE_UNBOUND */
 
 /*
 **  DKIMF_LOG_SSL_ERRORS -- log any queued SSL library errors

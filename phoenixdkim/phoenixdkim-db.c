@@ -227,9 +227,6 @@ struct dkimf_db_table dbtypes[] =
 };
 
 
-/* globals */
-static unsigned int gflags = 0;
-
 #ifdef HAVE_LIBCURL
 /* global HTTP backend parameters, owned by the active configuration */
 static const char *	s_http_token = NULL;
@@ -240,23 +237,6 @@ static const char *	s_vault_token = NULL;
 static const char *	s_vault_field = NULL;
 static const char *	s_vault_selfield = NULL;
 #endif /* HAVE_LIBCURL */
-
-
-/*
-**  DKIMF_DB_FLAGS -- set global flags
-**
-**  Parameters:
-**  	flags -- new global flag mask
-**
-**  Return value:
-**  	None.
-*/
-
-void
-dkimf_db_flags(unsigned int flags)
-{
-	gflags = flags;
-}
 
 
 #ifdef HAVE_LIBCURL
@@ -1307,7 +1287,7 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 
 	memset(new, '\0', sizeof(struct dkimf_db));
 
-	new->db_flags = (flags | gflags);
+	new->db_flags = flags;
 	new->db_type = DKIMF_DB_TYPE_UNKNOWN;
 
 	/* a leading '[' means a bracketed IPv6 address, not a type: prefix */
@@ -2341,110 +2321,6 @@ dkimf_db_open(DKIMF_DB *db, char *name, u_int flags, pthread_mutex_t *lock,
 
 	*db = new;
 	return 0;
-}
-
-/*
-**  DKIMF_DB_DELETE -- delete a key/data pair from an open database
-**
-**  Parameters:
-**  	db -- DB handle to use for searching
-**  	buf -- pointer to record to be deleted
-**  	buflen -- size of record at "buf"; if 0, use strlen()
-**
-**  Return value:
-**  	0 -- operation successful
-**	!0 -- error occurred; error code returned
-*/
-
-int
-dkimf_db_delete(DKIMF_DB db, void *buf, size_t buflen)
-{
-	int ret = EINVAL;
-
-	(void) buf;
-	(void) buflen;
-	assert(db != NULL);
-	assert(buf != NULL);
-
-	if (db->db_type == DKIMF_DB_TYPE_FILE ||
-	    db->db_type == DKIMF_DB_TYPE_CSL ||
-	    db->db_type == DKIMF_DB_TYPE_LUA ||
-	    db->db_type == DKIMF_DB_TYPE_REFILE)
-		return EINVAL;
-
-	return ret;
-}
-
-/*
-**  DKIMF_DB_PUT -- store a key/data pair in an open database
-**
-**  Parameters:
-**  	db -- DB handle to use for searching
-**  	buf -- pointer to key record
-**  	buflen -- size of key (use strlen() if 0)
-**  	outbuf -- data buffer
-**  	outbuflen -- number of bytes at outbuf to use as data
-**
-**  Return value:
-**  	0 -- operation successful
-**	!0 -- error occurred; error code returned
-*/
-
-int
-dkimf_db_put(DKIMF_DB db, void *buf, size_t buflen,
-             void *outbuf, size_t outbuflen)
-{
-	int ret = EINVAL;
-#ifdef USE_MDB
-	MDB_val key;
-	MDB_val data;
-	MDB_dbi dbi;
-	MDB_txn *txn;
-	struct dkimf_db_mdb *mdb;
-#endif /* USE_MDB */
-
-	assert(db != NULL);
-	assert(buf != NULL);
-	assert(outbuf != NULL);
-
-	if (db->db_type == DKIMF_DB_TYPE_FILE ||
-	    db->db_type == DKIMF_DB_TYPE_CSL ||
-	    db->db_type == DKIMF_DB_TYPE_LUA ||
-	    db->db_type == DKIMF_DB_TYPE_REFILE)
-		return EINVAL;
-
-
-#ifdef USE_MDB
-	mdb = db->db_data;
-
-	if (db->db_lock != NULL)
-		(void) pthread_mutex_lock(db->db_lock);
-
-	key.mv_data = outbuf;
-	key.mv_size = outbuflen;
-	data.mv_data = (char *) buf;
-	data.mv_size = (buflen == 0 ? strlen(buf) : buflen);
-
-	if (mdb_txn_begin(mdb->mdb_env, NULL, 0, &txn) == 0 &&
-	    mdb_dbi_open(txn, NULL, 0, &dbi) == 0 &&
-	    mdb_put(txn, dbi, &key, &data, 0) == 0)
-		ret = 0;
-	else
-		ret = -1;
-
-	if (txn != NULL)
-	{
-		if (ret == 0)
-			mdb_txn_commit(txn);
-		else
-			mdb_txn_abort(txn);
-	}
-
-	if (db->db_lock != NULL)
-		(void) pthread_mutex_unlock(db->db_lock);
-#endif /* USE_MDB */
-
-	return ret;
 }
 
 /*
