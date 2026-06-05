@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Edmund Lodewijks <edmund@proteamail.com>
 Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  libmilter-dev, liblmdb-dev,  libunbound-dev [linux-any],
- liblua5.4-dev, libssl-dev (>=3.0.0),
+ liblua5.4-dev, libssl-dev (>=3.0.0), libidn2-dev,
  libc6-dev (>= 2.38) | libbsd-dev,
  libevent-dev, nettle-dev, libhiredis-dev, libcurl4-openssl-dev,
  libsystemd-dev [linux-any]

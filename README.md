@@ -106,6 +106,8 @@ To build the library and filter you will need:
 - LMDB
 - libmilter (from Sendmail or as a standalone package)
 - libresolv
+- libidn2 — RFC 8616 U-label (internationalized) signing-domain resolution
+  (default ON; `-DWITH_IDN=OFF` to build without)
 
 Optional:
 
@@ -121,7 +123,7 @@ Optional:
 
 ```
 apt install build-essential cmake libssl-dev liblmdb-dev \
-            libmilter-dev liblua5.4-dev libsystemd-dev
+            libmilter-dev liblua5.4-dev libidn2-dev libsystemd-dev
 # Only on Debian 12 or lower, or Ubuntu 23.04 or lower
 apt install libbsd-dev
 # optional
@@ -132,7 +134,7 @@ apt install libcurl4-openssl-dev libhiredis-dev
 
 ```
 dnf install gcc cmake openssl-devel lmdb-devel sendmail-devel \
-            lua-devel systemd-devel
+            lua-devel libidn2-devel systemd-devel
 # Only on Fedora 37 or lower, or EPEL 9 or lower
 dnf install libbsd-devel
 # optional
@@ -142,7 +144,7 @@ dnf install libcurl-devel hiredis-devel
 ### FreeBSD
 
 ```
-pkg install cmake openssl lmdb milter lua54
+pkg install cmake openssl lmdb milter lua54 libidn2
 # optional
 pkg install curl hiredis
 ```
@@ -152,7 +154,7 @@ pkg install curl hiredis
 LibreSSL and `strlcpy` are in the base system — no crypto or BSD-compat package needed.
 
 ```
-pkg_add git cmake lmdb libmilter lua%5.4
+pkg_add git cmake lmdb libmilter lua%5.4 libidn2
 # optional
 pkg_add unbound libevent
 ```

@@ -17,6 +17,7 @@ BuildRequires:  pkgconfig
 BuildRequires:  sendmail-milter-devel
 BuildRequires:  lmdb-devel
 BuildRequires:  unbound-devel
+BuildRequires:  libidn2-devel
 BuildRequires:  lua-devel
 BuildRequires:  openssl-devel >= 3.0
 BuildRequires:  libevent-devel
