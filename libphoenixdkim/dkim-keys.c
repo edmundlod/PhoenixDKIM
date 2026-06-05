@@ -38,6 +38,11 @@
 # include <strl.h>
 #endif /* USE_STRL_H */
 
+/* libidn2 if found */
+#ifdef USE_IDN
+# include <idn2.h>
+#endif /* USE_IDN */
+
 /* prototypes */
 extern void dkim_error(DKIM *, const char *, ...);
 
@@ -51,6 +56,86 @@ extern void dkim_error(DKIM *, const char *, ...);
 #ifndef T_RRSIG
 # define T_RRSIG		46
 #endif /* ! T_RRSIG */
+
+/*
+**  DKIM_DOMAIN_DNSFORM -- render a (possibly U-label) signing domain in the
+**                         ASCII form used for DNS key lookups
+**
+**  Parameters:
+**  	dkim -- DKIM handle (for error reporting)
+**  	domain -- signing domain (d=) as it appears in the signature; may
+**  	          contain UTF-8 U-labels (RFC 8616)
+**  	out -- buffer into which to write the A-label (ASCII) form
+**  	outlen -- bytes available at "out"
+**
+**  Return value:
+**  	A DKIM_STAT_* constant.
+**
+**  Notes:
+**  	A pure-ASCII domain is copied verbatim.  A domain containing UTF-8
+**  	is converted to its A-label (xn--) form with libidn2 so the query
+**  	uses the canonical ASCII name.  The signature's d= value is never
+**  	modified: RFC 8616 requires the signed hash to use the domain in the
+**  	exact form it appears in the header, so this conversion is local to
+**  	the key lookup.  When built without libidn2 (-DWITH_IDN=OFF) a
+**  	U-label domain cannot be resolved and DKIM_STAT_SYNTAX is returned.
+*/
+
+static DKIM_STAT
+dkim_domain_dnsform(DKIM *dkim, const u_char *domain, char *out, size_t outlen)
+{
+	const u_char *p;
+	_Bool ascii = TRUE;
+
+	assert(domain != NULL);
+	assert(out != NULL);
+
+	for (p = domain; *p != '\0'; p++)
+	{
+		if (*p >= 0x80)
+		{
+			ascii = FALSE;
+			break;
+		}
+	}
+
+	if (ascii)
+	{
+		if (strlcpy(out, (const char *) domain, outlen) >= outlen)
+			return DKIM_STAT_NORESOURCE;
+		return DKIM_STAT_OK;
+	}
+
+#ifdef USE_IDN
+	{
+		char *alabel = NULL;
+		int rc;
+
+		rc = idn2_to_ascii_8z((const char *) domain, &alabel,
+		                      IDN2_NONTRANSITIONAL | IDN2_NFC_INPUT);
+		if (rc != IDN2_OK || alabel == NULL)
+		{
+			dkim_error(dkim, "IDN conversion of '%s' failed: %s",
+			           domain, idn2_strerror(rc));
+			return DKIM_STAT_SYNTAX;
+		}
+
+		if (strlcpy(out, alabel, outlen) >= outlen)
+		{
+			idn2_free(alabel);
+			return DKIM_STAT_NORESOURCE;
+		}
+
+		idn2_free(alabel);
+		return DKIM_STAT_OK;
+	}
+#else /* USE_IDN */
+	dkim_error(dkim,
+	           "U-label domain '%s' requires libidn2 (build with WITH_IDN)",
+	           domain);
+	return DKIM_STAT_SYNTAX;
+#endif /* USE_IDN */
+}
 
 /*
 **  DKIM_GET_KEY_DNS -- retrieve a DKIM key from DNS
@@ -98,8 +183,18 @@ dkim_get_key_dns(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 
 	lib = dkim->dkim_libhandle;
 
-	n = snprintf((char *) qname, sizeof qname, "%s.%s.%s",
-	             sig->sig_selector, DKIM_DNSKEYNAME, sig->sig_domain);
+	{
+		char dnsdomain[DKIM_MAXHOSTNAMELEN + 1];
+		DKIM_STAT cstat;
+
+		cstat = dkim_domain_dnsform(dkim, sig->sig_domain,
+		                            dnsdomain, sizeof dnsdomain);
+		if (cstat != DKIM_STAT_OK)
+			return cstat;
+
+		n = snprintf((char *) qname, sizeof qname, "%s.%s.%s",
+		             sig->sig_selector, DKIM_DNSKEYNAME, dnsdomain);
+	}
 	if (n == -1 || (size_t) n >= sizeof qname)
 	{
 		dkim_error(dkim, "key query name too large");
@@ -445,8 +540,21 @@ dkim_get_key_file(DKIM *dkim, DKIM_SIGINFO *sig, u_char *buf, size_t buflen)
 		return DKIM_STAT_KEYFAIL;
 	}
 
-	n = snprintf(name, sizeof name, "%s.%s.%s", sig->sig_selector,
-	             DKIM_DNSKEYNAME, sig->sig_domain);
+	{
+		char dnsdomain[DKIM_MAXHOSTNAMELEN + 1];
+		DKIM_STAT cstat;
+
+		cstat = dkim_domain_dnsform(dkim, sig->sig_domain,
+		                            dnsdomain, sizeof dnsdomain);
+		if (cstat != DKIM_STAT_OK)
+		{
+			fclose(f);
+			return cstat;
+		}
+
+		n = snprintf(name, sizeof name, "%s.%s.%s", sig->sig_selector,
+		             DKIM_DNSKEYNAME, dnsdomain);
+	}
 	if (n == -1 || (size_t) n >= sizeof name)
 	{
 		dkim_error(dkim, "key query name too large");

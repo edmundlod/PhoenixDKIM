@@ -176,6 +176,40 @@ if(WITH_UNBOUND)
     endif()
 endif()
 
+# ── libidn2 (RFC 8616 U-label <-> A-label for internationalized domains) ─────
+# Default ON and treated as a dependency: libidn2 is packaged on Linux and the
+# BSDs.  Reconfigure with -DWITH_IDN=OFF to build without U-label resolution
+# (a signature whose d= is a U-label then fails its key lookup).
+option(WITH_IDN "Enable libidn2 for RFC 8616 U-label domain resolution" ON)
+
+if(WITH_IDN)
+    pkg_check_modules(IDN2 IMPORTED_TARGET libidn2)
+
+    if(NOT IDN2_FOUND)
+        # Fallback for systems without pkg-config (BSD/macOS)
+        find_path(IDN2_INCLUDE_DIR NAMES idn2.h)
+        find_library(IDN2_LIBRARY NAMES idn2)
+        if(IDN2_INCLUDE_DIR AND IDN2_LIBRARY)
+            set(IDN2_FOUND TRUE)
+            add_library(PkgConfig::IDN2 UNKNOWN IMPORTED)
+            set_target_properties(PkgConfig::IDN2 PROPERTIES
+                IMPORTED_LOCATION "${IDN2_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${IDN2_INCLUDE_DIR}"
+            )
+        endif()
+    endif()
+
+    if(IDN2_FOUND)
+        message(STATUS "libidn2 found: enabling RFC 8616 U-label support")
+        set(USE_IDN 1)
+    else()
+        message(FATAL_ERROR
+            "libidn2 not found but WITH_IDN=ON. Install libidn2-dev / "
+            "libidn2-devel, or reconfigure with -DWITH_IDN=OFF to build "
+            "without RFC 8616 U-label domain resolution.")
+    endif()
+endif()
+
 # ── strlcpy / strlcat detection ───────────────────────────────────────────────
 # Detection order per SCOPE.md:
 #   1. system libc (glibc 2.38+, FreeBSD, OpenBSD) → no extra library needed
@@ -376,6 +410,12 @@ function(configure_phoenixdkim_target tgt)
         )
     endif()
 
+    if(IDN2_FOUND)
+        target_include_directories(${tgt} PRIVATE ${IDN2_INCLUDE_DIRS})
+        target_link_libraries(${tgt} PRIVATE PkgConfig::IDN2)
+        target_compile_definitions(${tgt} PRIVATE USE_IDN=1)
+    endif()
+
     if(RESOLV_LIBRARY)
         target_link_libraries(${tgt} PRIVATE ${RESOLV_LIBRARY})
     endif()
@@ -416,6 +456,10 @@ set(PHOENIXDKIM_PC_PRIVATE_LIBS "")
 
 if(UNBOUND_FOUND)
     string(APPEND PHOENIXDKIM_PC_REQUIRES_PRIVATE " libunbound")
+endif()
+
+if(IDN2_FOUND)
+    string(APPEND PHOENIXDKIM_PC_REQUIRES_PRIVATE " libidn2")
 endif()
 
 if(LMDB_FOUND AND PKG_CONFIG_FOUND)

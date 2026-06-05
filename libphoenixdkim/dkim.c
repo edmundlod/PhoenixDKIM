@@ -407,6 +407,73 @@ dkim_add_plist(DKIM *dkim, DKIM_SET *set, const u_char *param,
 }
 
 /*
+**  DKIM_UTF8_SEQLEN -- validate one UTF-8 byte sequence (RFC 3629)
+**
+**  Parameters:
+**  	p -- pointer to the first byte of the sequence
+**  	avail -- number of bytes available at "p"
+**
+**  Return value:
+**  	The length (1-4) of the well-formed UTF-8 sequence beginning at "p",
+**  	or 0 if the bytes there do not form a valid RFC 3629 sequence.  An
+**  	ASCII byte (< 0x80) returns 1.
+**
+**  Notes:
+**  	Rejects overlong encodings, UTF-16 surrogate code points, values
+**  	above U+10FFFF, lone/leading continuation bytes, and sequences
+**  	truncated by "avail".  RFC 8616 permits well-formed UTF-8 (the
+**  	UTF8-2/3/4 productions of RFC 3629) in internationalized header
+**  	field bodies and in tag values such as the i= local-part.
+*/
+
+static int
+dkim_utf8_seqlen(const unsigned char *p, size_t avail)
+{
+	unsigned char b0;
+
+	if (avail == 0)
+		return 0;
+
+	b0 = p[0];
+
+	if (b0 < 0x80)				/* ASCII */
+		return 1;
+	if (b0 < 0xc2)				/* 0x80-0xc1: continuation/overlong */
+		return 0;
+	if (b0 < 0xe0)				/* 0xc2-0xdf: 2-byte */
+	{
+		if (avail < 2 || (p[1] & 0xc0) != 0x80)
+			return 0;
+		return 2;
+	}
+	if (b0 < 0xf0)				/* 0xe0-0xef: 3-byte */
+	{
+		if (avail < 3 ||
+		    (p[1] & 0xc0) != 0x80 || (p[2] & 0xc0) != 0x80)
+			return 0;
+		if (b0 == 0xe0 && p[1] < 0xa0)	/* overlong */
+			return 0;
+		if (b0 == 0xed && p[1] > 0x9f)	/* UTF-16 surrogate */
+			return 0;
+		return 3;
+	}
+	if (b0 < 0xf5)				/* 0xf0-0xf4: 4-byte */
+	{
+		if (avail < 4 ||
+		    (p[1] & 0xc0) != 0x80 || (p[2] & 0xc0) != 0x80 ||
+		    (p[3] & 0xc0) != 0x80)
+			return 0;
+		if (b0 == 0xf0 && p[1] < 0x90)	/* overlong */
+			return 0;
+		if (b0 == 0xf4 && p[1] > 0x8f)	/* > U+10FFFF */
+			return 0;
+		return 4;
+	}
+
+	return 0;				/* 0xf5-0xff: invalid */
+}
+
+/*
 **  DKIM_PROCESS_SET -- process a parameter set, i.e. a string of the form
 **                      param=value[; param=value]*
 **
@@ -431,6 +498,8 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, const u_char *str, size_t len,
 	_Bool spaced;
 	int state;
 	int status;
+	int sl;
+	int utf8_cont;
 	u_char *p;
 	u_char *param;
 	u_char *value;
@@ -449,6 +518,7 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, const u_char *str, size_t len,
 	value = NULL;
 	state = 0;
 	spaced = FALSE;
+	utf8_cont = 0;
 
 	/* reject pathological len so that len + 1 cannot wrap to 0 and
 	   turn DKIM_MALLOC into malloc(0) (which on some allocators
@@ -499,7 +569,51 @@ dkim_process_set(DKIM *dkim, dkim_set_t type, const u_char *str, size_t len,
 
 	for (p = hcopy; *p != '\0'; p++)
 	{
-		if (!isascii(*p) || (!isprint(*p) && !isspace(*p)))
+		if (*p >= 0x80)
+		{
+			/*
+			**  RFC 8616: well-formed UTF-8 is permitted in tag
+			**  VALUES (e.g. a UTF-8 i= local-part or U-label d=),
+			**  but tag names remain ASCII.  states 0/1 are the
+			**  tag-name context, 2/3 the value context.  The lead
+			**  byte validates the whole sequence; utf8_cont then
+			**  counts down its continuation bytes so the parser
+			**  state machine below still sees the lead byte.
+			*/
+			if (state < 2)
+			{
+				dkim_error(dkim,
+				           "non-ASCII byte (0x%02x at offset %d) in %s tag name",
+				           *p, p - hcopy, settype);
+				if (syntax)
+					dkim_set_free(dkim, set);
+				else
+					set->set_bad = TRUE;
+				return DKIM_STAT_SYNTAX;
+			}
+
+			if (utf8_cont > 0)
+			{
+				utf8_cont--;
+			}
+			else
+			{
+				sl = dkim_utf8_seqlen(p, strlen((const char *) p));
+				if (sl < 2)
+				{
+					dkim_error(dkim,
+					           "malformed UTF-8 (0x%02x at offset %d) in %s data",
+					           *p, p - hcopy, settype);
+					if (syntax)
+						dkim_set_free(dkim, set);
+					else
+						set->set_bad = TRUE;
+					return DKIM_STAT_SYNTAX;
+				}
+				utf8_cont = sl - 1;
+			}
+		}
+		else if (utf8_cont > 0 || (!isprint(*p) && !isspace(*p)))
 		{
 			dkim_error(dkim,
 			           "invalid character (ASCII 0x%02x at offset %d) in %s data",
@@ -5935,12 +6049,33 @@ dkim_header(DKIM *dkim, const u_char *hdr, size_t len)
 		}
 		else
 		{
-			/* field bodies are printable ASCII, SP, HT, CR, LF */
-			if (!(hdr[c] == 9 ||  /* HT */
-			      hdr[c] == 10 || /* LF */
-			      hdr[c] == 13 || /* CR */
-			      (hdr[c] >= 32 && hdr[c] <= 126) /* SP, print */ ))
+			/*
+			**  Field bodies are printable ASCII plus SP, HT, CR,
+			**  LF.  RFC 8616 additionally permits well-formed UTF-8
+			**  (RFC 3629 UTF8-2/3/4) for internationalized mail;
+			**  the whole multi-byte sequence is validated here and
+			**  the loop index advanced past its continuation bytes.
+			*/
+			if (hdr[c] == 9 ||  /* HT */
+			    hdr[c] == 10 || /* LF */
+			    hdr[c] == 13 || /* CR */
+			    (hdr[c] >= 32 && hdr[c] <= 126)) /* SP, print */
+			{
+				/* allowed ASCII */
+			}
+			else if (hdr[c] >= 0x80)
+			{
+				int sl;
+
+				sl = dkim_utf8_seqlen(&hdr[c], len - c);
+				if (sl == 0)
+					return DKIM_STAT_SYNTAX;
+				c += (size_t) sl - 1;
+			}
+			else
+			{
 				return DKIM_STAT_SYNTAX;
+			}
 		}
 	}
 

@@ -215,7 +215,7 @@ endif()
 # carries "ON"/"OFF", so emit a consistent boolean rather than the raw value.
 set(CONFIGURE_ARGS
     "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
-foreach(_opt WITH_LUA WITH_REDIS WITH_CURL WITH_UNBOUND)
+foreach(_opt WITH_LUA WITH_REDIS WITH_CURL WITH_UNBOUND WITH_IDN)
     if(${_opt})
         string(APPEND CONFIGURE_ARGS " -D${_opt}=ON")
     else()
