@@ -65,6 +65,63 @@
 #define MAXPACKET		8192
 
 /*
+**  DKIM_TEST_DNS_FREE -- release a queued test DNS record and its strings
+**
+**  Parameters:
+**  	dkim -- DKIM handle
+**  	td -- record to free (may be NULL)
+**
+**  Return value:
+**  	None.
+*/
+
+static void
+dkim_test_dns_free(DKIM *dkim, struct dkim_test_dns_data *td)
+{
+	if (td == NULL)
+		return;
+
+	if (td->dns_query != NULL)
+		DKIM_FREE(dkim, td->dns_query);
+	if (td->dns_reply != NULL)
+		DKIM_FREE(dkim, td->dns_reply);
+	DKIM_FREE(dkim, td);
+}
+
+/*
+**  DKIM_TEST_DNS_FLUSH -- release any test DNS replies still queued
+**
+**  Parameters:
+**  	dkim -- DKIM handle
+**
+**  Return value:
+**  	None.
+**
+**  Notes:
+**  	Called from dkim_free() so replies queued with dkim_test_dns_put()
+**  	but never dequeued do not leak.  A no-op in production, where no
+**  	replies are ever queued.
+*/
+
+void
+dkim_test_dns_flush(DKIM *dkim)
+{
+	struct dkim_test_dns_data *td;
+	struct dkim_test_dns_data *next;
+
+	assert(dkim != NULL);
+
+	for (td = dkim->dkim_dnstesth; td != NULL; td = next)
+	{
+		next = td->dns_next;
+		dkim_test_dns_free(dkim, td);
+	}
+
+	dkim->dkim_dnstesth = NULL;
+	dkim->dkim_dnstestt = NULL;
+}
+
+/*
 **  DKIM_TEST_DNS_PUT -- enqueue a DNS reply for automated testing
 **
 **  Parameters:
@@ -92,6 +149,7 @@ dkim_test_dns_put(DKIM *dkim, int class, int type, int prec,
 	td = (struct dkim_test_dns_data *) DKIM_MALLOC(dkim, sizeof *td);
 	if (td == NULL)
 		return -1;
+	memset(td, '\0', sizeof *td);
 
 	td->dns_class = class;
 	td->dns_type = type;
@@ -100,7 +158,7 @@ dkim_test_dns_put(DKIM *dkim, int class, int type, int prec,
 	td->dns_query = dkim_strdup(dkim, name, 0);
 	if (td->dns_query == NULL)
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return -1;
 	}
 
@@ -109,8 +167,7 @@ dkim_test_dns_put(DKIM *dkim, int class, int type, int prec,
 		td->dns_reply = dkim_strdup(dkim, data, 0);
 		if (td->dns_reply == NULL)
 		{
-			DKIM_FREE(dkim, td->dns_query);
-			DKIM_FREE(dkim, td);
+			dkim_test_dns_free(dkim, td);
 			return -1;
 		}
 	}
@@ -174,7 +231,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	n = dn_comp((char *) td->dns_query, cp, end - cp, NULL, NULL);
 	if (n < 0)
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return (size_t)-1;
 	}
 	cp += n;
@@ -185,7 +242,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	*/
 	if (cp >= end || (size_t) (end - cp) < 2 * sizeof(uint16_t))
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return (size_t)-1;
 	}
 
@@ -195,7 +252,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	/* short-circuit? */
 	if (hdr.rcode == NXDOMAIN)
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 
 		memcpy(buf, answer, buflen);
 
@@ -206,7 +263,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	n = dn_comp((char *) td->dns_query, cp, end - cp, NULL, NULL);
 	if (n < 0)
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return (size_t)-1;
 	}
 	cp += n;
@@ -215,7 +272,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 	if (cp >= end ||
 	    (size_t) (end - cp) < 2 * sizeof(uint16_t) + sizeof(uint32_t))
 	{
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return (size_t)-1;
 	}
 
@@ -235,7 +292,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		if (cp >= end ||
 		    (size_t) (end - cp) < (size_t) len + sizeof(uint16_t))
 		{
-			DKIM_FREE(dkim, td);
+			dkim_test_dns_free(dkim, td);
 			return (size_t)-1;
 		}
 		DKIM_PUTSHORT(len, cp);
@@ -260,14 +317,14 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		/* see above: cp >= end short-circuits the signed ptrdiff comparison */
 		if (cp >= end || (size_t) (end - cp) < sizeof(uint16_t))
 		{
-			DKIM_FREE(dkim, td);
+			dkim_test_dns_free(dkim, td);
 			return (size_t)-1;
 		}
 		DKIM_PUTSHORT(td->dns_prec, cp);
 		n = dn_comp((char *) td->dns_reply, cp, end - cp, NULL, NULL);
 		if (n < 0)
 		{
-			DKIM_FREE(dkim, td);
+			dkim_test_dns_free(dkim, td);
 			return (size_t)-1;
 		}
 
@@ -275,7 +332,7 @@ dkim_test_dns_get(DKIM *dkim, u_char *buf, size_t buflen)
 		break;
 
 	  default:
-		DKIM_FREE(dkim, td);
+		dkim_test_dns_free(dkim, td);
 		return (size_t)-1;
 	}
 
