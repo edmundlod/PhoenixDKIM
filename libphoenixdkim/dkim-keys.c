@@ -43,9 +43,6 @@
 # include <idn2.h>
 #endif /* USE_IDN */
 
-/* prototypes */
-extern void dkim_error(DKIM *, const char *, ...);
-
 /* local definitions needed for DNS queries */
 #define MAXPACKET		8192
 #if defined(__RES) && (__RES >= 19940415)

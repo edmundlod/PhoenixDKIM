@@ -142,6 +142,7 @@ struct dkim_canon;
 typedef struct dkim_canon DKIM_CANON;
 
 /* prototypes */
+extern void dkim_error(DKIM *, const char *, ...);
 extern DKIM_STAT dkim_process_set(DKIM *, dkim_set_t, const u_char *,
                                        size_t, void *, _Bool, const char *);
 extern DKIM_STAT dkim_siglist_setup(DKIM *);
