@@ -4727,9 +4727,10 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
                       const char *signer, ssize_t signlen)
 {
 	_Bool found = FALSE;
+	int result = -1;
 	size_t keydatasz = 0;
 	struct dkimf_db_data dbd[4];
-	char keydata[MAXBUFRSZ + 1];
+	char *keydata = NULL;
 	char domain[DKIM_MAXHOSTNAMELEN + 1];
 	char selector[BUFRSZ + 1];
 	char algorithm[BUFRSZ + 1];
@@ -4781,9 +4782,28 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		}
 #endif /* HAVE_LIBCURL */
 
+		/*
+		**  keydata is large enough (MAXBUFRSZ) to hold an inlined
+		**  private key; keep it off the stack so signing on platforms
+		**  with small libmilter thread stacks (e.g. macOS ARM64's
+		**  512 KB default) does not overflow.  (issue #411)
+		*/
+
+		keydata = malloc(MAXBUFRSZ + 1);
+		if (keydata == NULL)
+		{
+			if (dolog)
+			{
+				dkimf_log(curconf, LOG_ERR,
+				       "key '%s': out of memory", keyname);
+			}
+
+			return -1;
+		}
+
 		memset(domain, '\0', sizeof domain);
 		memset(selector, '\0', sizeof selector);
-		memset(keydata, '\0', sizeof keydata);
+		memset(keydata, '\0', MAXBUFRSZ + 1);
 		memset(algorithm, '\0', sizeof algorithm);
 
 		dbd[0].dbdata_buffer = domain;
@@ -4793,7 +4813,7 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		dbd[1].dbdata_buflen = sizeof selector - 1;
 		dbd[1].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
 		dbd[2].dbdata_buffer = keydata;
-		dbd[2].dbdata_buflen = sizeof keydata - 1;
+		dbd[2].dbdata_buflen = MAXBUFRSZ;
 		dbd[2].dbdata_flags = DKIMF_DB_DATA_OPTIONAL;
 		dbd[3].dbdata_buffer = algorithm;
 		dbd[3].dbdata_buflen = sizeof algorithm - 1;
@@ -4821,11 +4841,15 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				}
 			}
 
-			return -1;
+			result = -1;
+			goto cleanup;
 		}
 
 		if (!found)
-			return 1;
+		{
+			result = 1;
+			goto cleanup;
+		}
 
 		if (dbd[0].dbdata_buflen == 0 ||
 		    dbd[0].dbdata_buflen == (size_t) -1 ||
@@ -4844,7 +4868,8 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				       "key");
 			}
 
-			return 2;
+			result = 2;
+			goto cleanup;
 		}
 
 		if (domain[0] == '%' && domain[1] == '\0' &&
@@ -4857,28 +4882,44 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				       keyname);
 			}
 
-			return 3;
+			result = 3;
+			goto cleanup;
 		}
 
 		if (keydata[0] == '/')
 		{
 			u_char *d;
-			u_char tmpdata[MAXBUFRSZ + 1];
+			u_char *tmpdata;
 
-			memset(tmpdata, '\0', sizeof tmpdata);
+			tmpdata = malloc(MAXBUFRSZ + 1);
+			if (tmpdata == NULL)
+			{
+				if (dolog)
+				{
+					dkimf_log(curconf, LOG_ERR,
+					       "key '%s': out of memory", keyname);
+				}
+
+				result = -1;
+				goto cleanup;
+			}
+
+			memset(tmpdata, '\0', MAXBUFRSZ + 1);
 
 			if (domain[0] == '%' && domain[1] == '\0')
 				d = dfc->mctx_domain;
 			else
 				d = (u_char *) domain;
 
-			dkimf_reptoken(tmpdata, sizeof tmpdata,
+			dkimf_reptoken(tmpdata, MAXBUFRSZ + 1,
 			               (u_char *) keydata, d);
 
-			memcpy(keydata, tmpdata, sizeof keydata);
+			memcpy(keydata, tmpdata, MAXBUFRSZ + 1);
+
+			free(tmpdata);
 		}
 
-		keydatasz = sizeof keydata - 1;
+		keydatasz = MAXBUFRSZ;
 		insecure = FALSE;
 		if (!dkimf_loadkey(dbd[2].dbdata_buffer, &keydatasz,
 		                   &insecure, err, sizeof err))
@@ -4889,7 +4930,8 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				       dbd[2].dbdata_buffer, err);
 			}
 
-			return 2;
+			result = 2;
+			goto cleanup;
 		}
 
 		dkimf_warn_weak_key(conf, keyname, dbd[2].dbdata_buffer,
@@ -4909,7 +4951,10 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 			}
 
 			if (conf->conf_safekeys)
-				return 2;
+			{
+				result = 2;
+				goto cleanup;
+			}
 		}
 
 		/*
@@ -4953,7 +4998,10 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				}
 
 				if (strict)
-					return 2;
+				{
+					result = 2;
+					goto cleanup;
+				}
 			}
 			else if (keytype != -1 &&
 			         declared_ed25519 != (keytype == 1))
@@ -4968,7 +5016,10 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 				}
 
 				if (strict)
-					return 2;
+				{
+					result = 2;
+					goto cleanup;
+				}
 			}
 		}
 	}
@@ -4982,12 +5033,17 @@ dkimf_add_signrequest(struct dkimf_config *conf, struct msgctx *dfc,
 		else
 			fdomain = domain;
 
-		return dkimf_signreq_append(dfc, fdomain, selector,
-		                            dbd[2].dbdata_buffer, keydatasz,
-		                            signer, signlen);
+		result = dkimf_signreq_append(dfc, fdomain, selector,
+		                              dbd[2].dbdata_buffer, keydatasz,
+		                              signer, signlen);
+		goto cleanup;
 	}
 
 	return dkimf_signreq_append(dfc, NULL, NULL, NULL, 0, signer, signlen);
+
+  cleanup:
+	free(keydata);
+	return result;
 }
 
 /*
