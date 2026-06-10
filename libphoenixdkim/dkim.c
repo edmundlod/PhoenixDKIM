@@ -4376,7 +4376,8 @@ dkim_init(void *(*caller_mallocf)(void *closure, size_t nbytes),
 	libhandle->dkiml_dns_start = dkim_res_query;
 	libhandle->dkiml_dns_cancel = dkim_res_cancel;
 	libhandle->dkiml_dns_waitreply = dkim_res_waitreply;
-	
+	libhandle->dkiml_dns_setns = dkim_res_nslist;
+
 #define FEATURE_INDEX(x)	((x) / (8 * sizeof(u_int)))
 #define FEATURE_OFFSET(x)	((x) % (8 * sizeof(u_int)))
 #define FEATURE_ADD(lib,x)	(lib)->dkiml_flist[FEATURE_INDEX((x))] |= (1 << FEATURE_OFFSET(x))
