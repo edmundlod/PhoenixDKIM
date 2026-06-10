@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+#
+# signing test: From: domain with a trailing root-label dot
+
+if [ x"$srcdir" = x"" ]
+then
+	srcdir=`pwd`
+fi
+
+../../miltertest/miltertest $MILTERTESTFLAGS -s $srcdir/t-sign-trailing-dot.lua

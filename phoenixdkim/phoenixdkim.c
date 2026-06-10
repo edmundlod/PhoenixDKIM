@@ -11237,6 +11237,20 @@ mlfi_eoh(SMFICTX *ctx)
 		strlcpy((char *) dfc->mctx_domain, (char *) domain,
 		        sizeof dfc->mctx_domain);
 		dkimf_lowercase(dfc->mctx_domain);
+
+		/* strip a single trailing root-label dot: "example.com." and
+		   "example.com" are the same domain (the dot is the DNS root
+		   indicator, disallowed in an addr-spec by RFC 5322 3.2.3 but
+		   normalized away by real mailers).  Without this, a From:
+		   domain with a trailing dot fails to string-match the signing
+		   table and would emit a malformed d= value.  Parallels the
+		   authserv-id strip on the verifier path below. */
+		{
+			size_t dlen = strlen((char *) dfc->mctx_domain);
+
+			if (dlen > 0 && dfc->mctx_domain[dlen - 1] == '.')
+				dfc->mctx_domain[dlen - 1] = '\0';
+		}
 	}
 
 	/* if it's exempt, bail out */
