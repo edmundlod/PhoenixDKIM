@@ -1797,6 +1797,14 @@ mt_disconnect(lua_State *l)
 		        progname, ctx->ctx_fd);
 	}
 
+	/*
+	**  Free any EOM requests recorded from the last message.  mt_eom() flushes
+	**  the previous batch at the start of each call, but the final batch is
+	**  only released here, at teardown — without this the requests from the
+	**  last mt.eom() leak (visible under LeakSanitizer).
+	*/
+	mt_flush_eomreqs(ctx);
+
 	free(ctx);
 
 	lua_pushnil(l);
