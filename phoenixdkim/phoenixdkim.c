@@ -611,9 +611,12 @@ char reportcmd[BUFRSZ + 1];			/* reporting command */
 char reportaddr[2 * DKIM_MAXHOSTNAMELEN + 2];	/* reporting address */
 char myhostname[DKIM_MAXHOSTNAMELEN + 1];	/* hostname */
 pthread_mutex_t conf_lock;			/* config lock */
+pthread_cond_t conf_drain;			/* broadcast when a config's refcnt hits 0 */
 pthread_mutex_t pwdb_lock;			/* passwd/group lock */
 
 /* MACROS */
+/* seconds main() waits for in-flight connections to drain before teardown */
+#define	DKIMF_SHUTDOWN_DRAIN_SECS	5
 #define	JOBID(x)	((x) == NULL ? JOBIDUNKNOWN : (const char *) (x))
 #define	TRYFREE(x)	do { \
 				if ((x) != NULL) \
@@ -13790,9 +13793,17 @@ mlfi_close(SMFICTX *ctx)
 
 		cc->cctx_config->conf_refcnt--;
 
-		if (cc->cctx_config->conf_refcnt == 0 &&
-		    cc->cctx_config != curconf)
-			dkimf_config_free(cc->cctx_config);
+		if (cc->cctx_config->conf_refcnt == 0)
+		{
+			/*
+			**  Wake any shutdown drain waiting in main() for the
+			**  active connections to release the current config.
+			*/
+			pthread_cond_broadcast(&conf_drain);
+
+			if (cc->cctx_config != curconf)
+				dkimf_config_free(cc->cctx_config);
+		}
 
 		pthread_mutex_unlock(&conf_lock);
 
@@ -15330,6 +15341,7 @@ main(int argc, char **argv)
 	}
 
 	pthread_mutex_init(&conf_lock, NULL);
+	pthread_cond_init(&conf_drain, NULL);
 	pthread_mutex_init(&pwdb_lock, NULL);
 
 	/* perform test mode */
@@ -15480,6 +15492,38 @@ main(int argc, char **argv)
 	dkimf_log(curconf, LOG_INFO,
 	       "%s v%s terminating with status %d, errno = %d",
 	       DKIMF_PRODUCT, DKIMF_VERSION, status, errno);
+
+	/*
+	**  smfi_main() returns once the listener stops, but libmilter does not
+	**  join the per-connection worker threads: a message still in flight can
+	**  be reading curconf (its key, databases, stats) when we tear it down
+	**  below.  conf_refcnt counts the connections holding the current config,
+	**  so wait (bounded) for it to reach zero before touching curconf, rather
+	**  than racing a worker through freed memory.  The wait is best-effort:
+	**  if a connection is wedged we log and proceed after the timeout instead
+	**  of hanging shutdown forever.
+	*/
+	pthread_mutex_lock(&conf_lock);
+	{
+		struct timespec deadline;
+
+		(void) clock_gettime(CLOCK_REALTIME, &deadline);
+		deadline.tv_sec += DKIMF_SHUTDOWN_DRAIN_SECS;
+
+		while (curconf->conf_refcnt > 0)
+		{
+			if (pthread_cond_timedwait(&conf_drain, &conf_lock,
+			                           &deadline) == ETIMEDOUT)
+			{
+				dkimf_log(curconf, LOG_WARNING,
+				       "shutdown: %u connection(s) still active after %ds; proceeding",
+				       curconf->conf_refcnt,
+				       DKIMF_SHUTDOWN_DRAIN_SECS);
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&conf_lock);
 
 	/* flush final metric values to the Prometheus textfile, if enabled */
 	dkimf_stats_flush();
