@@ -3,12 +3,14 @@
 set -e
 
 if [ "$1" = "purge" ]; then
-    # Remove the system user/group created in the postinst.  Leftover state
-    # the admin created (keys in /etc/dkimkeys, configuration) is intentionally
-    # left in place.
+    # Remove the system user/group created in the postinst.
     if command -v deluser >/dev/null 2>&1; then
         deluser --quiet --system phoenixdkim >/dev/null 2>&1 || true
     fi
+
+    # dpkg removes the conffile itself.  Drop the now-empty directories, but
+    # keep any keys or extra configuration the admin added.
+    rmdir --ignore-fail-on-non-empty /etc/phoenixdkim /etc/dkimkeys 2>/dev/null || true
 fi
 
 #DEBHELPER#

@@ -26,10 +26,12 @@ User=phoenixdkim
 Group=phoenixdkim
 UMask=007
 
-# As the file system is mounted read-only with ProtectSystem=strict, adding
-# /var/spool/postfix/phoenixdkim by default makes it possible to use phoenixdkim
-# with postfix without further configuration.
-ReadWritePaths=-/var/spool/postfix/phoenixdkim
+# The default Socket lives in the unit's RuntimeDirectory (/run/phoenixdkim),
+# which is already writable.  ProtectSystem=strict mounts the rest of the file
+# system read-only, so if you point the MTA at a socket elsewhere -- e.g. inside
+# Postfix's chroot at /var/spool/postfix/phoenixdkim -- add that path via
+# "systemctl edit phoenixdkim.service":
+#   ReadWritePaths=/var/spool/postfix/phoenixdkim
 
 # node_exporter textfile collector directory (Debian: prometheus-node-exporter).
 # If MetricsFile points elsewhere, add the correct path via:
