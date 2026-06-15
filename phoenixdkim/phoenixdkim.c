@@ -594,14 +594,14 @@ static void dkimf_log(struct dkimf_config *, int, const char *, ...);
 
 /* GLOBALS */
 _Bool dolog;					/* logging? (exported) */
-_Bool reload;					/* reload requested */
+_Atomic sig_atomic_t reload;			/* reload requested */
 _Bool no_i_whine;				/* noted ${i} is undefined */
 _Bool testmode;					/* test mode */
 _Bool allowdeprecated;				/* allow deprecated config values */
 _Bool init_checksigningtable;			/* initializing value for CheckSigningTable */
 _Bool use_cf_checksigningtable;			/* use CheckSigningTable from config file? */
-_Bool die;					/* global "die" flag */
-int diesig;					/* signal to distribute */
+_Atomic sig_atomic_t die;			/* global "die" flag */
+_Atomic sig_atomic_t diesig;			/* signal to distribute */
 char *progname;					/* program name */
 char *sock;					/* listening socket */
 const char *conffile;				/* configuration file */
