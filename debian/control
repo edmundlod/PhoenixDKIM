@@ -10,8 +10,8 @@ Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  libsystemd-dev [linux-any]
 Standards-Version: 4.6.2
 Homepage: https://www.phoenixdkim.org/
-Vcs-Browser: https://github.com/edmundlod/PhoenixDKIM
-Vcs-Git: https://github.com/edmundlod/PhoenixDKIM
+Vcs-Browser: https://github.com/edmundlod/PhoenixDKIM/tree/debian/latest
+Vcs-Git: https://github.com/edmundlod/PhoenixDKIM.git -b debian/latest
 Rules-Requires-Root: no
 
 Package: phoenixdkim
