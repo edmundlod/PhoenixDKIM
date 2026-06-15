@@ -1,142 +1,113 @@
 #!/bin/bash
 # dkim-crosscheck.sh
-# Run the 2x2 signing cross-check matrix against a corpus of test messages.
 #
-# Requires:
-#   opendkim      - built opendkim-ng binary
-#   dkimverify    - from dkimpy (pip install dkimpy)
-#   dkimsign      - from dkimpy
-#   sendmail      - or swaks/curl to submit to test ports
+# Independent-implementation interop check: sign a corpus of messages with
+# PhoenixDKIM and verify each one with dkimpy, a completely separate DKIM
+# implementation.  This catches canonicalization and signature-format
+# divergences that PhoenixDKIM's own test suite — which verifies what
+# PhoenixDKIM (or its OpenDKIM ancestor) produced — structurally cannot.
 #
-# Setup assumed:
-#   Port 2525 -> Postfix -> opendkim-ng milter  (signing only, Mode = s)
-#   Port 2526 -> Postfix -> dkimpy-milter       (signing only, Mode = s)
-#   Both configured with the same selector/domain pointing to real DNS or TestDNSData
+# The check is HERMETIC: dkimpy is handed the public key on the command line
+# (via crosscheck-dkimpy.py, which injects it through a fake DNS function), so
+# no live DNS, MTA, or network is required.  It runs unattended in CI.
 #
-# Usage: ./dkim-crosscheck.sh [corpus-dir]
+# Direction covered:
+#   PhoenixDKIM sign  ->  dkimpy verify        (our signer vs an independent verifier)
+#
+# The reverse direction (dkimpy sign -> PhoenixDKIM verify) is intentionally NOT
+# here: phoenixdkim-testmsg fetches the key from the system resolver and offers
+# no key-injection hook, so it cannot be driven hermetically.  PhoenixDKIM's
+# verification of externally-produced signatures is instead covered extensively
+# by the libphoenixdkim conformance suite (QUERY_FILE-based t-tests).
+#
+# Usage:
+#   ./dkim-crosscheck.sh [corpus-dir]
+#
+# Environment:
+#   PHOENIXDKIM_TESTMSG   path to phoenixdkim-testmsg (else auto-detected)
+#   CROSSCHECK_KEY        signing private key (default: bundled test key)
+#   CROSSCHECK_SELECTOR   selector to embed (default: test)
+#   CROSSCHECK_DOMAIN     signing domain     (default: example.com)
+#
+# Exit: 0 all pass, 1 any failure, 77 skipped (missing dkimpy / testmsg).
 
-set -euo pipefail
+set -uo pipefail
 
-CORPUS="${1:-./test-corpus}"
-NG_SOCKET="${OPENDKIM_SOCKET:-/run/opendkim-ng/opendkim.sock}"
-DKIMPY_PORT="${DKIMPY_PORT:-8892}"
-WORK_DIR=$(mktemp -d /tmp/dkim-xcheck.XXXXXX)
-PASS=0
-FAIL=0
-SKIP=0
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(cd "$HERE/.." && pwd)
 
-# Colours
+CORPUS="${1:-$HERE/test_messages}"
+KEY="${CROSSCHECK_KEY:-$REPO/phoenixdkim/tests/testkey.private}"
+SELECTOR="${CROSSCHECK_SELECTOR:-test}"
+DOMAIN="${CROSSCHECK_DOMAIN:-example.com}"
+HELPER="$HERE/crosscheck-dkimpy.py"
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+PASS=0; FAIL=0; DECLINED=0
 
-cleanup() { rm -rf "$WORK_DIR"; }
-trap cleanup EXIT
+skip() { echo -e "${YELLOW}SKIP${NC}: $1"; exit 77; }
 
-log_pass() { echo -e "  ${GREEN}PASS${NC}  $1"; ((PASS++)) || true; }
-log_fail() { echo -e "  ${RED}FAIL${NC}  $1"; ((FAIL++)) || true; }
-log_skip() { echo -e "  ${YELLOW}SKIP${NC}  $1"; ((SKIP++)) || true; }
+# ── Locate phoenixdkim-testmsg ────────────────────────────────────────────────
+TESTMSG="${PHOENIXDKIM_TESTMSG:-}"
+if [[ -z "$TESTMSG" ]]; then
+    TESTMSG=$(find "$REPO" -name phoenixdkim-testmsg -type f -perm -u+x 2>/dev/null | head -1)
+fi
+[[ -n "$TESTMSG" && -x "$TESTMSG" ]] || skip "phoenixdkim-testmsg not found (build it first, or set PHOENIXDKIM_TESTMSG)"
 
-# Sign a message through opendkim-ng test mode.
-# opendkim -t reads a raw message and writes a signed copy to stdout
-# when built with test/signing support.  Adjust if your build differs.
-sign_ng() {
-    local msg="$1" out="$2"
-    if opendkim -t "$msg" > "$out" 2>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
+# ── Dependency checks ─────────────────────────────────────────────────────────
+command -v python3 >/dev/null 2>&1 || skip "python3 not available"
+python3 -c "import dkim" 2>/dev/null || skip "dkimpy not installed (pip install dkimpy)"
+command -v openssl   >/dev/null 2>&1 || skip "openssl not available"
+[[ -r "$KEY" ]] || skip "signing key not readable: $KEY"
+[[ -d "$CORPUS" ]] || skip "corpus directory not found: $CORPUS"
 
-# Sign a message using dkimpy's standalone signer.
-# Adjust key/selector/domain to match your test setup.
-sign_dkimpy() {
-    local msg="$1" out="$2"
-    local key="${DKIMPY_KEY:-/etc/dkimpy/private.key}"
-    local selector="${DKIMPY_SELECTOR:-test}"
-    local domain="${DKIMPY_DOMAIN:-example.com}"
-    if python3 -c "
-import dkim, sys
-msg = open('$msg', 'rb').read()
-sig = dkim.sign(msg, b'$selector', b'$domain', open('$key','rb').read())
-sys.stdout.buffer.write(sig + msg)
-" > "$out" 2>/dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Verify with opendkim-ng
-verify_ng() {
-    local msg="$1"
-    opendkim -t "$msg" 2>/dev/null | grep -q "DKIM.*pass\|signature verified" 2>/dev/null
-}
-
-# Verify with dkimpy
-verify_dkimpy() {
-    local msg="$1"
-    dkimverify < "$msg" 2>/dev/null
-}
+# ── Derive the public-key TXT record from the private key ─────────────────────
+PUB=$(openssl rsa -in "$KEY" -pubout 2>/dev/null \
+        | openssl pkey -pubin -outform DER 2>/dev/null \
+        | base64 -w0)
+[[ -n "$PUB" ]] || skip "could not derive public key from $KEY"
+TXT="v=DKIM1; k=rsa; p=$PUB"
 
 echo "============================================================"
-echo " DKIM Cross-Check Matrix"
-echo " Corpus: $CORPUS"
-echo " Work dir: $WORK_DIR"
+echo " DKIM interop cross-check: PhoenixDKIM sign -> dkimpy verify"
+echo " testmsg: $TESTMSG"
+echo " corpus:  $CORPUS"
 echo "============================================================"
-echo ""
 
-for msg in "$CORPUS"/*.eml; do
+shopt -s nullglob
+messages=("$CORPUS"/*.eml)
+shopt -u nullglob
+[[ ${#messages[@]} -gt 0 ]] || skip "no .eml messages in $CORPUS"
+
+WORK=$(mktemp -d /tmp/dkim-xcheck.XXXXXX)
+trap 'rm -rf "$WORK"' EXIT
+
+for msg in "${messages[@]}"; do
     name=$(basename "$msg")
-    echo "── $name"
+    signed="$WORK/${name%.eml}-signed.eml"
 
-    ng_signed="$WORK_DIR/${name%.eml}-ng-signed.eml"
-    py_signed="$WORK_DIR/${name%.eml}-py-signed.eml"
-
-    # --- Sign with ng ---
-    if sign_ng "$msg" "$ng_signed"; then
-        # ng signs, ng verifies (trivial diagonal)
-        if verify_ng "$ng_signed"; then
-            log_pass "ng→ng  (trivial)"
-        else
-            log_fail "ng→ng  (trivial) — ng cannot verify its own signature!"
-        fi
-
-        # ng signs, dkimpy verifies (key off-diagonal)
-        if verify_dkimpy "$ng_signed"; then
-            log_pass "ng→dkimpy"
-        else
-            log_fail "ng→dkimpy  ← investigate canonicalization/format"
-        fi
-    else
-        log_skip "ng signing failed for $name"
+    if ! "$TESTMSG" -C -d "$DOMAIN" -s "$SELECTOR" -k "$KEY" \
+            < "$msg" > "$signed" 2>"$WORK/sign.err"; then
+        # PhoenixDKIM declining to sign is a policy decision, not an interop
+        # failure: there is no signature to cross-check.  This is expected for
+        # messages that violate RFC 5322 §3.6 (e.g. duplicate From/Subject),
+        # which PhoenixDKIM refuses to sign as an anti-spoofing measure but
+        # dkimpy will sign.  Report it as a divergence, not a failure.
+        echo -e "  ${YELLOW}NOTE${NC}  $name  (PhoenixDKIM declined to sign: $(cat "$WORK/sign.err"))"
+        ((DECLINED++)); continue
     fi
 
-    # --- Sign with dkimpy ---
-    if sign_dkimpy "$msg" "$py_signed"; then
-        # dkimpy signs, ng verifies (key off-diagonal)
-        if verify_ng "$py_signed"; then
-            log_pass "dkimpy→ng"
-        else
-            log_fail "dkimpy→ng  ← investigate ng verification path"
-        fi
-
-        # dkimpy signs, dkimpy verifies (trivial diagonal)
-        if verify_dkimpy "$py_signed"; then
-            log_pass "dkimpy→dkimpy  (trivial)"
-        else
-            log_fail "dkimpy→dkimpy  (trivial) — dkimpy cannot verify its own signature!"
-        fi
+    if python3 "$HELPER" verify --txt "$TXT" < "$signed" 2>"$WORK/ver.err"; then
+        echo -e "  ${GREEN}PASS${NC}  $name"
+        ((PASS++))
     else
-        log_skip "dkimpy signing failed for $name"
+        echo -e "  ${RED}FAIL${NC}  $name  (dkimpy could not verify PhoenixDKIM's signature)"
+        [[ -s "$WORK/ver.err" ]] && sed 's/^/        /' "$WORK/ver.err"
+        ((FAIL++))
     fi
-
-    # Preserve signed copies for post-mortem if anything failed
-    echo ""
 done
 
 echo "============================================================"
-echo " Results: ${PASS} passed  ${FAIL} failed  ${SKIP} skipped"
+echo " Results: $PASS passed, $FAIL failed, $DECLINED declined-to-sign"
 echo "============================================================"
-
-# Exit non-zero if any failures
 [[ $FAIL -eq 0 ]]

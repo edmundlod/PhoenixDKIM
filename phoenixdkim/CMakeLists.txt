@@ -488,6 +488,22 @@ install(TARGETS phoenixdkim-testmsg
     RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
 )
 
+# ── Independent-implementation interop cross-check ────────────────────────────
+# Sign a corpus with phoenixdkim-testmsg and verify it with dkimpy (a separate
+# DKIM implementation), hermetically (no live DNS).  Skips gracefully (exit 77)
+# when dkimpy/python3 are absent, so it never breaks a build lacking the
+# optional dependency.  Co-located with the phoenixdkim-testmsg target it drives.
+add_test(
+    NAME interop-crosscheck-dkimpy
+    COMMAND ${CMAKE_SOURCE_DIR}/additional-test-suite/dkim-crosscheck.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+set_tests_properties(interop-crosscheck-dkimpy PROPERTIES
+    ENVIRONMENT "PHOENIXDKIM_TESTMSG=$<TARGET_FILE:phoenixdkim-testmsg>"
+    SKIP_RETURN_CODE 77
+    LABELS "interop"
+)
+
 # ── phoenixdkim-genkey (Perl script) ─────────────────────────────────────────────
 # Listed in Makefile.am as dist_sbin_SCRIPTS — it is a Perl script generated
 # from phoenixdkim-genkey.in via autoconf-style @VAR@ substitution.
