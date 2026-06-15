@@ -16,6 +16,9 @@ set(LIBPHOENIXDKIM_TEST_PROGRAMS
     # PhoenixDKIM-modified fork of upstream's t-test209 (RFC 8616 EAI); named
     # rather than numbered to mark the divergence from upstream.
     t-test209-phoenixdkim
+    # PhoenixDKIM addition: DNS failure-mode classification matrix (transient
+    # vs permanent key-lookup verdicts), driven through a mock resolver.
+    t-dns-failures
 )
 
 # ── Numbered conformance tests (t-test16 … t-test154) ─────────────────────────
