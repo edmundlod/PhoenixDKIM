@@ -438,6 +438,17 @@ apply_hardening(phoenixdkim_static)
 apply_sanitizers(phoenixdkim)
 apply_sanitizers(phoenixdkim_static)
 
+# Coverage-guided fuzzing needs the library under test instrumented with
+# SanitizerCoverage; -fsanitize=fuzzer (on the fuzz target) only instruments the
+# harness.  -fsanitize=fuzzer-no-link adds the coverage callbacks without pulling
+# in libFuzzer's main(), so the static library can be linked into the fuzz
+# executables (which supply the driver) and feed them edge coverage.  Applied to
+# the static lib only — the fuzz targets link it rather than the shared object,
+# which keeps coverage registration in the same link unit as the driver.
+if(PHOENIXDKIM_ENABLE_FUZZERS)
+    target_compile_options(phoenixdkim_static PRIVATE -fsanitize=fuzzer-no-link)
+endif()
+
 # ── Public header install ─────────────────────────────────────────────────────
 
 install(FILES dkim.h
@@ -489,3 +500,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libphoenixdkim.pc
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 add_subdirectory(tests)
+
+# ── Fuzz targets ────────────────────────────────────────────────────────────────
+# Added here (rather than at the top level) so the phoenixdkim target and the
+# OpenSSL::Crypto imported target are in scope, exactly as for tests/.  The
+# option and the apply_fuzzer() helper are defined by cmake/Fuzzers.cmake, which
+# the top-level CMakeLists includes before this subdirectory is processed.
+if(PHOENIXDKIM_ENABLE_FUZZERS)
+    add_subdirectory(fuzz)
+endif()
