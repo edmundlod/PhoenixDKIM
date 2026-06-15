@@ -1,5 +1,6 @@
-phoenixdkim (1.0.0-1) trixie; urgency=medium
+phoenixdkim (1.0.0-1) unstable; urgency=medium
 
+  * Initial upload to Debian (Closes: #XXXXXX).  [replace with ITP bug number]
   * First stable release.  Closes the 1.0.0 beta series.
   * Signing: under StrictHeaders, a message that cannot be signed because it
     violates RFC 5322 (e.g. a duplicate From, a spoofing vector) is now

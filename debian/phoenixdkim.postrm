@@ -3,7 +3,12 @@
 set -e
 
 if [ "$1" = "purge" ]; then
-    rm -rf /lib/phoenixdkim
+    # Remove the system user/group created in the postinst.  Leftover state
+    # the admin created (keys in /etc/dkimkeys, configuration) is intentionally
+    # left in place.
+    if command -v deluser >/dev/null 2>&1; then
+        deluser --quiet --system phoenixdkim >/dev/null 2>&1 || true
+    fi
 fi
 
 #DEBHELPER#
