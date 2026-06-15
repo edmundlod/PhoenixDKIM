@@ -15,6 +15,55 @@ weaknesses — we are doing that ourselves. We are interested specifically in
 weaknesses in the <strong>PhoenixDKIM source code</strong> and the libraries
 it depends on.</p>
 
+<h2>How we test PhoenixDKIM</h2>
+
+<p>PhoenixDKIM parses untrusted input from two directions on every message it
+handles: the <code>DKIM-Signature</code> header field, every byte of which is
+supplied by whoever sent the mail, and the public-key record retrieved from
+DNS, which is controlled by whoever operates the signing domain. We treat both
+as hostile and test accordingly. We publish what we do because a documented
+process is something you can verify — and because hiding a test list protects
+no one: it removes the chance for outside review without removing any
+attacker's ability to probe the code.</p>
+
+<ul>
+  <li><strong>Conformance and correctness.</strong> An automated suite of
+      around two hundred tests, run on every change, exercises signing and
+      verification against the RFC&nbsp;6376 test vectors and a large body of
+      hand-written conformance cases covering canonicalization, header
+      selection, key formats, and algorithm handling.</li>
+  <li><strong>Memory safety.</strong> The code is built and the full test
+      suite run under AddressSanitizer, UndefinedBehaviorSanitizer, and
+      LeakSanitizer, and separately under Valgrind. A dedicated strict build
+      compiles with aggressive warnings treated as errors, compiler hardening
+      flags, and reproducible-build settings.</li>
+  <li><strong>Coverage-guided fuzzing.</strong> The signature and key-record
+      tag-list parsers — the code most exposed to malicious input — are fuzzed
+      with libFuzzer while instrumented with AddressSanitizer and
+      UndefinedBehaviorSanitizer, so malformed, truncated, and adversarial
+      inputs are explored automatically rather than only by hand.</li>
+  <li><strong>DNS failure handling.</strong> A dedicated test matrix confirms
+      that every category of DNS failure is classified with the correct
+      permanence: a missing key is treated as a permanent failure, while a
+      timeout, server failure, or truncated reply is treated as transient and
+      retried, so a momentary DNS problem can never be mistaken for a forged
+      or absent signature.</li>
+  <li><strong>Independent cross-checks.</strong> Signatures produced by
+      PhoenixDKIM are verified by an entirely separate DKIM implementation, so
+      formatting or canonicalization divergences are caught by a second pair
+      of eyes that shares none of our code.</li>
+  <li><strong>Defensive parsing.</strong> PhoenixDKIM enforces
+      RFC&nbsp;5322's single-occurrence rule for headers such as
+      <code>From</code> and <code>Subject</code>, refusing to sign messages
+      that carry duplicates — a known vector for display-name and
+      double-header spoofing.</li>
+</ul>
+
+<p>None of this makes any guarantee that PhoenixDKIM is free of defects, and we
+do not claim it is. It reflects the effort we put into finding problems before
+you do — and it is exactly why we welcome reports of anything we have
+missed.</p>
+
 <h2>How to report a problem</h2>
 
 <ul>
