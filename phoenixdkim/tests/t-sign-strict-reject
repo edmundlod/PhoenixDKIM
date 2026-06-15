@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# strict-header signing reject test
+#
+# Confirms that, with StrictHeaders enabled, a message that cannot be signed
+# because it violates RFC 5322 (here: a duplicate From) is rejected on the
+# signing side per On-SignatureError (default reject), rather than delivered
+# unsigned.
+
+if [ x"$srcdir" = x"" ]
+then
+	srcdir=`pwd`
+fi
+
+../../miltertest/miltertest $MILTERTESTFLAGS -s $srcdir/t-sign-strict-reject.lua
