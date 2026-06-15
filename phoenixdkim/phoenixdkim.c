@@ -12351,6 +12351,57 @@ mlfi_eoh(SMFICTX *ctx)
 		return SMFIS_CONTINUE;
 
 	  case DKIM_STAT_SYNTAX:
+		/*
+		**  A strict-header check (StrictHeaders) rejected the message.  The
+		**  two directions are treated differently on purpose:
+		**
+		**    - Verifying (inbound): record the condition and deliver the
+		**      message, noting it in the Authentication-Results field.  A
+		**      malformed message from elsewhere is not ours to bounce.
+		**
+		**    - Signing (outbound): we are being asked to sign malformed mail
+		**      (e.g. a duplicate From, a known spoofing vector).  Honour
+		**      On-SignatureError so an operator can reject such a submission
+		**      back to its sender with the specific reason, instead of
+		**      silently delivering it unsigned.  Defaults to "accept", which
+		**      preserves the deliver-unsigned behaviour.
+		**
+		**  lastdkim is the handle that failed dkim_eoh(): the verifying
+		**  handle is mctx_dkimv, so anything else is a signing request.
+		*/
+		if (lastdkim != NULL && lastdkim != dfc->mctx_dkimv &&
+		    conf->conf_handling.hndl_siggen != DKIMF_MILTER_ACCEPT)
+		{
+			sfsistat action;
+			const char *reason;
+			char replybuf[BUFRSZ];
+
+			action = dkimf_miltercode(ctx,
+			                          conf->conf_handling.hndl_siggen,
+			                          NULL);
+
+			reason = dkim_geterror(lastdkim);
+			if (reason == NULL)
+				reason = "message header fields do not conform to RFC 5322";
+
+			(void) snprintf(replybuf, sizeof replybuf,
+			                "message rejected: %s", reason);
+
+			if (action == SMFIS_REJECT)
+				(void) dkimf_setreply(ctx, "550", "5.6.0",
+				                      replybuf);
+			else if (action == SMFIS_TEMPFAIL)
+				(void) dkimf_setreply(ctx, "451", "4.7.0",
+				                      replybuf);
+
+			if (conf->conf_dolog)
+				dkimf_log(conf, LOG_NOTICE,
+				          "%s: refusing to sign: %s",
+				          JOBID(dfc->mctx_jobid), reason);
+
+			return action;
+		}
+
 		dfc->mctx_status = DKIMF_STATUS_BADFORMAT;
 		dfc->mctx_addheader = TRUE;
 		dfc->mctx_headeronly = TRUE;

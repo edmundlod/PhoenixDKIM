@@ -840,8 +840,18 @@ The default is
 .TP
 .I On-SignatureError (string)
 Selects the action to be taken when a message cannot be signed because of
-issues with the message or the key provided for signing.  Possible values are
-the same as those for
+issues with the message or the key provided for signing.  This covers a
+signing key smaller than
+.I MinimumKeyBits
+and, when
+.I StrictHeaders
+is enabled, a message whose header fields violate RFC5322 Section 3.6 (for
+example a duplicated From field).  It does
+.B not
+cover a missing or unreadable key file or other resource failures, which are
+governed by
+.IR On-InternalError .
+Possible values are the same as those for
 .I On-BadSignature.
 The default is
 .I reject.
@@ -1320,18 +1330,29 @@ fields is a known vector for display inconsistencies between the field that
 is signed and the one a recipient sees, and refusing to apply (or to trust) a
 signature on such a message closes that gap.
 .PP
-This option does not, by itself, cause mail to be discarded.  On the signing
-side a message that fails the check is simply not signed and is delivered
-unmodified.  On the verifying side the failure is treated as a signature
-problem and dispositioned according to
+The two directions are dispositioned independently.  On the
+.B verifying
+side the failure is treated as a signature problem and handled according to
 .IR On-BadSignature ,
 whose default is
 .B accept
-(the message is delivered, with the failure noted in the
-Authentication-Results field).  Mail is rejected, tempfailed, or discarded
-only if
+\(em the message is delivered with the failure noted in the
+Authentication-Results field, and is rejected or tempfailed only if
 .I On-BadSignature
-has been configured to do so.
+is configured to do so.  On the
+.B signing
+side the failure means PhoenixDKIM is being asked to sign malformed mail, and
+is handled according to
+.IR On-SignatureError ,
+whose default is
+.B reject
+\(em the submission is refused (with the specific reason, e.g. \(lqmultiple
+From: header fields present\(rq, in the SMTP reply) so the sender can correct
+it.  Set
+.I On-SignatureError
+to
+.B accept
+to instead deliver such messages unsigned.
 .PP
 The default is
 .BR No ,

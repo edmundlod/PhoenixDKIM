@@ -702,10 +702,11 @@ Socket			inet:port@localhost
 ##  header fields do not conform to the standards, in particular Section 3.6
 ##  of RFC5322 (e.g. a duplicated From or Subject, or a missing/unparseable
 ##  From) -- an anti-spoofing measure against double-From and similar tricks.
-##  This does not discard mail by itself: a failing message is simply not
-##  signed (and delivered unmodified), or on the verify side is dispositioned
-##  per On-BadSignature (default "accept").  Off by default to avoid surprising
-##  non-conformant-but-legitimate mail flows.
+##  Disposition differs by direction: on the verify side per On-BadSignature
+##  (default "accept" -- delivered, noted in Authentication-Results); on the
+##  sign side per On-SignatureError (default "reject" -- the malformed
+##  submission is refused with the reason in the SMTP reply).  Off by default
+##  to avoid surprising non-conformant-but-legitimate mail flows.
 
 # StrictHeaders		no
 
