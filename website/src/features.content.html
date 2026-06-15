@@ -69,19 +69,25 @@ the features that matter most when you run it.
 
 <ul>
   <li><strong>Built-in metrics</strong> — a <a href="https://prometheus.io/">Prometheus</a>
-  text-file exporter and a <a href="https://github.com/statsd/statsd">StatsD</a>
-  UDP pusher, both dependency-free and off until you configure them. Counts of
-  messages, signatures (by result and algorithm), verifications (by RFC 8601
-  result), and DNS queries, plus a DNS-latency histogram. An OpenTelemetry
-  Collector can ingest either, so the numbers reach Grafana, Datadog, and the
-  rest without a native exporter in the daemon.</li>
+  text-file exporter, an embedded Prometheus <code>/metrics</code> HTTP endpoint,
+  and a <a href="https://github.com/statsd/statsd">StatsD</a> UDP pusher, all
+  dependency-free and off until you configure them. Scrape the milter directly,
+  hand a file to the node_exporter text-file collector, or push over UDP,
+  whichever suits your stack. Counts of messages, signatures (by result and
+  algorithm), verifications (by RFC 8601 result), and DNS queries, plus a
+  DNS-latency histogram. An OpenTelemetry Collector can ingest any of them, so
+  the numbers reach Grafana, Datadog, and the rest without a native exporter in
+  the daemon.</li>
   <li><strong>Per-message summary line</strong> — one structured
   <code>key=value</code> log entry per message (action, result, domain,
   algorithm), the human-readable companion to the counters and a natural feed
   for log-based tooling.</li>
-  <li><strong>No new attack surface</strong> — metrics are scraped from a file
-  (via the Prometheus node_exporter text-file collector) or pushed over UDP; the
-  milter opens no metrics listener of its own.</li>
+  <li><strong>You decide the attack surface</strong> — by default the milter
+  opens no metrics listener at all; counters reach you from a file (via the
+  Prometheus node_exporter text-file collector) or pushed over UDP. The embedded
+  <code>/metrics</code> endpoint is strictly opt-in, has no authentication or TLS
+  of its own, and is meant to be bound to loopback or a trusted management
+  address (put a reverse proxy in front if you need auth or TLS).</li>
 </ul>
 
 <h2><a name="extensible" href="#extensible">Extensible</a></h2>
