@@ -1,0 +1,71 @@
+PhoenixDKIM 1.0.0 release notes
+================================
+
+Date: 15 June 2026
+
+
+PhoenixDKIM 1.0.0 is the first stable release, closing the 1.0.0 beta series.
+It is a security-focused fork of OpenDKIM.  Beyond the features accumulated
+during the beta series, this release adds a round of pre-release security and
+robustness hardening; the testing process is described on the project's
+Security page.
+
+
+Signing
+-------
+
+  - Under StrictHeaders, a message that cannot be signed because it violates
+    RFC 5322 Section 3.6 (for example a duplicate From or Subject — a known
+    spoofing vector) is now refused back to its sender, with the specific
+    reason in the SMTP reply, per On-SignatureError (default reject).  The
+    verifying side is unchanged: such a message is accepted and the condition
+    recorded in the Authentication-Results field.  The two directions are
+    dispositioned independently.
+
+  - phoenixdkim-testmsg now reports the specific reason a message could not be
+    signed or verified (e.g. "multiple From: header fields present") instead
+    of a generic "Syntax error".
+
+
+Fixes
+-----
+
+  - Drain in-flight connections at shutdown before tearing down the
+    configuration, signing key, and databases.  smfi_main() returns without
+    joining libmilter's worker threads, so the previous teardown could race a
+    worker still processing a message — an exit-time use-after-free found with
+    ThreadSanitizer.  Steady-state processing under load was never affected.
+
+  - Make the die/reload/diesig signal flags atomic (sig_atomic_t), removing a
+    data race between the signal handler and the reloader thread.
+
+  - Free the header canonicalization of a resigning, header-bound handle (a
+    leak in the dkim_resign + header-binding path).
+
+
+Testing and assurance
+---------------------
+
+  - Coverage-guided fuzzing: libFuzzer targets for the two untrusted-input
+    tag-list parsers — the DKIM-Signature header and the public-key TXT record
+    — built on AddressSanitizer and UndefinedBehaviorSanitizer
+    (-DPHOENIXDKIM_ENABLE_FUZZERS=ON).  No crashes, leaks, or undefined
+    behaviour were found over ~126 million executions.
+
+  - DNS failure-mode matrix: a test that drives a mock resolver through every
+    lookup-failure category and asserts the transient-versus-permanent
+    classification, so a momentary DNS problem is never mistaken for a forged
+    or absent signature.
+
+  - Independent-implementation interop cross-check: PhoenixDKIM signs an
+    edge-case corpus and dkimpy verifies it, hermetically (no live DNS).
+
+  - ThreadSanitizer build option (-DPHOENIXDKIM_ENABLE_TSAN=ON), and the full
+    suite runs clean under AddressSanitizer/LeakSanitizer.
+
+
+Documentation
+-------------
+
+  - The Security page now describes how PhoenixDKIM is tested.
+  - StrictHeaders documents its per-direction disposition and exact triggers.

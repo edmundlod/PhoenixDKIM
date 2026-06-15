@@ -1,3 +1,29 @@
+phoenixdkim (1.0.0-1) trixie; urgency=medium
+
+  * First stable release.  Closes the 1.0.0 beta series.
+  * Signing: under StrictHeaders, a message that cannot be signed because it
+    violates RFC 5322 (e.g. a duplicate From, a spoofing vector) is now
+    rejected back to the sender per On-SignatureError (default reject) instead
+    of being delivered unsigned; verification of such messages is unchanged
+    (accepted, recorded in Authentication-Results).
+  * Fix: drain in-flight connections at shutdown before tearing down the
+    configuration, key, and databases, closing an exit-time use-after-free
+    race between the worker threads and main() (found with ThreadSanitizer).
+  * Fix: make the die/reload/diesig signal flags atomic (sig_atomic_t).
+  * Fix: free the header canonicalization of a resigning header-bound handle
+    (a leak in the dkim_resign + header-binding path).
+  * Fix: phoenixdkim-testmsg now reports the specific reason a message could
+    not be signed or verified rather than a generic "Syntax error".
+  * Testing: add coverage-guided libFuzzer targets for the signature and
+    key-record tag-list parsers (PHOENIXDKIM_ENABLE_FUZZERS), a DNS
+    failure-mode classification test, an independent-implementation interop
+    cross-check against dkimpy, and a ThreadSanitizer build option
+    (PHOENIXDKIM_ENABLE_TSAN).
+  * Documentation: describe StrictHeaders' per-direction disposition and the
+    security/testing process on the project website.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Mon, 15 Jun 2026 16:28:07 +0200
+
 phoenixdkim (1.0.0~beta4-1) trixie; urgency=medium
 
   * Feature: RFC 8616 (EAI) support — sign and verify internationalised mail

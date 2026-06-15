@@ -1,0 +1,47 @@
+<h1>PhoenixDKIM 1.0.0</h1>
+
+<p> <b>15 June 2026</b> </p>
+
+<p> PhoenixDKIM 1.0.0 is the first stable release, closing the 1.0.0 beta
+series.  Alongside the features built up over the betas, this release adds a
+round of pre-release security and robustness hardening — the testing process
+is now documented on the <a href="/security.html">Security</a> page. </p>
+
+<h2> Signing-side strict-header rejection </h2>
+
+<p> With <tt>StrictHeaders</tt> enabled, a message that cannot be signed
+because it violates RFC&nbsp;5322 (for example a duplicate <tt>From</tt>, a
+known spoofing vector) is now refused back to its sender — with the specific
+reason in the SMTP reply — per <tt>On-SignatureError</tt> (default reject).
+The verifying side is unchanged: such a message is accepted and the condition
+recorded in the Authentication-Results field.  The two directions are
+dispositioned independently. </p>
+
+<h2> Shutdown race fix </h2>
+
+<p> <tt>smfi_main()</tt> returns without joining libmilter's per-connection
+worker threads, so the previous teardown could free the configuration, signing
+key, and databases while a worker was still processing a message — an
+exit-time use-after-free.  The daemon now drains in-flight connections before
+tearing down.  Steady-state processing under load was never affected. </p>
+
+<h2> Testing and assurance </h2>
+
+<ul>
+  <li> <p> Coverage-guided libFuzzer targets for the DKIM-Signature and
+       public-key parsers, on AddressSanitizer/UndefinedBehaviorSanitizer — no
+       crashes, leaks, or undefined behaviour over ~126 million
+       executions. </p> </li>
+  <li> <p> A DNS failure-mode classification test, an independent-implementation
+       interop cross-check against dkimpy, and a ThreadSanitizer build
+       option. </p> </li>
+  <li> <p> A leak in the resign + header-binding path and a benign test-tool
+       leak fixed; the suite runs clean under AddressSanitizer/LeakSanitizer.
+       </p> </li>
+</ul>
+
+<p> Full notes:
+<a href="/release_notes/PhoenixDKIM-1.0.0.RELEASE_NOTES">1.0.0 release notes</a>;
+source and signatures on the <a href="/download.html">Download</a> page. </p>
+
+<p> <a href="/announcements.html">Back to announcements</a> </p>
