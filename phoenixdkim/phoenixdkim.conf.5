@@ -1304,8 +1304,40 @@ is not set.
 
 .TP
 .I StrictHeaders (Boolean)
-If set, instructs the DKIM library to refuse processing of a message if the
-header field count does not conform to RFC5322 Section 3.6.
+If set, instructs the DKIM library to refuse to process any message whose
+header fields violate the presence and single-occurrence rules of
+RFC5322 Section 3.6 \(em for example a duplicated
+.B From
+or
+.B Subject
+field, a missing or unparseable
+.B From ,
+or a missing
+.B Date .
+This is primarily an anti-spoofing measure: a message bearing two
+.B From
+fields is a known vector for display inconsistencies between the field that
+is signed and the one a recipient sees, and refusing to apply (or to trust) a
+signature on such a message closes that gap.
+.PP
+This option does not, by itself, cause mail to be discarded.  On the signing
+side a message that fails the check is simply not signed and is delivered
+unmodified.  On the verifying side the failure is treated as a signature
+problem and dispositioned according to
+.IR On-BadSignature ,
+whose default is
+.B accept
+(the message is delivered, with the failure noted in the
+Authentication-Results field).  Mail is rejected, tempfailed, or discarded
+only if
+.I On-BadSignature
+has been configured to do so.
+.PP
+The default is
+.BR No ,
+so that operators with legitimate but non-conformant mail flows are not
+surprised by a change in which messages get signed or vouched for; enable it
+deliberately.
 
 .TP
 .I StrictSignAlgorithm (Boolean)
