@@ -2,18 +2,25 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: PhoenixDKIM
 Upstream-Contact: Edmund Lodewijks <edmund@proteamail.com>
 Source: https://github.com/edmundlod/PhoenixDKIM
-Comment: This package was originally debianized by Edmund Lodewijks
- <edmund@proteamail.com> on Sun, 3 May 2026 19:52:53 +0200.
 
 Files: *
-Copyright: 2026 Edmund Lodewijks <edmund@proteamail.com>
+Copyright: 2026 PhoenixDKIM contributors
            2009-2015, 2017, 2018 The Trusted Domain Project
            1999-2002, 2004-2009 Sendmail, Inc. and its suppliers
 License: BSD-3-clause and SOSL
+Comment:
+ PhoenixDKIM derives from OpenDKIM (The Trusted Domain Project), which in turn
+ derives from Sendmail's libmilter.  Every file is covered by the 3-clause BSD
+ licence of The Trusted Domain Project and the PhoenixDKIM contributors; files
+ that additionally carry a Sendmail copyright are also subject to the Sendmail
+ Open Source License (SOSL).  The full licence texts are shipped in the source
+ tree as LICENSE (BSD-3-clause) and LICENSE.Sendmail (SOSL).
+
+Files: debian/*
+Copyright: 2026 Edmund Lodewijks <edmund@proteamail.com>
+License: BSD-3-clause
 
 License: BSD-3-clause
- Copyright (c) <year> <owner>.
- .
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are met:
  .
