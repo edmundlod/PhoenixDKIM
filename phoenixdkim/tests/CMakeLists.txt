@@ -43,8 +43,12 @@ foreach(test_name ${TEST_DRIVERS})
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
+    # LSAN_OPTIONS points LeakSanitizer at the suppression file for the benign
+    # system-liblua leaks surfaced by the daemon's and miltertest's embedded Lua
+    # (see cmake/lsan-suppressions.txt).  Harmless when not built with a
+    # sanitizer (the variable is simply ignored).
     set_tests_properties("integration/${test_name}" PROPERTIES
-        ENVIRONMENT "srcdir=${CMAKE_CURRENT_SOURCE_DIR};PHOENIXDKIM_BINPATH=${_int_binpath}"
+        ENVIRONMENT "srcdir=${CMAKE_CURRENT_SOURCE_DIR};PHOENIXDKIM_BINPATH=${_int_binpath};LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/cmake/lsan-suppressions.txt"
         TIMEOUT ${_int_timeout}
     )
 endforeach()

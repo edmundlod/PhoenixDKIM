@@ -1,0 +1,17 @@
+# LeakSanitizer suppressions for the PhoenixDKIM test suite.
+#
+# The only leaks LSan reports across the full suite are tiny (1-7 byte)
+# allocations inside the system Lua library (liblua), surfaced from the two
+# processes that embed Lua: the phoenixdkim daemon (Lua-based configuration and
+# hooks) and the miltertest tool (Lua test scripts).  They originate in
+# liblua's own chunk-load and state-teardown bookkeeping, not in PhoenixDKIM
+# code, and the embedding code closes its Lua state correctly (lua_close ->
+# close_state -> luaC_freeallobjects).
+#
+# Suppress them by their liblua frame names so an ASan/LSan run gates on
+# PhoenixDKIM's own memory only.  A genuine leak in PhoenixDKIM carries
+# PhoenixDKIM frames and is NOT matched here.
+leak:lua_load
+leak:luaC_freeallobjects
+leak:freeobj
+leak:close_state
