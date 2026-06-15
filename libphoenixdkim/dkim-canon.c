@@ -673,15 +673,22 @@ dkim_canon_cleanup(DKIM *dkim)
 
 	assert(dkim != NULL);
 
-	if (dkim->dkim_resign != NULL && dkim->dkim_hdrbind)
-		return;
-
 	cur = dkim->dkim_canonhead;
 	while (cur != NULL)
 	{
 		next = cur->canon_next;
 
-		/* skip if resigning and body */
+		/*
+		**  Free the canonicalizations this handle owns.  In a resigning
+		**  pair the header canon is added to the new (signing) handle and
+		**  the body canon to the old (verifying) handle, so the new handle
+		**  owns only its header canon; skip the body canon, which the old
+		**  handle frees.  Header canons are always freed by their owner.
+		**
+		**  (Previously a resigning handle with header binding returned here
+		**  without freeing anything, leaking its header canon and the
+		**  buffers dkim_canon_init() allocated for it under hdrbind.)
+		*/
 		if (dkim->dkim_resign == NULL || cur->canon_hdr)
 			dkim_canon_free(dkim, cur);
 
