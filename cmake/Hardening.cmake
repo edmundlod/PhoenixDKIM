@@ -316,6 +316,9 @@ function(apply_hardening tgt)
     if(DEFINED PHOENIXDKIM_ENABLE_MSAN  AND PHOENIXDKIM_ENABLE_MSAN)
         set(_san_active TRUE)
     endif()
+    if(DEFINED PHOENIXDKIM_ENABLE_TSAN  AND PHOENIXDKIM_ENABLE_TSAN)
+        set(_san_active TRUE)
+    endif()
 
     if(NOT _san_active)
         target_compile_options(${tgt} PRIVATE

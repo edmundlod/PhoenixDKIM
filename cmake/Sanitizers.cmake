@@ -73,6 +73,13 @@ false positives. Build a fully-instrumented sysroot before enabling this. \
 Mutually exclusive with ASAN and LSAN. Never use in production."
     OFF)
 
+option(PHOENIXDKIM_ENABLE_TSAN
+    "Enable ThreadSanitizer: data races and other threading errors in the \
+multithreaded milter. Mutually exclusive with ASAN, LSAN, and MSAN (they \
+instrument overlapping runtime functions). Runtime overhead ~5-15x. \
+Never use in production."
+    OFF)
+
 # ── Validate flag availability ────────────────────────────────────────────────
 
 if(PHOENIXDKIM_ENABLE_ASAN)
@@ -143,10 +150,28 @@ if(PHOENIXDKIM_ENABLE_MSAN)
     endif()
 endif()
 
+if(PHOENIXDKIM_ENABLE_TSAN)
+    _check_sanitizer_flag(-fsanitize=thread HARDEN_SAN_HAVE_TSAN)
+    if(NOT HARDEN_SAN_HAVE_TSAN)
+        message(FATAL_ERROR
+            "PHOENIXDKIM_ENABLE_TSAN=ON but -fsanitize=thread is not supported. "
+            "Use GCC or Clang built with sanitizer support.")
+    endif()
+
+    # ThreadSanitizer shadow-maps memory the same way ASAN/MSAN/LSAN do; running
+    # any of them alongside TSan is unsupported and corrupts the run.
+    if(PHOENIXDKIM_ENABLE_ASAN OR PHOENIXDKIM_ENABLE_MSAN OR PHOENIXDKIM_ENABLE_LSAN)
+        message(FATAL_ERROR
+            "PHOENIXDKIM_ENABLE_TSAN cannot be combined with ASAN, MSAN, or LSAN. "
+            "ThreadSanitizer and the memory sanitizers instrument overlapping "
+            "runtime functions and cannot share a build.")
+    endif()
+endif()
+
 # ── Warn on non-Debug build types (single-config generators only) ─────────────
 
 if((PHOENIXDKIM_ENABLE_ASAN OR PHOENIXDKIM_ENABLE_UBSAN OR PHOENIXDKIM_ENABLE_LSAN
-        OR PHOENIXDKIM_ENABLE_MSAN)
+        OR PHOENIXDKIM_ENABLE_MSAN OR PHOENIXDKIM_ENABLE_TSAN)
         AND DEFINED CMAKE_BUILD_TYPE
         AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
         AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
@@ -163,7 +188,7 @@ function(apply_sanitizers tgt)
     # -fno-omit-frame-pointer: required for readable stack traces under any
     # sanitizer.  Emitted once here rather than duplicated per-sanitizer block.
     if(PHOENIXDKIM_ENABLE_ASAN OR PHOENIXDKIM_ENABLE_UBSAN OR PHOENIXDKIM_ENABLE_LSAN
-            OR PHOENIXDKIM_ENABLE_MSAN)
+            OR PHOENIXDKIM_ENABLE_MSAN OR PHOENIXDKIM_ENABLE_TSAN)
         target_compile_options(${tgt} PRIVATE -fno-omit-frame-pointer)
     endif()
 
@@ -221,6 +246,16 @@ function(apply_sanitizers tgt)
             -fsanitize=memory
             -fsanitize-memory-track-origins=2)
         target_link_options(${tgt} PRIVATE -fsanitize=memory)
+    endif()
+
+    # ── TSan ──────────────────────────────────────────────────────────────────
+    # -fsanitize=thread: data races, lock-order inversions, thread leaks in the
+    # multithreaded milter.  Mutually exclusive with the memory sanitizers
+    # (checked at configure time above).
+
+    if(PHOENIXDKIM_ENABLE_TSAN)
+        target_compile_options(${tgt} PRIVATE -fsanitize=thread)
+        target_link_options(${tgt} PRIVATE -fsanitize=thread)
     endif()
 
 endfunction()
