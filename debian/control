@@ -9,7 +9,7 @@ Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  libevent-dev, nettle-dev, libhiredis-dev, libcurl4-openssl-dev,
  libsystemd-dev [linux-any]
 Standards-Version: 4.6.2
-Homepage: https://github.com/edmundlod/PhoenixDKIM
+Homepage: https://www.phoenixdkim.org/
 Vcs-Browser: https://github.com/edmundlod/PhoenixDKIM
 Vcs-Git: https://github.com/edmundlod/PhoenixDKIM
 Rules-Requires-Root: no
