@@ -213,6 +213,7 @@ main(int argc, char **argv)
 	dkim_canon_t hc = DKIM_CANON_RELAXED;
 	DKIM_LIB *lib;
 	DKIM *dkim;
+	const char *detail;		/* specific dkim_geterror() reason */
 	char *p;
 	const char *domain = NULL;
 	const char *selector = NULL;
@@ -412,8 +413,11 @@ main(int argc, char **argv)
 			status = dkim_chunk(dkim, (u_char *) buf, rlen);
 			if (status != DKIM_STAT_OK)
 			{
-				fprintf(stderr, "%s: dkim_chunk(): %s\n",
-				        progname, dkim_getresultstr(status));
+				detail = dkim_geterror(dkim);
+				fprintf(stderr, "%s: dkim_chunk(): %s%s%s\n",
+				        progname, dkim_getresultstr(status),
+				        detail == NULL ? "" : ": ",
+				        detail == NULL ? "" : detail);
 				dkim_free(dkim);
 				dkim_close(lib);
 				close(tfd);
@@ -430,8 +434,11 @@ main(int argc, char **argv)
 	status = dkim_chunk(dkim, NULL, 0);
 	if (status != DKIM_STAT_OK)
 	{
-		fprintf(stderr, "%s: dkim_chunk(): %s\n",
-		        progname, dkim_getresultstr(status));
+		detail = dkim_geterror(dkim);
+		fprintf(stderr, "%s: dkim_chunk(): %s%s%s\n",
+		        progname, dkim_getresultstr(status),
+		        detail == NULL ? "" : ": ",
+		        detail == NULL ? "" : detail);
 		dkim_free(dkim);
 		dkim_close(lib);
 		close(tfd);
@@ -454,8 +461,11 @@ main(int argc, char **argv)
 	                 status == DKIM_STAT_REVOKED ||
 	                 status == DKIM_STAT_KEYFAIL)))
 	{
-		fprintf(stderr, "%s: dkim_eom(): %s\n",
-		        progname, dkim_getresultstr(status));
+		detail = dkim_geterror(dkim);
+		fprintf(stderr, "%s: dkim_eom(): %s%s%s\n",
+		        progname, dkim_getresultstr(status),
+		        detail == NULL ? "" : ": ",
+		        detail == NULL ? "" : detail);
 		dkim_free(dkim);
 		dkim_close(lib);
 		close(tfd);
