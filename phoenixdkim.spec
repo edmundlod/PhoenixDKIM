@@ -101,6 +101,12 @@ install -Dm 0644 %{name}.sysusers.conf %{buildroot}%{_sysusersdir}/%{name}.conf
 find %{buildroot}%{_libdir} -name '*.a' -delete
 
 %check
+# The PhoenixDKIM library still recognises and can verify RSA-SHA1 (the milter
+# refuses it via DKIM_LIBFLAGS_NOSHA1VERIFY, and RSA-SHA1 signing is disabled),
+# so the inherited verification tests exercise that retained capability.
+# Fedora's crypto-policy blocks the SHA-1 signature operation in OpenSSL; the
+# shipped milter is unaffected, so re-enable it for the test run only.
+export OPENSSL_ENABLE_SHA1_SIGNATURES=1
 %ctest
 
 %post
