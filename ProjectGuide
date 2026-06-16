@@ -1,204 +1,91 @@
+PhoenixDKIM Project Guide
 
-OpenDKIM Release Planning
-
-MAJOR RELEASES: Major releases (i.e. for version x.y.z, those for which
-"x" increases) contain major new features or major code rewriting efforts.
-With very few exceptions, they are typically planned several months apart
-to allow for development complexity and extensive unit testing.  They may
-be planned in conjunction with releases with other projects where the two
-are co-operating in some way.  They should also include a beta period of
-at least a month.  Heavy code review activity is expected.  Users should
-anticipate the possibility of breakage if a binary replacement is done;
-though this will be avoided whenever practical, these releases are the
-ones where backward compatibility is most likely to be broken.  Any change
-that establishes a new external dependency must occur in a major release.
-
-MINOR RELEASES: Minor releases (those for which "y" increases) contain new
-features or code changes not warranting a full major release.  They are also
-typically planned a few months apart, though with more frequency than
-major releases.  They generally coincide with conferences or other public
-events where the code or related topics may be featured, but this is not
-a scheduling requirement.  They should always include a beta period of at
-least two weeks but preferably a month.  Code review is required; anything
-not reviewed by release should be demoted to an FFR.  An existing FFR can be
-activated, or a new one added, in a minor release.  Backward compatibility
-with existing versions should be maintained whenever possible.  No new
-external dependencies may be created.
-
-PATCH RELEASES: Patch releases (those for which only "z" increases) contain
-fixes to existing code only, and never contain new features or remove existing
-ones.  A patch release is typically scheduled for two or three weeks after an
-important bug is reported, and any other bugs that occur during that window
-are generally included in that release.  However, a patch release is never
-scheduled when doing so would collide with some other pending release.  Beta
-periods are generally not required, though developers should plan to add unit
-tests to fixes where possible.  Backward compatibility must be preserved in
-patch releases except where doing so is simply impossible.
-
-NOTES:
-- changes to anything in the "contrib" directory may appear in any release as
-  they are unsupported
+PhoenixDKIM is a security-focused DKIM milter and library descended from
+OpenDKIM.  This guide describes release planning, the git branch layout, where
+canonical releases live, and the conventions for contributing.
 
 
-OpenDKIM Source Code Management Policies
+RELEASE PLANNING
 
-1) The source code management system in use is "git".  There following
-branch structure is also in use:
+PhoenixDKIM uses semantic versioning (x.y.z).
 
-o Branch "master" always exists, and is the one to which all work is merged
-  prior to doing a release.  Only people doing the actual work of preparing
-  releases should make any changes to this branch.  All releases must also
-  be tagged from a point on this branch with a name like "rel-opendkim-x-y-z"
-  (consistent with the old CVS tag naming scheme).
+MAJOR RELEASES (x increases): major new features or significant code rewrites.
+They may break backward compatibility and are the only releases that may
+introduce a new external dependency.  Expect heavy code review and a beta
+period.
 
-o Branch "develop" always exists, and is the one on which general development
-  work takes place.  It is open to all committers.  In general, this branch
-  has the following rules:
+MINOR RELEASES (y increases): new features or changes that do not warrant a
+major release.  Backward compatibility is preserved where practical, and no new
+external dependency is introduced.
 
-	- beta releases are made from this branch
-	- bug fixes not requiring major code work can be done directly here
-	- features ready for production use are merged to this branch from
-	  their specific development branches for automated testing and beta
-	  cycles
-	- development of new features is NOT done here
-	- major bug fixes are NOT done here
+PATCH RELEASES (z increases): bug and security fixes only -- no new features and
+nothing removed.  Backward compatibility must be preserved except where that is
+impossible.
 
-o A release branch is only necessary when there are two active release lines
-  in existence (e.g., when 2.0.x releases are still occurring while 2.1.0
-  development is in progress).  In this case, "develop" represents the
-  development of the new version while a release branch would sustain the
-  older release line(s) until they are no longer needed.  This means bug fixes
-  merged to a release branch must also be merged to "develop".  Release
-  branches are named after the major and minor versions they cover, e.g.
-  "release-2-0" for all 2.0.x releases.  The procedure for this branch is
-  the same as "develop" in that it is the destination for merges that should
-  go into releases represented by that branch.  These branches should be
-  uncommon.
+Changes under contrib/ are unsupported and may appear in any release.
 
-o Bug fixes requiring more than trivial code changes must be done on a new
-  branch whose name starts with "bug-" and is followed by the identity of the
-  branch holder, another hyphen, and then some description of the work being
-  done there; e.g. "bug-msk-sf1234567" (identifying a bug number) or
-  "bug-msk-startup-crash" (short description).  These are expected to be
-  reviewed by at least one other person before being merged back to "develop".
 
-o Feature requests must be done on a new branch following a similar naming
-  scheme except using a prefix of "feature-"; e.g. "feature-msk-dnssec" or
-  "feature-msk-sf234567".  These are also expected to get at least one
-  reviewer before being merged back to "develop".
+CANONICAL RELEASES
 
-o Experimental work branches are prefixed with "exp-" and otherwise follow
-  the same naming convention.  It is expected these branches will evolve into
-  feature request or bug fix branches, or be abandoned.  That transition does
-  not require any review.
+Releases are tagged on the master branch as "vX.Y.Z" (e.g. "v1.0.0"), as signed
+annotated git tags.
 
-2) A patch releases does not require a beta period.  They are, however,
-encouraged to be conducted, at least privately, and not last less than one
-week.  A minor or major release requires a beta period of not less than a
-month, and there should be very little change activity within the final week
-of the beta period; if the last week contains several changes, the beta
-should be extended.
+The canonical release artifacts are the signed source tarballs published at
+https://www.phoenixdkim.org/releases/ :
 
-3) Active discussion of any non-trivial work being done on the opendkim-dev
-list is encouraged.
+    phoenixdkim-X.Y.Z.tar.gz        the release tarball
+    phoenixdkim-X.Y.Z.tar.gz.asc    its detached OpenPGP signature
 
-4) All developers are encouraged to keep an eye on what's going through the
-opendkim-cvs list for possible mistakes or other spontaneous review.
+GitHub's auto-generated tag archives are NOT canonical: they are not guaranteed
+byte-stable and are not signed.  Always prefer the website tarballs, and verify
+them:
 
-5) If you have questions about someone's design or choice of how to fix
-something, and especially if you have an idea about a more solid approach,
-feel free to bring it up on opendkim-dev.  We're a community of experienced
-people, so peer review is important and encouraged.
+    gpg --verify phoenixdkim-X.Y.Z.tar.gz.asc phoenixdkim-X.Y.Z.tar.gz
 
-6) Nothing, even small things, should go in to any release branch or the
-develop branch without being build-tested and run someplace first.
+Tarballs and release tags are signed with the PhoenixDKIM release key
+(releases@proteamail.com, fingerprint
+9FF4 1A44 270A 1D88 226E  50F3 E75C 78A2 8F60 F730).
 
-7) When making changes or improvements to libopendkim, write a unit test and
-add it to the system to cover your work.  You can copy one of the existing
-ones and modify it accordingly.  Any changes to libopendkim have to leave it
-with all unit tests still running.
 
-8) Stick to the coding style (braces, tabs, comments, etc.).  The code
-should look like it came from a coherent team; I shouldn't be able to tell
-where you patched something I wrote without using "git blame".
+GIT BRANCH LAYOUT
 
-9) Anything you change should be documented in the RELEASE_NOTES file,
-following its current format.  You don't need to document fixed typos or
-truly trivial things of that nature, but just about everything else should
-be mentioned.  Remember to give credit where credit is due, though we
-generally don't attribute credit to people who are part of the project
-itself unless it's really a major contribution.
+o master -- pure upstream source.  No distribution packaging lives here, so a
+  "git archive" of a release tag is a clean upstream tarball.  Development is
+  merged here and releases are tagged from here.
 
-10) If you want a development sandbox, create a branch first (see below)
-and do your experimenting there.  Commits to sandbox branches don't need
-to be reviewed by anyone.  Sandboxes only get merged to release branches or
-the trunk after passing a review.
+o feature/* and fix/* -- development branches for features and bug fixes
+  respectively, merged back to master once reviewed and tested.
 
-11) git commits on non-sandbox branches should describe what changed in enough
-detail to indicate to one of us why the change was made.  We can see what
-changed using "git diff", so the "why" is important here.  If you had
-any review done of your work, name the person(s) that did the review in
-your commit comment.
+o Distribution packaging lives on its own per-target branch, each of which is
+  master plus a packaging directory and is kept current with "git merge master"
+  (master never touches the packaging directory, so this never conflicts):
 
-12) Nothing should cause compile-time warnings unless there's a really good
-reason not to clean them up.  If that's the case, explain why the warnings
-should be tolerated in your commit comment.
+      debian/latest  -- packaging for the Debian archive (targets unstable)
+      debian/trixie  -- packaging for the local apt repository (targets trixie)
 
-13) Start your commit comment with "MFC:" (move from current) if the diff is
-a copy from the trunk, or with "MFB:" (move from branch) if it's a copy to
-the trunk, and name the other branch involved.
+  Fedora/RPM packaging is planned and, if accepted, will follow the same model
+  on its own branch; the spec groundwork is in contrib/phoenixdkim.spec.
 
-14) Where a commit references an open bug or feature request, specify such
-(e.g. "Fix bug #SF1234567" or "Feature request #SF2345678") as well as some
-descriptive text such as the problem being solved or the feature being
-added.  The "SF" prefix is legacy from the times when there was more
-than one bug tracking system in use, but let's stick with it for now.
 
-Sandbox branching procedure:
+CONTRIBUTING
 
-1) Update your code to the point in git at which you want to branch
+1) Match the surrounding coding style (braces, tabs, comments).  The code should
+   read as the work of one coherent team.
 
-2) Update the BRANCHES file to contain your branch
+2) Nothing should introduce compile-time warnings without a documented reason.
 
-3) Check in the BRANCHES file "git commit -m 'add branch XXX'"
+3) Any change to libphoenixdkim must leave every unit test passing.  When you
+   change library behaviour, add a unit test covering it -- copy an existing
+   t-test*.c and adapt it.
 
-4) "git tag base-exp-<yourname>-<branchname>" (e.g. "git tag
-base-exp-dblack-async-dns") to lay down a reference tag, so that later you
-can produce a final diff of your work relative to the branch point.
+4) Build- and run-test a change somewhere before it lands.
 
-5) "git branch exp-<yourname>-<branchname>" to create the branch
+5) Document user-visible changes in RELEASE_NOTES (and, for the Debian package,
+   debian/changelog).  Trivial fixes need not be documented.
 
-6) Update your copy so it refers to the branch
-(e.g. "git checkout exp-<yourname>-<branchname>").
+6) Write commit messages that explain WHY the change was made; the diff already
+   shows what changed.
 
-7) Code away!
-
-The same procedure applies for other types of branches.
-
-Production branch notes:
-
-1) All branches should belong to a person (i.e. be named, like "bug-msk-...")
-unless they are release branches, in which case they are named after that code
-fork (e.g. "release-1-1" is for 1.1.x releases).  Branches should be deleted
-only after they are either merged to develop or abandoned.
-
-2) Whoever's doing releases (currently only msk) is responsible for all
-release branch creation and all merges to the master branch, and is also
-responsible for placing release tags during releases.
-
-3) New features and dependencies only ever go on the develop branch, never on
-release branches.  The exception to this is FFRs; new FFRs can go in on any
-release branch since they are off-by-default anyway, but still this should be
-avoided.  FFRs only ever "go live", becoming production code, on the master
-branch.
-
-4) Bug fixes relative to code that has already been released go on both the
-current release branch (if any) and the develop branch for later merge to the
-master.
-
-5) When it's time for a new release line to begin (e.g. 2.1.x has been
-created but it's time to get some new features out so we need to start
-the 2.2.x releases), start a new release branch and do releases from there.
- 
-If anyone has questions about anything above, feel free to ask about them
-before doing something that could cause a mess.
+7) Bugs and feature requests are tracked on GitHub:
+   https://github.com/edmundlod/PhoenixDKIM/issues
+   Debian packaging is tracked in the Debian bug tracker (ITP: #1140100).
