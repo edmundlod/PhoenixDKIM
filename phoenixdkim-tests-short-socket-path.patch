@@ -1,0 +1,24 @@
+Give each integration test a short, private milter socket directory.
+
+The integration harness derives the milter socket path from the (very deep)
+build directory; on Fedora's mock BUILD path that exceeds the AF_UNIX
+sun_path 108-byte limit, so smfi_opensocket() fails and mt.connect() times
+out.  Wrap each test so it creates a 0700 dir with mktemp -d and points
+miltertest's -D TESTSOCKET there: short (well under the limit), unique per
+test (parallel-safe), unpredictable (no fixed /tmp path, matching the
+mkstemp policy for temp files), and removed on exit.
+
+Submitted upstream for 1.0.1.
+diff --git a/phoenixdkim/tests/CMakeLists.txt b/phoenixdkim/tests/CMakeLists.txt
+index 4ac13a26..d5f64534 100644
+--- a/phoenixdkim/tests/CMakeLists.txt
++++ b/phoenixdkim/tests/CMakeLists.txt
+@@ -39,7 +39,7 @@ foreach(test_name ${TEST_DRIVERS})
+ 
+     add_test(
+         NAME integration/${test_name}
+-        COMMAND $<TARGET_FILE:miltertest> -s ${_lua}
++        COMMAND sh -c [=[ d=$(mktemp -d /tmp/pdk.XXXXXX) || exit 1; "$@" -D TESTSOCKET="unix:$d/s.sock" -s "$0"; rc=$?; rm -rf "$d"; exit $rc ]=] ${_lua} $<TARGET_FILE:miltertest>
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+     )
+ 

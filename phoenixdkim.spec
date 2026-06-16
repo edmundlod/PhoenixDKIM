@@ -15,6 +15,10 @@ Source1:        https://www.phoenixdkim.org/releases/%{name}-%{version}.tar.gz.a
 Source2:        phoenixdkim-release-key.asc
 Source3:        phoenixdkim.conf.sample
 
+# Short, private per-test milter socket dir (AF_UNIX sun_path limit vs the deep
+# build path).  Submitted upstream for 1.0.1.
+Patch0:         phoenixdkim-tests-short-socket-path.patch
+
 BuildRequires:  cmake >= 3.20
 BuildRequires:  gcc
 BuildRequires:  pkgconfig
@@ -75,7 +79,7 @@ Command-line tools for PhoenixDKIM: %{name}-genkey, %{name}-genzone,
 
 %prep
 %{gpgverify -k2 -s1 -d0}
-%autosetup -n %{name}-%{version}
+%autosetup -p1 -n %{name}-%{version}
 
 cat > %{name}.sysusers.conf << 'EOF'
 u phoenixdkim - 'PhoenixDKIM Milter' /run/phoenixdkim -
