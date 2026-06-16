@@ -74,7 +74,7 @@ Command-line tools for PhoenixDKIM: %{name}-genkey, %{name}-genzone,
 %{name}-testkey, and %{name}-testmsg.
 
 %prep
-%{gpgverify --keyring='%{SOURCE2}' --signature='%{SOURCE1}' --data='%{SOURCE0}'}
+%{gpgverify -k %{SOURCE2} -s %{SOURCE1} -d %{SOURCE0}}
 %autosetup -n %{name}-%{version}
 
 cat > %{name}.sysusers.conf << 'EOF'
