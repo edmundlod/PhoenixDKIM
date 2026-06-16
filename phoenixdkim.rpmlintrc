@@ -1,0 +1,18 @@
+# rpmlint exceptions for PhoenixDKIM.  Each has been reviewed; none is a defect.
+
+# "milter" and the tool names (genkey/genzone/testkey/testmsg) are domain terms,
+# not misspellings.
+addFilter(r"spelling-error.*\b(milter|genkey|genzone|testkey|testmsg)\b")
+
+# The package ships a dedicated system user/group "phoenixdkim" (sysusers.d) for
+# the daemon, which legitimately owns its config, key, and spool directories.
+addFilter(r"non-standard-(uid|gid) \S+ phoenixdkim")
+
+# Private DKIM signing keys live in /etc/phoenixdkim/keys; it is intentionally
+# root:phoenixdkim 0750 so only the daemon's group can read the keys.
+addFilter(r"non-standard-dir-perm /etc/phoenixdkim/keys 750")
+
+# miltertest is the test driver (not the daemon) and only reaches gethostbyname()
+# for inet: sockets; the suite uses unix sockets.  Migration to getaddrinfo is
+# tracked upstream.
+addFilter(r"binary-or-shlib-calls-gethostbyname /usr/bin/miltertest")
