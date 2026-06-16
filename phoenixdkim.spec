@@ -70,6 +70,7 @@ Headers and development library for building against libphoenixdkim.
 
 %package tools
 Summary:        Utilities for administering PhoenixDKIM
+Requires:       lib%{name}%{?_isa} = %{version}-%{release}
 
 %description tools
 Command-line tools for PhoenixDKIM: %{name}-genkey, %{name}-genzone,
