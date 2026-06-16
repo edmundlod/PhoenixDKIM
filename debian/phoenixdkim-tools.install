@@ -1,7 +1,0 @@
-usr/sbin/phoenixdkim-testkey
-usr/sbin/phoenixdkim-testmsg
-usr/sbin/phoenixdkim-genzone
-usr/share/man/man8/phoenixdkim-testkey.8
-usr/share/man/man8/phoenixdkim-testmsg.8
-usr/share/man/man8/phoenixdkim-genzone.8
-

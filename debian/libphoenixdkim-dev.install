@@ -1,4 +1,0 @@
-usr/include/phoenixdkim/dkim.h
-usr/lib/*/libphoenixdkim.so
-usr/lib/*/libphoenixdkim.a
-usr/lib/*/pkgconfig/libphoenixdkim.pc
