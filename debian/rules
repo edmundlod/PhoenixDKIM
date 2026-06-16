@@ -22,6 +22,13 @@ override_dh_auto_configure:
 		-DWITH_CURL=ON \
 		-DINSTALL_SYSTEMD_UNIT=OFF
 
+# Ship the bundled sample as the live, verify-only default configuration.
+# It is not produced by the CMake build, so install it from debian/ into the
+# phoenixdkim package; dh_installdeb registers files under /etc as conffiles.
+execute_after_dh_install:
+	install -D -m 0644 debian/phoenixdkim.conf.sample \
+		debian/phoenixdkim/etc/phoenixdkim/phoenixdkim.conf
+
 # Test results on kfreebsd-* are inconsistent, but not due to package bugs.
 override_dh_auto_test:
 	dh_auto_test
