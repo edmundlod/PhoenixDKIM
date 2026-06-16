@@ -3,12 +3,10 @@ Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Security-focused DKIM signing and verifying milter
 
-# Most files are BSD-3-Clause (The Trusted Domain Project / PhoenixDKIM); the
-# Sendmail-derived files add the Sendmail Open Source License.
-# TODO before submission: confirm the exact SPDX identifier for the Sendmail
-# Open Source License against the SPDX list and Fedora's allowed-licenses
-# (the placeholder "Sendmail-Open-Source-1.1" was not a valid SPDX id).
-License:        BSD-3-Clause AND Sendmail
+# BSD-3-Clause for the Trusted Domain Project / PhoenixDKIM code; the
+# Sendmail-derived files are under the Sendmail Open Source License.  Matches
+# the expression Fedora's opendkim ships with.
+License:        BSD-3-Clause AND Sendmail-Open-Source-1.1
 URL:            https://www.phoenixdkim.org/
 Source0:        https://www.phoenixdkim.org/releases/%{name}-%{version}.tar.gz
 Source1:        https://www.phoenixdkim.org/releases/%{name}-%{version}.tar.gz.asc
