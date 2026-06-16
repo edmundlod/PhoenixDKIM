@@ -1,15 +1,19 @@
-%global upname  PhoenixDKIM
-%global betaver beta2
-
 Name:           phoenixdkim
 Version:        1.0.0
-Release:        0.1%{?dist}
+Release:        1%{?dist}
 Summary:        Security-focused DKIM signing and verifying milter
 
-License:        BSD-3-Clause AND Sendmail-Open-Source-1.1
-URL:            https://github.com/edmundlod/PhoenixDKIM
-Source0:        %{url}/archive/v%{version}-%{betaver}/%{name}-%{version}-%{betaver}.tar.gz
-Source1:        phoenixdkim.conf.sample
+# Most files are BSD-3-Clause (The Trusted Domain Project / PhoenixDKIM); the
+# Sendmail-derived files add the Sendmail Open Source License.
+# TODO before submission: confirm the exact SPDX identifier for the Sendmail
+# Open Source License against the SPDX list and Fedora's allowed-licenses
+# (the placeholder "Sendmail-Open-Source-1.1" was not a valid SPDX id).
+License:        BSD-3-Clause AND Sendmail
+URL:            https://www.phoenixdkim.org/
+Source0:        https://www.phoenixdkim.org/releases/%{name}-%{version}.tar.gz
+Source1:        https://www.phoenixdkim.org/releases/%{name}-%{version}.tar.gz.asc
+Source2:        phoenixdkim-release-key.asc
+Source3:        phoenixdkim.conf.sample
 
 BuildRequires:  cmake >= 3.20
 BuildRequires:  gcc
@@ -26,6 +30,8 @@ BuildRequires:  hiredis-devel
 BuildRequires:  libcurl-devel
 BuildRequires:  systemd-devel
 BuildRequires:  systemd-rpm-macros
+# upstream tarball signature verification (Source1/Source2)
+BuildRequires:  gnupg2
 
 # strlcpy/strlcat landed in glibc 2.38 (Fedora 39+, RHEL 10+); older EPEL needs libbsd
 %if 0%{?rhel} && 0%{?rhel} <= 9
@@ -33,6 +39,7 @@ BuildRequires:  libbsd-devel
 %endif
 
 %{?systemd_requires}
+%{?sysusers_requires_compat}
 
 Requires:       lib%{name}%{?_isa} = %{version}-%{release}
 
@@ -67,7 +74,8 @@ Command-line tools for PhoenixDKIM: %{name}-genkey, %{name}-genzone,
 %{name}-testkey, and %{name}-testmsg.
 
 %prep
-%autosetup -n %{upname}-%{version}-%{betaver}
+%{gpgverify --keyring='%{SOURCE2}' --signature='%{SOURCE1}' --data='%{SOURCE0}'}
+%autosetup -n %{name}-%{version}
 
 cat > %{name}.sysusers.conf << 'EOF'
 u phoenixdkim - 'PhoenixDKIM Milter' /run/phoenixdkim -
@@ -75,19 +83,25 @@ m phoenixdkim mail
 EOF
 
 %build
-%cmake
+%cmake \
+    -DWITH_REDIS=ON \
+    -DWITH_CURL=ON \
+    -DINSTALL_SYSTEMD_UNIT=ON
 %cmake_build
 
 %install
 %cmake_install
 
 install -d %{buildroot}%{_sysconfdir}/%{name}
-install -Dm 0644 %{SOURCE1} %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
+install -Dm 0644 %{SOURCE3} %{buildroot}%{_sysconfdir}/%{name}/%{name}.conf
 install -d %{buildroot}%{_sysconfdir}/%{name}/keys
 install -d %{buildroot}%{_localstatedir}/spool/%{name}
 install -Dm 0644 %{name}.sysusers.conf %{buildroot}%{_sysusersdir}/%{name}.conf
 
 find %{buildroot}%{_libdir} -name '*.a' -delete
+
+%check
+%ctest
 
 %post
 %systemd_post %{name}.service
@@ -138,5 +152,10 @@ find %{buildroot}%{_libdir} -name '*.a' -delete
 %{_mandir}/man8/%{name}-testmsg.8*
 
 %changelog
+* Tue Jun 16 2026 Edmund Lodewijks <edmund@proteamail.com> - 1.0.0-1
+- First stable release (1.0.0).
+- Pull and verify the signed upstream tarball from phoenixdkim.org.
+- Run the test suite in %%check.
+
 * Wed Jun 03 2026 Edmund Lodewijks <edmund@proteamail.com> - 1.0.0-0.1
 - Initial package (1.0.0-beta2 pre-release)
