@@ -243,6 +243,9 @@ if(WITH_DKIM2)
     if(CJSON_FOUND)
         message(STATUS "cJSON found: enabling experimental DKIM2 support")
         set(USE_DKIM2 1)
+        list(APPEND DKIM2_SOURCES
+            dkim2-tags.c
+        )
     else()
         message(FATAL_ERROR
             "cJSON (libcjson) not found but WITH_DKIM2=ON. Install libcjson-dev / "
