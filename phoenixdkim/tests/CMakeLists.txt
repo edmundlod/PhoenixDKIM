@@ -31,6 +31,13 @@ foreach(f ${_all_files})
     endif()
 endforeach()
 
+# DKIM2 integration tests exercise config keys that only exist when the
+# experimental DKIM2 support is compiled in; drop them otherwise.  WITH_DKIM2
+# is a cache option declared in libphoenixdkim/CMakeLists.txt, visible here.
+if(NOT WITH_DKIM2)
+    list(REMOVE_ITEM TEST_DRIVERS t-dkim2-sign)
+endif()
+
 foreach(test_name ${TEST_DRIVERS})
     set(_lua ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.lua)
     if(NOT EXISTS ${_lua})

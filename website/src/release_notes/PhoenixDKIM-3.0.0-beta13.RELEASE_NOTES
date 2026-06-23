@@ -258,9 +258,9 @@ Optional developer build targets
 The following are off by default and intended for development and
 CI use; they have no effect on production builds.
 
-[Build 20260527] OPENDKIM_ENABLE_STRICT_C=ON enables -pedantic-errors
+[Build 20260527] PHOENIXDKIM_ENABLE_STRICT_C=ON enables -pedantic-errors
 for ISO C17 strict-conformance testing. Intended to be combined with
-OPENDKIM_ENABLE_EXTRA_WARNINGS=ON.
+PHOENIXDKIM_ENABLE_EXTRA_WARNINGS=ON.
 
 [Build 20260527] Valgrind Memcheck and Helgrind are now registered as
 optional CTest test sets. Run with:

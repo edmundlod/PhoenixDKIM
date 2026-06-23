@@ -22,6 +22,15 @@ building and installing, see the top-level [README](../README.md).
   header bodies and tag values, and U-label signing domains resolved via
   libidn2.
 
+## Protocols
+
+- [DKIM2.md](DKIM2.md) — **experimental, off by default.** Design notes and
+  roadmap for the in-progress DKIM2 (`draft-ietf-dkim-dkim2-spec`) chain-of-
+  custody signature support, built in parallel to DKIM1 behind `WITH_DKIM2`.
+- [dkim2-dev-guide.md](dkim2-dev-guide.md) — for contributors: module map, build
+  and test commands, design invariants, and the concrete remaining work (milter
+  wiring, then the extended profile).
+
 ## Reference
 
 - [removed-features.md](removed-features.md) — subsystems dropped from pre-fork

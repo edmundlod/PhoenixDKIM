@@ -90,6 +90,11 @@
 
 /* libphoenixdkim includes */
 #include "dkim.h"
+#ifdef USE_DKIM2
+# include "dkim2-crypto.h"
+# include "dkim2-sign.h"
+# include "dkim2-verify.h"
+#endif /* USE_DKIM2 */
 
 /* libbsd if found */
 #ifdef USE_BSD_H
@@ -337,7 +342,24 @@ struct dkimf_config
 	DKIMF_DB	conf_resigndb;		/* resigning addresses */
 	DKIM_LIB *	conf_libphoenixdkim;	/* DKIM library handle */
 	struct handling	conf_handling;		/* message handling */
+#ifdef USE_DKIM2
+	unsigned int	conf_dkim2mode;		/* DKIM2 sign/verify bitmask */
+	_Bool		conf_dkim2rejectfail;	/* reject DKIM2 FAIL/PERMERROR */
+	_Bool		conf_dkim2addar;	/* add DKIM2 Auth-Results */
+	dkim2_alg_t	conf_dkim2alg;		/* resolved DKIM2 sign algorithm */
+	char *		conf_dkim2modestr;	/* DKIM2Mode string */
+	char *		conf_dkim2domain;	/* DKIM2 signing domain (d=) */
+	char *		conf_dkim2selector;	/* DKIM2 selector */
+	char *		conf_dkim2keyfile;	/* DKIM2 private key file */
+	char *		conf_dkim2algstr;	/* DKIM2Algorithm string */
+	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
+#endif /* USE_DKIM2 */
 };
+
+#ifdef USE_DKIM2
+# define DKIMF_DKIM2_SIGN	0x01		/* DKIM2Mode includes "sign" */
+# define DKIMF_DKIM2_VERIFY	0x02		/* DKIM2Mode includes "verify" */
+#endif /* USE_DKIM2 */
 
 /*
 **  MSGCTX -- message context, containing transaction-specific data
@@ -381,6 +403,12 @@ struct msgctx
 						/* primary domain */
 	unsigned char	mctx_dkimar[DKIM_MAXHEADER + 1];
 						/* DKIM Auth-Results content */
+#ifdef USE_DKIM2
+	struct dkimf_dstring * mctx_dkim2body;	/* full body buffer (DKIM2) */
+	struct addrlist * mctx_dkim2rcpts;	/* raw RCPT TO paths (DKIM2) */
+	unsigned char	mctx_dkim2mailfrom[MAXADDRESS + 1];
+						/* raw MAIL FROM path (DKIM2) */
+#endif /* USE_DKIM2 */
 };
 
 /*
@@ -5955,6 +5983,11 @@ dkimf_config_free(struct dkimf_config *conf)
 	if (conf->conf_signtabledb != NULL)
 		dkimf_db_close(conf->conf_signtabledb);
 
+#ifdef USE_DKIM2
+	if (conf->conf_dkim2key != NULL)
+		EVP_PKEY_free(conf->conf_dkim2key);
+#endif /* USE_DKIM2 */
+
 	if (conf->conf_data != NULL)
 		config_free(conf->conf_data);
 
@@ -7777,6 +7810,142 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		}
 	}
 
+#ifdef USE_DKIM2
+	/*
+	**  DKIM2 (draft-ietf-dkim-dkim2-spec) is built in parallel to DKIM1 and
+	**  driven by its own config keys, all default-off.  The DKIM1 paths above
+	**  are untouched: the two can coexist on one message.
+	*/
+
+	conf->conf_dkim2mode = 0;
+
+	if (data != NULL)
+	{
+		(void) config_get(data, "DKIM2Mode", &conf->conf_dkim2modestr,
+		                  sizeof conf->conf_dkim2modestr);
+		(void) config_get(data, "DKIM2Domain", &conf->conf_dkim2domain,
+		                  sizeof conf->conf_dkim2domain);
+		(void) config_get(data, "DKIM2Selector",
+		                  &conf->conf_dkim2selector,
+		                  sizeof conf->conf_dkim2selector);
+		(void) config_get(data, "DKIM2KeyFile",
+		                  &conf->conf_dkim2keyfile,
+		                  sizeof conf->conf_dkim2keyfile);
+		(void) config_get(data, "DKIM2Algorithm",
+		                  &conf->conf_dkim2algstr,
+		                  sizeof conf->conf_dkim2algstr);
+		(void) config_get(data, "DKIM2RejectOnFail",
+		                  &conf->conf_dkim2rejectfail,
+		                  sizeof conf->conf_dkim2rejectfail);
+		(void) config_get(data, "DKIM2AuthResults",
+		                  &conf->conf_dkim2addar,
+		                  sizeof conf->conf_dkim2addar);
+	}
+
+	if (conf->conf_dkim2modestr != NULL)
+	{
+		const char *m = conf->conf_dkim2modestr;
+
+		if (strcasecmp(m, "off") == 0 || m[0] == '\0')
+			conf->conf_dkim2mode = 0;
+		else if (strcasecmp(m, "sign") == 0 || strcasecmp(m, "s") == 0)
+			conf->conf_dkim2mode = DKIMF_DKIM2_SIGN;
+		else if (strcasecmp(m, "verify") == 0 ||
+		         strcasecmp(m, "v") == 0)
+			conf->conf_dkim2mode = DKIMF_DKIM2_VERIFY;
+		else if (strcasecmp(m, "both") == 0 ||
+		         strcasecmp(m, "sv") == 0)
+			conf->conf_dkim2mode = DKIMF_DKIM2_SIGN |
+			                       DKIMF_DKIM2_VERIFY;
+		else
+		{
+			(void) snprintf(err, errlen,
+			         "unknown DKIM2Mode \"%s\" (off/sign/verify/both)",
+			         m);
+			return -1;
+		}
+	}
+
+	/* load the DKIM2 signing key when DKIM2 signing is requested */
+	if ((conf->conf_dkim2mode & DKIMF_DKIM2_SIGN) != 0)
+	{
+		FILE *kf;
+		char *pem;
+		long pemlen;
+
+		if (conf->conf_dkim2domain == NULL ||
+		    conf->conf_dkim2selector == NULL ||
+		    conf->conf_dkim2keyfile == NULL)
+		{
+			(void) snprintf(err, errlen,
+			         "DKIM2 signing requires DKIM2Domain, DKIM2Selector and DKIM2KeyFile");
+			return -1;
+		}
+
+		kf = fopen(conf->conf_dkim2keyfile, "rb");
+		if (kf == NULL)
+		{
+			(void) snprintf(err, errlen,
+			         "%s: fopen(): %s", conf->conf_dkim2keyfile,
+			         strerror(errno));
+			return -1;
+		}
+		if (fseek(kf, 0, SEEK_END) != 0 ||
+		    (pemlen = ftell(kf)) < 0 ||
+		    fseek(kf, 0, SEEK_SET) != 0)
+		{
+			(void) snprintf(err, errlen, "%s: cannot size key file",
+			         conf->conf_dkim2keyfile);
+			fclose(kf);
+			return -1;
+		}
+		pem = malloc((size_t) pemlen + 1);
+		if (pem == NULL)
+		{
+			(void) snprintf(err, errlen, "malloc(): %s",
+			         strerror(errno));
+			fclose(kf);
+			return -1;
+		}
+		if (fread(pem, 1, (size_t) pemlen, kf) != (size_t) pemlen)
+		{
+			(void) snprintf(err, errlen, "%s: read() failed",
+			         conf->conf_dkim2keyfile);
+			free(pem);
+			fclose(kf);
+			return -1;
+		}
+		fclose(kf);
+		pem[pemlen] = '\0';
+
+		conf->conf_dkim2key = dkim2_privkey_load_pem(pem,
+		                                             (size_t) pemlen);
+		memset(pem, '\0', (size_t) pemlen);
+		free(pem);
+		if (conf->conf_dkim2key == NULL)
+		{
+			(void) snprintf(err, errlen,
+			         "%s: not a usable DKIM2 private key",
+			         conf->conf_dkim2keyfile);
+			return -1;
+		}
+
+		if (conf->conf_dkim2algstr != NULL)
+			conf->conf_dkim2alg =
+			    dkim2_alg_from_name(conf->conf_dkim2algstr);
+		else
+			conf->conf_dkim2alg =
+			    dkim2_pkey_alg(conf->conf_dkim2key);
+
+		if (conf->conf_dkim2alg == DKIM2_ALG_UNKNOWN)
+		{
+			(void) snprintf(err, errlen,
+			         "DKIM2 algorithm is unknown or does not match the key");
+			return -1;
+		}
+	}
+#endif /* USE_DKIM2 */
+
 	/* activate logging if requested */
 	if (conf->conf_dolog)
 	{
@@ -8609,6 +8778,26 @@ dkimf_cleanup(SMFICTX *ctx)
 				addr = next;
 			}
 		}
+
+#ifdef USE_DKIM2
+		if (dfc->mctx_dkim2rcpts != NULL)
+		{
+			struct addrlist *addr;
+			struct addrlist *next;
+
+			addr = dfc->mctx_dkim2rcpts;
+			while (addr != NULL)
+			{
+				next = addr->a_next;
+				TRYFREE(addr->a_addr);
+				TRYFREE(addr);
+				addr = next;
+			}
+		}
+
+		if (dfc->mctx_dkim2body != NULL)
+			dkimf_dstring_free(dfc->mctx_dkim2body);
+#endif /* USE_DKIM2 */
 
 		if (dfc->mctx_srhead != NULL)
 		{
@@ -10790,6 +10979,17 @@ mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 		strlcpy((char *) dfc->mctx_envfrom, envfrom[0],
 		        sizeof dfc->mctx_envfrom);
 
+#ifdef USE_DKIM2
+		/*
+		**  DKIM2 binds the SMTP envelope verbatim (mf=), so keep the
+		**  raw "<path>" form before the brackets are stripped below for
+		**  the DKIM1 path.
+		*/
+		if (conf->conf_dkim2mode != 0)
+			strlcpy((char *) dfc->mctx_dkim2mailfrom, envfrom[0],
+			        sizeof dfc->mctx_dkim2mailfrom);
+#endif /* USE_DKIM2 */
+
 		len = strlen((char *) dfc->mctx_envfrom);
 		p = dfc->mctx_envfrom;
 		q = dfc->mctx_envfrom + len - 1;
@@ -10849,6 +11049,43 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 	dfc = cc->cctx_msg;
 	assert(dfc != NULL);
 	conf = cc->cctx_config;
+
+#ifdef USE_DKIM2
+	/*
+	**  DKIM2 binds each forward-path verbatim (rt=); keep the raw "<path>"
+	**  strings in their delivery order, independent of the DKIM1 recipient
+	**  list (which is only built for a few features and is bracket-stripped).
+	*/
+	if (conf->conf_dkim2mode != 0 && envrcpt[0] != NULL)
+	{
+		struct addrlist *a;
+		struct addrlist *tail;
+
+		a = (struct addrlist *) malloc(sizeof(struct addrlist));
+		if (a == NULL || (a->a_addr = strdup(envrcpt[0])) == NULL)
+		{
+			dkimf_log(conf, LOG_ERR,
+			       "message requeueing (internal error)");
+			free(a);
+			dkimf_cleanup(ctx);
+			return SMFIS_TEMPFAIL;
+		}
+		a->a_next = NULL;
+
+		/* append so the chain preserves RCPT TO order */
+		if (dfc->mctx_dkim2rcpts == NULL)
+		{
+			dfc->mctx_dkim2rcpts = a;
+		}
+		else
+		{
+			for (tail = dfc->mctx_dkim2rcpts; tail->a_next != NULL;
+			     tail = tail->a_next)
+				continue;
+			tail->a_next = a;
+		}
+	}
+#endif /* USE_DKIM2 */
 
 	if (conf->conf_dontsigntodb != NULL
 	    || conf->conf_bldb != NULL
@@ -12459,19 +12696,61 @@ mlfi_body(SMFICTX *ctx, u_char *bodyp, size_t bodylen)
 	if (bodylen == 0)
 		return SMFIS_CONTINUE;
 
+#ifdef USE_DKIM2
+	/*
+	**  DKIM2 hashes the whole body, so (unlike the DKIM1 path, which streams
+	**  chunks straight into the library) we must keep a copy.  Accumulate it
+	**  here, before any skip decision below, whenever DKIM2 is active.
+	*/
+	{
+		struct dkimf_config *conf = cc->cctx_config;
+
+		if (conf->conf_dkim2mode != 0)
+		{
+			if (dfc->mctx_dkim2body == NULL)
+			{
+				dfc->mctx_dkim2body = dkimf_dstring_new(MAXBUFRSZ,
+				                                        0);
+				if (dfc->mctx_dkim2body == NULL)
+				{
+					dkimf_log(conf, LOG_ERR,
+					       "dkimf_dstring_new() failed");
+					dkimf_cleanup(ctx);
+					return SMFIS_TEMPFAIL;
+				}
+			}
+			if (!dkimf_dstring_catn(dfc->mctx_dkim2body, bodyp,
+			                        bodylen))
+			{
+				dkimf_log(conf, LOG_ERR,
+				       "dkimf_dstring_catn() failed");
+				dkimf_cleanup(ctx);
+				return SMFIS_TEMPFAIL;
+			}
+		}
+	}
+#endif /* USE_DKIM2 */
+
 	/*
 	**  Tell the filter to skip it if we don't care about the body.
 	*/
 
 	if (dfc->mctx_headeronly)
 	{
+		_Bool dkim2active = FALSE;
+
+#ifdef USE_DKIM2
+		dkim2active = (cc->cctx_config->conf_dkim2mode != 0);
+#endif /* USE_DKIM2 */
+
 #ifdef SMFIS_SKIP
-		if (cc->cctx_milterv2)
+		if (cc->cctx_milterv2 && !dkim2active)
 			return SMFIS_SKIP;
 		else
 			return SMFIS_CONTINUE;
 #else /* SMFIS_SKIP */
-			return SMFIS_CONTINUE;
+		(void) dkim2active;
+		return SMFIS_CONTINUE;
 #endif /* SMFIS_SKIP */
 	}
 
@@ -12494,6 +12773,9 @@ mlfi_body(SMFICTX *ctx, u_char *bodyp, size_t bodylen)
 
 #ifdef SMFIS_SKIP
 	if (cc->cctx_milterv2 &&
+#ifdef USE_DKIM2
+	    cc->cctx_config->conf_dkim2mode == 0 &&
+#endif /* USE_DKIM2 */
 	    (dfc->mctx_srhead == NULL ||
 	     dkimf_msr_minbody(dfc->mctx_srhead) == 0) &&
 	    (dfc->mctx_dkimv == NULL ||
@@ -12503,6 +12785,360 @@ mlfi_body(SMFICTX *ctx, u_char *bodyp, size_t bodylen)
 
 	return SMFIS_CONTINUE;
 }
+
+#ifdef USE_DKIM2
+/*
+**  DKIMF_DKIM2_HEADERS -- materialise the collected header queue as the
+**                         "Name: value" array dkim2_sign()/dkim2_verify()
+**                         consume (folding preserved, no trailing CRLF).  This
+**                         reuses the queue the DKIM1 path already accumulates
+**                         in mlfi_header(); nothing is buffered twice.
+**
+**  Parameters:
+**  	dfc -- message context
+**  	nout -- receives the element count
+**
+**  Return value:
+**  	A malloc'd array of malloc'd strings (free each, then the array), or
+**  	NULL on error.
+*/
+
+static char **
+dkimf_dkim2_headers(msgctx dfc, size_t *nout)
+{
+	size_t n = 0;
+	size_t i = 0;
+	Header hdr;
+	char **out;
+
+	for (hdr = dfc->mctx_hqhead; hdr != NULL; hdr = hdr->hdr_next)
+		n++;
+
+	out = (char **) calloc(n != 0 ? n : 1, sizeof *out);
+	if (out == NULL)
+		return NULL;
+
+	for (hdr = dfc->mctx_hqhead; hdr != NULL; hdr = hdr->hdr_next)
+	{
+		if (asprintf(&out[i], "%s: %s", hdr->hdr_hdr,
+		             hdr->hdr_val != NULL ? hdr->hdr_val : "") < 0)
+		{
+			while (i > 0)
+				free(out[--i]);
+			free(out);
+			return NULL;
+		}
+		i++;
+	}
+
+	*nout = n;
+	return out;
+}
+
+static void
+dkimf_dkim2_headers_free(char **headers, size_t n)
+{
+	size_t i;
+
+	if (headers == NULL)
+		return;
+	for (i = 0; i < n; i++)
+		free(headers[i]);
+	free(headers);
+}
+
+/*
+**  DKIMF_DKIM2_RCPTS -- flatten the captured raw RCPT TO paths into an array
+**  of borrowed pointers (free only the array, not the strings).
+*/
+
+static const char **
+dkimf_dkim2_rcpts(msgctx dfc, size_t *nout)
+{
+	size_t n = 0;
+	size_t i = 0;
+	struct addrlist *a;
+	const char **out;
+
+	for (a = dfc->mctx_dkim2rcpts; a != NULL; a = a->a_next)
+		n++;
+
+	out = (const char **) calloc(n != 0 ? n : 1, sizeof *out);
+	if (out == NULL)
+		return NULL;
+	for (a = dfc->mctx_dkim2rcpts; a != NULL; a = a->a_next)
+		out[i++] = a->a_addr;
+
+	*nout = n;
+	return out;
+}
+
+/*
+**  DKIMF_DKIM2_BODY -- the accumulated body buffer and length (empty when no
+**  body was seen).
+*/
+
+static void
+dkimf_dkim2_body(msgctx dfc, const char **body, size_t *bodylen)
+{
+	if (dfc->mctx_dkim2body != NULL)
+	{
+		*body = (const char *) dkimf_dstring_get(dfc->mctx_dkim2body);
+		*bodylen = (size_t) dkimf_dstring_len(dfc->mctx_dkim2body);
+	}
+	else
+	{
+		*body = "";
+		*bodylen = 0;
+	}
+}
+
+/*
+**  DKIMF_DKIM2_SIGN_MSG -- sign the current message with DKIM2 and prepend the
+**  resulting Message-Instance / DKIM2-Signature header fields.
+**
+**  Return value:
+**  	SMFIS_TEMPFAIL on an internal (resource) error; SMFIS_CONTINUE
+**  	otherwise -- a signing failure is logged and the message is delivered
+**  	unsigned, matching the DKIM1 fail-open behaviour.
+*/
+
+static sfsistat
+dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
+{
+	char **headers;
+	size_t nheaders = 0;
+	const char **rcpts;
+	size_t nrcpts = 0;
+	const char *body;
+	size_t bodylen;
+	dkim2_sign_params_t p;
+	char *mi = NULL;
+	char *sig = NULL;
+	int rc;
+	int k;
+
+	headers = dkimf_dkim2_headers(dfc, &nheaders);
+	if (headers == NULL)
+		return SMFIS_TEMPFAIL;
+	rcpts = dkimf_dkim2_rcpts(dfc, &nrcpts);
+	if (rcpts == NULL)
+	{
+		dkimf_dkim2_headers_free(headers, nheaders);
+		return SMFIS_TEMPFAIL;
+	}
+	dkimf_dkim2_body(dfc, &body, &bodylen);
+
+	memset(&p, 0, sizeof p);
+	p.sp_domain = conf->conf_dkim2domain;
+	p.sp_selector = conf->conf_dkim2selector;
+	p.sp_key = conf->conf_dkim2key;
+	p.sp_alg = conf->conf_dkim2alg;
+	p.sp_mf = dfc->mctx_dkim2mailfrom[0] != '\0'
+	          ? (const char *) dfc->mctx_dkim2mailfrom : "<>";
+	p.sp_rt = rcpts;
+	p.sp_rt_count = nrcpts;
+	p.sp_t = 0;
+
+	rc = dkim2_sign(&p, (const char *const *) headers, nheaders,
+	                body, bodylen, &mi, &sig);
+
+	dkimf_dkim2_headers_free(headers, nheaders);
+	free(rcpts);
+
+	if (rc != 0 || sig == NULL)
+	{
+		dkimf_log(conf, LOG_WARNING,
+		       "%s: DKIM2 signing failed; delivering unsigned",
+		       dfc->mctx_jobid);
+		free(mi);
+		free(sig);
+		return SMFIS_CONTINUE;
+	}
+
+	/*
+	**  dkim2_sign() returns whole "Name: value" fields, but smfi_insheader
+	**  takes name and value separately: split on the first colon and skip
+	**  the single following space.  Insert at index 0 so the new fields sit
+	**  at the top of the message.
+	*/
+	for (k = 0; k < 2; k++)
+	{
+		char *field = (k == 0) ? sig : mi;
+		char *colon;
+		char *val;
+
+		if (field == NULL)
+			continue;
+		colon = strchr(field, ':');
+		if (colon == NULL)
+			continue;
+		*colon = '\0';
+		val = colon + 1;
+		if (*val == ' ')
+			val++;
+		(void) dkimf_insheader(ctx, 0, field, val);
+	}
+
+	dkimf_log(conf, LOG_INFO, "%s: DKIM2 signature added (d=%s, a=%s)",
+	       dfc->mctx_jobid, conf->conf_dkim2domain,
+	       dkim2_alg_name(conf->conf_dkim2alg));
+
+	free(mi);
+	free(sig);
+	return SMFIS_CONTINUE;
+}
+
+/*
+**  DKIMF_DKIM2_VERIFY_MSG -- verify the DKIM2 chain on the current message,
+**  optionally add an Authentication-Results field, and translate the state
+**  into a milter disposition.
+**
+**  Return value:
+**  	SMFIS_REJECT / SMFIS_TEMPFAIL when policy says so, else SMFIS_CONTINUE
+**  	(meaning: leave the existing disposition unchanged).
+*/
+
+static sfsistat
+dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
+                       struct dkimf_config *conf, const char *authservid)
+{
+	char **headers;
+	size_t nheaders = 0;
+	const char **rcpts;
+	size_t nrcpts = 0;
+	const char *body;
+	size_t bodylen;
+	dkim2_verify_opts_t opts;
+	dkim2_verify_result_t res;
+	sfsistat ret = SMFIS_CONTINUE;
+	const char *state;
+
+	headers = dkimf_dkim2_headers(dfc, &nheaders);
+	if (headers == NULL)
+		return SMFIS_TEMPFAIL;
+	rcpts = dkimf_dkim2_rcpts(dfc, &nrcpts);
+	if (rcpts == NULL)
+	{
+		dkimf_dkim2_headers_free(headers, nheaders);
+		return SMFIS_TEMPFAIL;
+	}
+	dkimf_dkim2_body(dfc, &body, &bodylen);
+
+	memset(&opts, 0, sizeof opts);
+	opts.vo_mail_from = dfc->mctx_dkim2mailfrom[0] != '\0'
+	                    ? (const char *) dfc->mctx_dkim2mailfrom : NULL;
+	opts.vo_rcpt_to = rcpts;
+	opts.vo_rcpt_count = nrcpts;
+
+	memset(&res, 0, sizeof res);
+	if (dkim2_verify((const char *const *) headers, nheaders,
+	                 body, bodylen, &opts, &res) != 0)
+	{
+		dkimf_dkim2_headers_free(headers, nheaders);
+		free(rcpts);
+		dkimf_log(conf, LOG_WARNING, "%s: DKIM2 verify internal error",
+		       dfc->mctx_jobid);
+		return SMFIS_CONTINUE;
+	}
+
+	dkimf_dkim2_headers_free(headers, nheaders);
+	free(rcpts);
+
+	switch (res.vr_state)
+	{
+	  case DKIM2_V_PASS:		state = "pass"; break;
+	  case DKIM2_V_FAIL:		state = "fail"; break;
+	  case DKIM2_V_PERMERROR:	state = "permerror"; break;
+	  case DKIM2_V_TEMPERROR:	state = "temperror"; break;
+	  case DKIM2_V_NONE:
+	  default:			state = "none"; break;
+	}
+
+	if (res.vr_state != DKIM2_V_NONE && conf->conf_dolog)
+	{
+		dkimf_log(conf, LOG_INFO, "%s: DKIM2 verify=%s%s%s",
+		       dfc->mctx_jobid, state,
+		       res.vr_message != NULL ? " - " : "",
+		       res.vr_message != NULL ? res.vr_message : "");
+	}
+
+	/*
+	**  Optionally record the result in an Authentication-Results field.  Note
+	**  that adding it counts as a message modification for any downstream
+	**  DKIM2 signer, hence default-off (DKIM2AuthResults).
+	*/
+	if (conf->conf_dkim2addar && res.vr_state != DKIM2_V_NONE &&
+	    authservid != NULL)
+	{
+		char arbuf[DKIM_MAXHEADER + 1];
+
+		(void) snprintf(arbuf, sizeof arbuf, "%s%s; dkim2=%s",
+		         cc->cctx_noleadspc ? " " : "", authservid, state);
+		if (dkimf_insheader(ctx, 0, AUTHRESULTSHDR, arbuf) == MI_FAILURE)
+		{
+			dkimf_log(conf, LOG_WARNING,
+			       "%s: %s header add failed", dfc->mctx_jobid,
+			       AUTHRESULTSHDR);
+		}
+	}
+
+	if (conf->conf_dkim2rejectfail)
+	{
+		if (res.vr_state == DKIM2_V_FAIL ||
+		    res.vr_state == DKIM2_V_PERMERROR)
+		{
+			(void) dkimf_setreply(ctx, "550", "5.7.20",
+			    "DKIM2 chain verification failed");
+			ret = SMFIS_REJECT;
+		}
+		else if (res.vr_state == DKIM2_V_TEMPERROR)
+		{
+			(void) dkimf_setreply(ctx, "451", "4.7.20",
+			    "DKIM2 chain verification temporarily unavailable");
+			ret = SMFIS_TEMPFAIL;
+		}
+	}
+
+	dkim2_verify_result_clear(&res);
+	return ret;
+}
+
+/*
+**  DKIMF_DKIM2_EOM -- DKIM2 end-of-message processing, run alongside (never
+**  in place of) the DKIM1 paths.  Verifies first (inbound) so a chain failure
+**  can short-circuit before signing, then signs (outbound).
+**
+**  Return value:
+**  	A disposition to apply, or SMFIS_CONTINUE to leave the DKIM1
+**  	disposition unchanged.
+*/
+
+static sfsistat
+dkimf_dkim2_eom(SMFICTX *ctx, connctx cc, msgctx dfc,
+                struct dkimf_config *conf, const char *authservid)
+{
+	sfsistat ret = SMFIS_CONTINUE;
+
+	if ((conf->conf_dkim2mode & DKIMF_DKIM2_VERIFY) != 0)
+	{
+		ret = dkimf_dkim2_verify_msg(ctx, cc, dfc, conf, authservid);
+		if (ret != SMFIS_CONTINUE)
+			return ret;	/* rejected/tempfailed: do not sign */
+	}
+
+	if ((conf->conf_dkim2mode & DKIMF_DKIM2_SIGN) != 0 &&
+	    conf->conf_dkim2key != NULL)
+	{
+		sfsistat s = dkimf_dkim2_sign_msg(ctx, dfc, conf);
+
+		if (s == SMFIS_TEMPFAIL)
+			return s;
+	}
+
+	return ret;
+}
+#endif /* USE_DKIM2 */
 
 /*
 **  MLFI_EOM -- handler called at the end of the message; we can now decide
@@ -13677,6 +14313,21 @@ mlfi_eom(SMFICTX *ctx)
 			ret = dkimf_libstatus(ctx, NULL, "mlfi_eom()", status);
 		break;
 	}
+
+#ifdef USE_DKIM2
+	/*
+	**  DKIM2 (draft-ietf-dkim-dkim2-spec), behind DKIM2Mode and run in
+	**  parallel to the DKIM1 disposition decided above.  A DKIM2 reject /
+	**  tempfail (when DKIM2RejectOnFail is set) overrides the DKIM1 ret.
+	*/
+	if (conf->conf_dkim2mode != 0)
+	{
+		sfsistat d2 = dkimf_dkim2_eom(ctx, cc, dfc, conf, authservid);
+
+		if (d2 != SMFIS_CONTINUE)
+			ret = d2;
+	}
+#endif /* USE_DKIM2 */
 
 	/*
 	**  Emit a single structured (key=value) summary line per message.  This

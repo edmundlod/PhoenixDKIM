@@ -1,0 +1,101 @@
+.TH phoenixdkim2-sign 1 "PhoenixDKIM"
+.SH NAME
+.B phoenixdkim2-sign
+\- DKIM2 message signer (test tool)
+.SH SYNOPSIS
+.B phoenixdkim2-sign
+\-\-key FILE \-\-domain D \-\-selector S \-\-mail\-from "<a@b>"
+[\-\-alg rsa\-sha256|ed25519\-sha256]
+[\-\-rcpt\-to "<c@d>"]...
+[\-\-time N]
+[\-\-orig FILE]
+[\-\-recipe FILE]
+.SH DESCRIPTION
+.B phoenixdkim2-sign
+reads a message on standard input, signs it under the experimental DKIM2
+profile (draft\-ietf\-dkim\-dkim2\-spec), and writes the message to standard
+output with the new
+.I Message\-Instance
+and
+.I DKIM2\-Signature
+header fields prepended.  It exists to exercise the DKIM2 chain against interop
+fixtures without standing up an MTA; the milter
+.RI ( phoenixdkim (8),
+.I DKIM2Mode )
+is the production signing path.
+.PP
+With no
+.I \-\-orig
+or
+.I \-\-recipe
+the tool signs as the originator (adding
+.I Message\-Instance
+.IR m=1 )
+or, when the input already carries a chain, as a plain re\-signer.  Given a
+pre\-modification message or a ready\-made recipe it instead records a
+.I DKIM2\-extended
+modification: a new
+.I Message\-Instance
+carrying the current hashes and a reversible recipe reverting to the previous
+instance.
+.PP
+This program is built only when PhoenixDKIM is compiled with experimental DKIM2
+support
+.RI ( WITH_DKIM2 ).
+.SH OPTIONS
+.TP
+.I \-\-key FILE
+PEM private key (RSA or Ed25519).  Required.
+.TP
+.I \-\-domain D
+Signing domain, placed in
+.IR d= .
+Required.
+.TP
+.I \-\-selector S
+Selector for the key's DNS record.  Required.
+.TP
+.I \-\-mail\-from "<a@b>"
+The SMTP reverse\-path to bind in
+.IR mf= .
+Required.
+.TP
+.I \-\-alg rsa\-sha256|ed25519\-sha256
+Signing algorithm.  Defaults to the algorithm inferred from the key.
+.TP
+.I \-\-rcpt\-to "<c@d>"
+An SMTP forward\-path to bind in
+.IR rt= .
+May be repeated; delivery order is preserved.
+.TP
+.I \-\-time N
+Signature timestamp as a Unix epoch.  Defaults to the current time.
+.TP
+.I \-\-orig FILE
+The pre\-modification message (an
+.IR .eml ).
+The recorded recipe is the diff that reconstructs it from the message being
+signed.  Selects the modifying re\-signer path.
+.TP
+.I \-\-recipe FILE
+A ready\-made base64\-JSON recipe to place in
+.IR r= ,
+read from
+.IR FILE .
+Takes precedence over
+.I \-\-orig
+if both are given.
+.SH EXIT STATUS
+.TP
+.B 0
+The message was signed.
+.TP
+.B 1
+Signing failed.
+.TP
+.B 2
+Usage error, or a key/message could not be read.
+.SH SEE ALSO
+.I phoenixdkim2-verify (1),
+.I phoenixdkim (8),
+.I phoenixdkim.conf (5)

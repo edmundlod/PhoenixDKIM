@@ -48,6 +48,11 @@ foreach(num IN LISTS LIBPHOENIXDKIM_NUMBERED_TESTS)
     list(APPEND LIBPHOENIXDKIM_TEST_PROGRAMS "t-test${num}")
 endforeach()
 
+# ── DKIM2 (only when built) ───────────────────────────────────────────────────
+if(WITH_DKIM2)
+    list(APPEND LIBPHOENIXDKIM_TEST_PROGRAMS t-dkim2-unit)
+endif()
+
 # ── Build and register each test ──────────────────────────────────────────────
 
 foreach(test_name IN LISTS LIBPHOENIXDKIM_TEST_PROGRAMS)
