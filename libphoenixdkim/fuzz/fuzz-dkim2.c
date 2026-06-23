@@ -10,8 +10,9 @@
 **    fuzz-dkim2-mi    the Message-Instance parser  (message sender controls it)
 **    fuzz-dkim2-key   the DNS key-record parser    (signing-domain DNS controls it)
 **    fuzz-dkim2-json  the base64-JSON decoder      (recipe values; cJSON path)
+**    fuzz-dkim2-recipe the recipe parser           (Message-Instance r= value)
 **
-**  One source builds all five, selected at compile time by FUZZ_DKIM2_TARGET.
+**  One source builds all six, selected at compile time by FUZZ_DKIM2_TARGET.
 **  The parsers are self-contained and own their output, so each iteration parses
 **  then frees with no shared state -- what ASan/LeakSanitizer want to see.  Build
 **  with -DPHOENIXDKIM_ENABLE_FUZZERS=ON (Clang + ASan).
@@ -27,6 +28,7 @@
 #define FUZZ_DKIM2_MI	3
 #define FUZZ_DKIM2_KEY	4
 #define FUZZ_DKIM2_JSON	5
+#define FUZZ_DKIM2_RECIPE 6
 
 #ifndef FUZZ_DKIM2_TARGET
 # define FUZZ_DKIM2_TARGET FUZZ_DKIM2_TAGS
@@ -40,6 +42,8 @@
 # include "../dkim2-dns.h"
 #elif FUZZ_DKIM2_TARGET == FUZZ_DKIM2_JSON
 # include "../dkim2-json.h"
+#elif FUZZ_DKIM2_TARGET == FUZZ_DKIM2_RECIPE
+# include "../dkim2-recipe.h"
 #endif
 
 int
@@ -69,6 +73,8 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		if (j != NULL)
 			cJSON_Delete(j);
 	}
+#elif FUZZ_DKIM2_TARGET == FUZZ_DKIM2_RECIPE
+	dkim2_recipe_free(dkim2_recipe_parse(s, size));
 #endif
 
 	free(s);

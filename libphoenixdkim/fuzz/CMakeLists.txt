@@ -53,7 +53,7 @@ foreach(spec IN LISTS _fuzz_targets)
 endforeach()
 
 # ── DKIM2 parser fuzz targets (only when WITH_DKIM2) ──────────────────────────
-# One source, five targets selected by FUZZ_DKIM2_TARGET; same wiring as above.
+# One source, six targets selected by FUZZ_DKIM2_TARGET; same wiring as above.
 if(WITH_DKIM2)
     set(_dkim2_fuzz_src ${CMAKE_CURRENT_SOURCE_DIR}/fuzz-dkim2.c)
     set(_dkim2_fuzz_targets
@@ -62,6 +62,7 @@ if(WITH_DKIM2)
         "fuzz-dkim2-mi=3"
         "fuzz-dkim2-key=4"
         "fuzz-dkim2-json=5"
+        "fuzz-dkim2-recipe=6"
     )
 
     foreach(spec IN LISTS _dkim2_fuzz_targets)
