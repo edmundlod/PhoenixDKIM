@@ -17,6 +17,7 @@
 #include "dkim2-dns.h"
 #include "dkim2-hash.h"
 #include "dkim2-header.h"
+#include "dkim2-recipe.h"
 #include "dkim2-sign.h"	/* dkim2_canon_field_85() */
 
 #define DKIM2_MAX_AGE	(14 * 24 * 60 * 60)	/* 14 days, in seconds */
@@ -187,9 +188,9 @@ dkim2_cmp_mi(const void *a, const void *b)
 
 /*
 **  DKIM2_BUILD_INPUT_85 -- assemble the Section 8.5 signing input for the
-**  signature at sigs[k]: all Message-Instance fields (ascending m), the
-**  DKIM2-Signature fields with a lower i (ascending), then sigs[k] with its
-**  signature value(s) blanked.
+**  signature at sigs[k]: the Message-Instance fields it covers (those with
+**  m <= its m=, ascending), the DKIM2-Signature fields with a lower i
+**  (ascending), then sigs[k] with its signature value(s) blanked.
 */
 static char *
 dkim2_build_input_85(const struct dkim2_mirec *mis, size_t nmi,
@@ -214,7 +215,8 @@ dkim2_build_input_85(const struct dkim2_mirec *mis, size_t nmi,
 	} while (0)
 
 	for (j = 0; j < nmi && !err; j++)
-		EMIT(mis[j].raw);
+		if (mis[j].mi->mi_m <= sigs[k].sig->sig_m)
+			EMIT(mis[j].raw);
 	for (j = 0; j < k && !err; j++)
 		EMIT(sigs[j].raw);
 
@@ -237,6 +239,60 @@ dkim2_build_input_85(const struct dkim2_mirec *mis, size_t nmi,
 	return buf;
 }
 
+/*
+**  MI_HASH_CHECK -- recompute the body and header hashes of a message and
+**  compare them to a Message-Instance's sha256 h= entry.
+*/
+typedef enum
+{
+	HC_MATCH = 0,
+	HC_MISMATCH_HEADER,
+	HC_MISMATCH_BODY,
+	HC_NOHASH,	/* the instance carries no sha256 hash */
+	HC_ERROR	/* internal (allocation / crypto) error */
+} dkim2_hashcheck_t;
+
+static dkim2_hashcheck_t
+mi_hash_check(const char *const *headers, size_t nheaders,
+              const char *body, size_t bodylen, const dkim2_mi_t *mi)
+{
+	unsigned char hh[DKIM2_HASH_LEN], bh[DKIM2_HASH_LEN];
+	char *hh_b64 = NULL, *bh_b64 = NULL;
+	const dkim2_hashentry_t *he;
+	size_t cap = 4 * ((DKIM2_HASH_LEN + 2) / 3) + 1;
+	dkim2_hashcheck_t rc = HC_ERROR;
+
+	if (dkim2_header_hash(headers, nheaders, hh) != 0 ||
+	    dkim2_body_hash(body, bodylen, bh) != 0)
+		return HC_ERROR;
+
+	hh_b64 = malloc(cap);
+	bh_b64 = malloc(cap);
+	if (hh_b64 == NULL || bh_b64 == NULL)
+		goto done;
+	hh_b64[dkim_base64_encode(hh, sizeof hh, (u_char *) hh_b64, cap)] = '\0';
+	bh_b64[dkim_base64_encode(bh, sizeof bh, (u_char *) bh_b64, cap)] = '\0';
+
+	for (he = mi->mi_h; he != NULL; he = he->he_next)
+	{
+		if (strcmp(he->he_name, "sha256") != 0)
+			continue;
+		if (strcmp(he->he_header, hh_b64) != 0)
+			rc = HC_MISMATCH_HEADER;
+		else if (strcmp(he->he_body, bh_b64) != 0)
+			rc = HC_MISMATCH_BODY;
+		else
+			rc = HC_MATCH;
+		goto done;
+	}
+	rc = HC_NOHASH;
+
+  done:
+	free(hh_b64);
+	free(bh_b64);
+	return rc;
+}
+
 /* ── verification ────────────────────────────────────────────────────────── */
 
 int
@@ -250,10 +306,9 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 	struct dkim2_sigrec *sigs = NULL;
 	size_t nmi = 0, nsig = 0;
 	size_t i, k;
-	unsigned char hh[DKIM2_HASH_LEN], bh[DKIM2_HASH_LEN];
-	char *hh_b64 = NULL, *bh_b64 = NULL;
-	const dkim2_mi_t *top_mi;
-	const dkim2_hashentry_t *he;
+	char **recon_h = NULL;		/* reconstructed prior-instance headers */
+	size_t recon_nh = 0;
+	char *recon_b = NULL;		/* reconstructed prior-instance body */
 	int rc = -1;
 	char msg[256];
 
@@ -553,53 +608,139 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 	}
 
 	/* 10.7: body and header hashes must match the highest Message-Instance. */
-	if (dkim2_header_hash(headers, nheaders, hh) != 0 ||
-	    dkim2_body_hash(body, bodylen, bh) != 0)
-		goto cleanup;
-	hh_b64 = NULL;
-	bh_b64 = NULL;
+	switch (mi_hash_check(headers, nheaders, body, bodylen, mis[nmi - 1].mi))
 	{
-		size_t cap = 4 * ((sizeof hh + 2) / 3) + 1;
-
-		hh_b64 = malloc(cap);
-		bh_b64 = malloc(cap);
-		if (hh_b64 == NULL || bh_b64 == NULL)
-			goto cleanup;
-		hh_b64[dkim_base64_encode(hh, sizeof hh, (u_char *) hh_b64, cap)] = '\0';
-		bh_b64[dkim_base64_encode(bh, sizeof bh, (u_char *) bh_b64, cap)] = '\0';
-	}
-
-	top_mi = mis[nmi - 1].mi;
-	for (he = top_mi->mi_h; he != NULL; he = he->he_next)
-	{
-		if (strcmp(he->he_name, "sha256") != 0)
-			continue;
-		if (strcmp(he->he_header, hh_b64) != 0)
-		{
-			rc = dkim2_result(out, DKIM2_V_FAIL, top_mi->mi_m,
-			    "header hash did not match");
-			goto cleanup;
-		}
-		if (strcmp(he->he_body, bh_b64) != 0)
-		{
-			rc = dkim2_result(out, DKIM2_V_FAIL, top_mi->mi_m,
-			    "body hash did not match");
-			goto cleanup;
-		}
+	  case HC_MATCH:
 		break;
-	}
-	if (he == NULL)
-	{
-		rc = dkim2_result(out, DKIM2_V_PERMERROR, top_mi->mi_m,
+	  case HC_MISMATCH_HEADER:
+		rc = dkim2_result(out, DKIM2_V_FAIL, mis[nmi - 1].mi->mi_m,
+		    "header hash did not match");
+		goto cleanup;
+	  case HC_MISMATCH_BODY:
+		rc = dkim2_result(out, DKIM2_V_FAIL, mis[nmi - 1].mi->mi_m,
+		    "body hash did not match");
+		goto cleanup;
+	  case HC_NOHASH:
+		rc = dkim2_result(out, DKIM2_V_PERMERROR, mis[nmi - 1].mi->mi_m,
 		    "Message-Instance has no sha256 hash");
 		goto cleanup;
+	  case HC_ERROR:
+		goto cleanup;
+	}
+
+	/* 9.2 (extended): walk the chain backward, reconstructing each prior
+	** Message-Instance from the modifying instance's recipe and re-checking
+	** its hashes.  Signature coverage (10.5/10.6) is unchanged -- this is a
+	** separate hash-consistency layer.  A core message (one instance) skips
+	** the loop entirely. */
+	{
+		const char *const *cur_h = headers;
+		size_t cur_nh = nheaders;
+		const char *cur_b = body;
+		size_t cur_bl = bodylen;
+
+		for (k = nmi - 1; k >= 1; k--)
+		{
+			const dkim2_mi_t *modmi = mis[k].mi;	/* m = k+1 */
+			const dkim2_mi_t *prevmi = mis[k - 1].mi;	/* m = k */
+			dkim2_recipe_t *rec;
+			char **ph = NULL;
+			size_t pnh = 0;
+			char *pb = NULL;
+			size_t pbl = 0;
+			int ar;
+
+			/* a modifying instance must carry a recipe */
+			if (modmi->mi_r == NULL)
+			{
+				snprintf(msg, sizeof msg,
+				    "Message-Instance m=%llu carries no recipe",
+				    (unsigned long long) modmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_PERMERROR,
+				    modmi->mi_m, msg);
+				goto cleanup;
+			}
+			rec = dkim2_recipe_parse(modmi->mi_r, strlen(modmi->mi_r));
+			if (rec == NULL)
+			{
+				snprintf(msg, sizeof msg,
+				    "Message-Instance m=%llu recipe is malformed",
+				    (unsigned long long) modmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_PERMERROR,
+				    modmi->mi_m, msg);
+				goto cleanup;
+			}
+			if (rec->re_null)
+			{
+				/* irreversible: stop here, accept what was verified */
+				dkim2_recipe_free(rec);
+				snprintf(msg, sizeof msg,
+				    "chain verified to m=%llu (m=%llu is irreversible)",
+				    (unsigned long long) modmi->mi_m,
+				    (unsigned long long) modmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_PASS,
+				    sigs[nsig - 1].sig->sig_i, msg);
+				goto cleanup;
+			}
+
+			ar = dkim2_recipe_apply(rec, cur_h, cur_nh, cur_b, cur_bl,
+			    &ph, &pnh, &pb, &pbl);
+			dkim2_recipe_free(rec);
+			if (ar != 0)
+			{
+				/* recipe does not fit the message it claims to revert */
+				snprintf(msg, sizeof msg,
+				    "Message-Instance m=%llu recipe does not reconstruct m=%llu",
+				    (unsigned long long) modmi->mi_m,
+				    (unsigned long long) prevmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_FAIL, modmi->mi_m, msg);
+				goto cleanup;
+			}
+
+			/* adopt the reconstruction (cleanup frees recon_*) */
+			for (i = 0; i < recon_nh; i++)
+				free(recon_h[i]);
+			free(recon_h);
+			free(recon_b);
+			recon_h = ph;
+			recon_nh = pnh;
+			recon_b = pb;
+			cur_h = (const char *const *) recon_h;
+			cur_nh = recon_nh;
+			cur_b = recon_b;
+			cur_bl = pbl;
+
+			switch (mi_hash_check(cur_h, cur_nh, cur_b, cur_bl, prevmi))
+			{
+			  case HC_MATCH:
+				break;
+			  case HC_MISMATCH_HEADER:
+			  case HC_MISMATCH_BODY:
+				snprintf(msg, sizeof msg,
+				    "reconstructed Message-Instance m=%llu hash did not match",
+				    (unsigned long long) prevmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_FAIL, prevmi->mi_m, msg);
+				goto cleanup;
+			  case HC_NOHASH:
+				snprintf(msg, sizeof msg,
+				    "Message-Instance m=%llu has no sha256 hash",
+				    (unsigned long long) prevmi->mi_m);
+				rc = dkim2_result(out, DKIM2_V_PERMERROR,
+				    prevmi->mi_m, msg);
+				goto cleanup;
+			  case HC_ERROR:
+				goto cleanup;
+			}
+		}
 	}
 
 	rc = dkim2_result(out, DKIM2_V_PASS, sigs[nsig - 1].sig->sig_i, NULL);
 
   cleanup:
-	free(hh_b64);
-	free(bh_b64);
+	for (i = 0; i < recon_nh; i++)
+		free(recon_h[i]);
+	free(recon_h);
+	free(recon_b);
 	for (i = 0; i < nmi; i++)
 		dkim2_mi_free(mis[i].mi);
 	for (i = 0; i < nsig; i++)
