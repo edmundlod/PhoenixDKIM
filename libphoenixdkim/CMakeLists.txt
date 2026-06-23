@@ -247,6 +247,7 @@ if(WITH_DKIM2)
             dkim2-tags.c
             dkim2-json.c
             dkim2-hash.c
+            dkim2-header.c
         )
     else()
         message(FATAL_ERROR
