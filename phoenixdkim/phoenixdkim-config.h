@@ -47,6 +47,15 @@ struct configdef dkimf_config[] =
 	{ "Diagnostics",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DiagnosticDirectory",	CONFIG_TYPE_STRING,	FALSE },
 	{ "DisableCryptoInit",		CONFIG_TYPE_BOOLEAN,	FALSE },
+#ifdef USE_DKIM2
+	{ "DKIM2Algorithm",		CONFIG_TYPE_STRING,	FALSE },
+	{ "DKIM2AuthResults",		CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "DKIM2Domain",		CONFIG_TYPE_STRING,	FALSE },
+	{ "DKIM2KeyFile",		CONFIG_TYPE_STRING,	FALSE },
+	{ "DKIM2Mode",			CONFIG_TYPE_STRING,	FALSE },
+	{ "DKIM2RejectOnFail",		CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "DKIM2Selector",		CONFIG_TYPE_STRING,	FALSE },
+#endif /* USE_DKIM2 */
 	{ "DNSConnect",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DNSSECProbe",		CONFIG_TYPE_STRING,	FALSE },
 	{ "DNSTimeout",			CONFIG_TYPE_INTEGER,	FALSE },

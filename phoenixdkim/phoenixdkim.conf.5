@@ -238,6 +238,69 @@ are normally required in multi-threaded environments.  This assumes some other
 library phoenixdkim is using will do the required initialization and shutdown.
 
 .TP
+.I DKIM2Algorithm (string)
+Signing algorithm for the DKIM2 path, either
+.I rsa-sha256
+or
+.IR ed25519-sha256 .
+If unset, the algorithm is inferred from the key supplied by
+.IR DKIM2KeyFile .
+Only meaningful when DKIM2 signing is enabled (see
+.IR DKIM2Mode ).
+Available only when phoenixdkim was built with experimental DKIM2 support
+.RI ( WITH_DKIM2 ).
+
+.TP
+.I DKIM2AuthResults (Boolean)
+If set, when verifying DKIM2 the filter adds an
+.I Authentication\-Results
+field recording the chain result
+.RI ( dkim2=pass ", " fail ", etc.).
+Default is
+.IR no ,
+because adding the field counts as a message modification that a downstream
+DKIM2 signer would have to account for.
+
+.TP
+.I DKIM2Domain (string)
+Signing domain placed in the DKIM2 signature's
+.I d=
+tag.  Must align with the SMTP MAIL FROM domain.  Required when DKIM2 signing
+is enabled.
+
+.TP
+.I DKIM2KeyFile (string)
+Path to the PEM private key (RSA or Ed25519) used for DKIM2 signing.  Required
+when DKIM2 signing is enabled.  This key is independent of the DKIM1
+.I KeyFile
+\(em the two paths never share keys.
+
+.TP
+.I DKIM2Mode (string)
+Selects experimental DKIM2 (draft\-ietf\-dkim\-dkim2\-spec) processing, which
+runs in parallel to the DKIM1 paths.  One of
+.IR off " (the default), "
+.IR sign ", " verify ", or " both .
+DKIM2 signing adds a
+.I Message\-Instance
+and a
+.I DKIM2\-Signature
+binding the SMTP envelope, the message hashes, and any prior signatures in the
+chain; DKIM2 verification walks that chain.  Available only when phoenixdkim
+was built with experimental DKIM2 support
+.RI ( WITH_DKIM2 ).
+
+.TP
+.I DKIM2RejectOnFail (Boolean)
+If set, a DKIM2 chain that verifies as
+.IR fail " or " permerror
+causes the message to be rejected with a 5xx reply, and a
+.I temperror
+causes a 4xx tempfail.  Default is
+.IR no ,
+which records the result (and continues) without changing the disposition.
+
+.TP
 .I DNSConnect (Boolean)
 Requests that the asynchronous resolver start using TCP immediately
 rather than using UDP until TCP is actually needed.  Does not work with

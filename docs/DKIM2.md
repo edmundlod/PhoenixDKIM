@@ -147,7 +147,10 @@ DKIM2-core lands as a sequence of self-contained commits:
 11. `phoenixdkim2-sign` / `phoenixdkim2-verify` test CLIs.
 12. Unit tests and interop fixtures.
 13. Fuzz harnesses for the new parsers.
-14. Milter integration behind config keys (default off).
+14. Milter integration behind config keys (default off). **Done** —
+    `DKIM2Mode` (off/sign/verify/both) drives signing and chain verification
+    from within the daemon, in parallel to the untouched DKIM1 paths. See the
+    [developer guide](dkim2-dev-guide.md#milter-integration-done).
 
 ### Out of scope (for now)
 

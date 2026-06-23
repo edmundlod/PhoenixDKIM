@@ -18,9 +18,12 @@ profile as a library, plus standalone CLIs, CTest tests, and fuzz harnesses.
 - `t-dkim2-unit` (CTest) and five `fuzz-dkim2-*` targets. All build
   warning-clean under the strict + ASan/UBSan suite.
 
+**Also done:** **milter integration** — DKIM2 signing and verification wired
+into the daemon behind default-off config keys, with the DKIM1 paths untouched
+(see [Milter integration](#milter-integration-done)).
+
 **Not done:**
 
-- **Milter integration** (the one remaining planned commit — see below).
 - **DKIM2-extended** (body recipes / Message-Instance rollback) — future
   milestone.
 
@@ -97,40 +100,50 @@ $V --dns-fixture zone.txt < signed.eml   # exit 0 PASS / 1 FAIL / 2 PERMERROR / 
 - **LibreSSL-safe crypto spellings** (`EVP_PKEY_base_id`, not the `get_` alias)
   and POSIX resolver names (`ns_c_in`/`ns_t_txt`).
 
-## Remaining: milter integration (commit 14)
+## Milter integration (done)
 
-Goal: sign outbound and verify inbound from within the milter, behind config
-keys, DKIM1 path untouched. Files: `phoenixdkim/phoenixdkim.c` (large),
-`phoenixdkim/config.c`, the sample `.conf`. Concrete steps:
+DKIM2 signing and verification are wired into the daemon behind default-off
+config keys, in parallel to the DKIM1 paths (which are untouched). All of it is
+guarded by `USE_DKIM2` (set in `build-config.h` when `WITH_DKIM2=ON`), so a
+default build compiles the milter unchanged. Where it lives:
 
-1. **Config keys** (`config.c` + `phoenixdkim.conf.5`/sample), all default off:
+1. **Config keys** (`phoenixdkim-config.h` table + `dkimf_config_load()` in
+   `phoenixdkim.c`, documented in `phoenixdkim.conf.5`/sample), all default off:
    `DKIM2Mode` (off/sign/verify/both), `DKIM2Domain`, `DKIM2Selector`,
-   `DKIM2KeyFile`, `DKIM2Algorithm` (default infer from key). Reuse existing
-   config-table machinery; do not touch DKIM1 keys.
-2. **Per-connection context** (the milter's message struct): capture the
-   envelope. `mlfi_envfrom` → MAIL FROM, `mlfi_envrcpt` → each RCPT TO. Store as
-   the raw `<path>` strings for `dkim2_sign` / `dkim2_verify` opts.
-3. **Collect headers + body.** The milter already accumulates header fields and
-   body for DKIM1; reuse that buffer. Convert the collected headers into the
-   `"Name: value"` array `dkim2_*` expect (folding preserved, no trailing CRLF),
-   and pass the body buffer. Look at how the DKIM1 path builds its header list to
-   avoid duplicating buffering.
-4. **Sign at EOM** (`mlfi_eom`), positioned **last** after other
-   modifying milters: call `dkim2_sign()`; insert the returned `Message-Instance`
-   and `DKIM2-Signature` with `smfi_insheader` at the top. Strip the
-   `"Name: "` prefix the helpers include (or split on the first colon) since
-   `smfi_insheader` takes name and value separately.
-5. **Verify at EOM** on inbound: call `dkim2_verify()` with the captured
-   envelope in `dkim2_verify_opts_t`. Map states to milter actions —
-   PASS/NONE → continue; FAIL/PERMERROR → `SMFIS_REJECT` (5xx) if policy says
-   reject; TEMPERROR → `SMFIS_TEMPFAIL` (4xx). Optionally add an
-   `Authentication-Results` entry (note: doing so counts as a modification for
-   any later DKIM2 signer).
-6. **Resolver.** The override hook is for tests; in the milter let
-   `dkim2_dns_getkey` use live `res_query`, or bridge to the project's resolver
-   (`dkim-dns`) if DNSSEC/unbound parity is wanted later.
-7. **Tests.** Add a `miltertest`-driven case if practical; at minimum keep the
-   library/CLIs green.
+   `DKIM2KeyFile`, `DKIM2Algorithm` (default infer from key), plus
+   `DKIM2RejectOnFail` and `DKIM2AuthResults`. Parsed into the `conf_dkim2*`
+   fields of `struct dkimf_config`; the private key is loaded once with
+   `dkim2_privkey_load_pem()` and freed in `dkimf_config_free()`. DKIM1 keys are
+   never touched.
+2. **Envelope capture** (`struct msgctx`): `mlfi_envfrom` stores the raw
+   `<path>` MAIL FROM in `mctx_dkim2mailfrom` (before the DKIM1 path strips the
+   brackets); `mlfi_envrcpt` appends each raw RCPT TO to `mctx_dkim2rcpts`
+   (a `struct addrlist`, delivery order preserved).
+3. **Headers + body.** Headers reuse the DKIM1 `mctx_hqhead` queue — no second
+   buffer. The body, which the DKIM1 path streams straight into the library and
+   never retains, is accumulated in `mlfi_body` into `mctx_dkim2body` whenever
+   DKIM2 is active (and the `SMFIS_SKIP` fast-paths are suppressed so the whole
+   body arrives). `dkimf_dkim2_headers()` materialises the queue as the
+   `"Name: value"` array the `dkim2_*` entry points want.
+4. **EOM** (`dkimf_dkim2_eom()`, called from `mlfi_eom` after the DKIM1
+   disposition is decided): verify first (so a chain failure can short-circuit
+   before signing), then sign. `dkimf_dkim2_sign_msg()` calls `dkim2_sign()` and
+   splits each returned `"Name: value"` field for `smfi_insheader(..., 0, ...)`.
+   `dkimf_dkim2_verify_msg()` calls `dkim2_verify()` with the captured envelope
+   and maps states to dispositions (FAIL/PERMERROR → `SMFIS_REJECT`,
+   TEMPERROR → `SMFIS_TEMPFAIL`) only when `DKIM2RejectOnFail` is set; otherwise
+   the result is just logged (and optionally added as `Authentication-Results`
+   under `DKIM2AuthResults`).
+5. **Resolver.** Verification uses `dkim2_dns_getkey`'s live `res_query`; the
+   override hook remains test-only. Bridging to the project resolver
+   (`dkim-dns`) for DNSSEC/unbound parity is still open.
+6. **Test.** `phoenixdkim/tests/t-sign-dkim2{,.lua,.conf}` is a `miltertest`
+   case (auto-discovered, gated on `WITH_DKIM2`) that drives the daemon in
+   `DKIM2Mode=sign` and asserts the inserted `Message-Instance` /
+   `DKIM2-Signature`. Library/CLIs stay green (`t-dkim2-unit`).
+
+Still open here: live-DNS verification has no offline integration test (the
+override hook is not reachable from the daemon), and resolver bridging as above.
 
 ## Future: DKIM2-extended
 

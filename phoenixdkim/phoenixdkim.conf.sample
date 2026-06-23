@@ -173,6 +173,66 @@
 
 # Diagnostics		No
 
+##  DKIM2Mode { off | sign | verify | both }
+##  	default "off"
+##
+##  Enables experimental DKIM2 (draft-ietf-dkim-dkim2-spec) processing,
+##  which runs in parallel to the DKIM1 paths above and is available only
+##  when phoenixdkim was built with -DWITH_DKIM2=ON.  DKIM2 binds the SMTP
+##  envelope, the message hashes, and all prior signatures into a chain of
+##  per-hop DKIM2-Signature fields.  Everything below is ignored unless this
+##  is set to something other than "off".
+
+# DKIM2Mode		off
+
+##  DKIM2Domain name
+##  	default (none)
+##
+##  Signing domain for the DKIM2 d= tag; must align with the MAIL FROM
+##  domain.  Required for DKIM2 signing.
+
+# DKIM2Domain		example.com
+
+##  DKIM2Selector name
+##  	default (none)
+##
+##  Selector naming the DKIM2 public key TXT record at
+##  <selector>._domainkey.<domain>.  Required for DKIM2 signing.
+
+# DKIM2Selector		dkim2
+
+##  DKIM2KeyFile path
+##  	default (none)
+##
+##  PEM private key (RSA or Ed25519) used for DKIM2 signing.  Independent of
+##  the DKIM1 KeyFile.  Required for DKIM2 signing.
+
+# DKIM2KeyFile		/etc/phoenixdkim/dkim2.private
+
+##  DKIM2Algorithm { rsa-sha256 | ed25519-sha256 }
+##  	default (inferred from the key)
+##
+##  DKIM2 signing algorithm; if unset it is inferred from DKIM2KeyFile.
+
+# DKIM2Algorithm		rsa-sha256
+
+##  DKIM2RejectOnFail { yes | no }
+##  	default "no"
+##
+##  When verifying, reject (5xx) a DKIM2 chain that fails and tempfail (4xx)
+##  one that cannot be checked.  Default records the result without changing
+##  the message disposition.
+
+# DKIM2RejectOnFail	No
+
+##  DKIM2AuthResults { yes | no }
+##  	default "no"
+##
+##  When verifying, add an Authentication-Results field carrying the DKIM2
+##  chain result.  Off by default since it modifies the message.
+
+# DKIM2AuthResults	No
+
 ##  DNSSECProbe qtype:qname
 ##  	default ns:.
 ##
