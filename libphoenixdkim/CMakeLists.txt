@@ -250,6 +250,7 @@ if(WITH_DKIM2)
             dkim2-header.c
             dkim2-dns.c
             dkim2-crypto.c
+            dkim2-sign.c
         )
     else()
         message(FATAL_ERROR
