@@ -121,13 +121,14 @@ shared test messages:
 
 - <https://github.com/dkim2wg/interop>
 
-That repository has **no license**, so its code is **not** copied here. It is
-used only as a reference to resolve spec ambiguities — `c/INTEROP-NOTES.md`
-in particular logs real implementation pitfalls (trailing-semicolon
-canonicalization, verifying from raw header bytes rather than re-serialized
-structs, timestamp-window handling). Its `.eml` test vectors are checked in as
-data, labelled by the draft revision that produced them, for cross-implementation
-validation.
+That repository has **no license**, so neither its code nor its `.eml` vectors
+are copied here. It is used only as a reference to resolve spec ambiguities —
+`c/INTEROP-NOTES.md` in particular logs real implementation pitfalls
+(trailing-semicolon canonicalization, verifying from raw header bytes rather than
+re-serialized structs, timestamp-window handling). In-tree tests use
+self-generated keys and messages (`t-dkim2-unit`), so they are license-clean and
+need no fixtures; cross-implementation interop is exercised by running
+`phoenixdkim2-sign` / `phoenixdkim2-verify` against the live interop harness.
 
 ## Roadmap
 
