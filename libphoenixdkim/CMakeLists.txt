@@ -517,12 +517,16 @@ if(WITH_DKIM2)
         apply_sanitizers(phoenixdkim2-${_dkim2_tool})
     endforeach()
 
-    # Man pages for the test CLIs (section 1), installed only with DKIM2.
+    # Install the CLIs and their man pages (section 8, in sbin to match the
+    # other phoenixdkim* tools), only with DKIM2.
     include(GNUInstallDirs)
+    install(TARGETS phoenixdkim2-sign phoenixdkim2-verify
+        RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
+    )
     install(FILES
-        phoenixdkim2-sign.1
-        phoenixdkim2-verify.1
-        DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+        phoenixdkim2-sign.8
+        phoenixdkim2-verify.8
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man8
     )
 endif()
 
