@@ -1,3 +1,14 @@
+phoenixdkim (1.0.0+dkim2exp1-1) UNRELEASED; urgency=medium
+
+  * Experimental: enable the DKIM2 (draft-ietf-dkim-dkim2-spec) build
+    (-DWITH_DKIM2=ON), pulling in libcjson-dev. Adds the DKIM2-core chain
+    signing/verification and the DKIM2-extended recipe library to the milter
+    and the phoenixdkim2-sign/-verify test CLIs. Default behaviour is
+    unchanged: DKIM2 stays off unless DKIM2Mode is set. Not for upload --
+    DKIM2 is an unfinished IETF draft and its ABI is not frozen.
+
+ -- Edmund Lodewijks <edmund@proteamail.com>  Tue, 23 Jun 2026 20:11:24 +0200
+
 phoenixdkim (1.0.0-1) trixie; urgency=medium
 
   * First stable release.  Closes the 1.0.0 beta series.

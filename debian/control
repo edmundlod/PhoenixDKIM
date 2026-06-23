@@ -7,7 +7,7 @@ Build-Depends: debhelper-compat (= 13), cmake, pkgconf,
  liblua5.4-dev, libssl-dev (>=3.0.0), libidn2-dev,
  libc6-dev (>= 2.38) | libbsd-dev,
  libevent-dev, nettle-dev, libhiredis-dev, libcurl4-openssl-dev,
- libsystemd-dev [linux-any]
+ libsystemd-dev [linux-any], libcjson-dev
 Standards-Version: 4.7.4
 Homepage: https://www.phoenixdkim.org/
 Vcs-Browser: https://github.com/edmundlod/PhoenixDKIM/tree/debian/trixie

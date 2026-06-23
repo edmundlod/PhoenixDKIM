@@ -20,6 +20,7 @@ override_dh_auto_configure:
 		-DCMAKE_INSTALL_PREFIX=/usr \
 		-DWITH_REDIS=ON \
 		-DWITH_CURL=ON \
+		-DWITH_DKIM2=ON \
 		-DINSTALL_SYSTEMD_UNIT=OFF
 
 # Ship the bundled sample as the live, verify-only default configuration.
