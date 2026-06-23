@@ -210,6 +210,47 @@ if(WITH_IDN)
     endif()
 endif()
 
+# ── DKIM2 (experimental, optional, default OFF) ──────────────────────────────
+# DKIM2 (draft-ietf-dkim-dkim2-spec) is built in parallel to DKIM1, in the
+# dkim2-*.c modules, and gated behind WITH_DKIM2.  See docs/DKIM2.md.  It needs
+# a JSON parser — the spec encodes the s=/h=/r= tag values as base64-JSON — and
+# uses cJSON.  Default OFF so an ordinary build pulls in no new dependency; but
+# a deliberate WITH_DKIM2=ON must FATAL when cJSON is absent rather than silently
+# dropping the feature.
+option(WITH_DKIM2 "Build experimental DKIM2 (draft-ietf-dkim-dkim2-spec) support" OFF)
+
+# DKIM2 source files, appended to the library below.  Populated by the DKIM2
+# implementation commits; empty (and harmless) when WITH_DKIM2 is OFF.
+set(DKIM2_SOURCES "")
+
+if(WITH_DKIM2)
+    pkg_check_modules(CJSON IMPORTED_TARGET libcjson)
+
+    if(NOT CJSON_FOUND)
+        # Fallback for systems without pkg-config metadata (BSD/macOS)
+        find_path(CJSON_INCLUDE_DIR NAMES cjson/cJSON.h)
+        find_library(CJSON_LIBRARY NAMES cjson)
+        if(CJSON_INCLUDE_DIR AND CJSON_LIBRARY)
+            set(CJSON_FOUND TRUE)
+            add_library(PkgConfig::CJSON UNKNOWN IMPORTED)
+            set_target_properties(PkgConfig::CJSON PROPERTIES
+                IMPORTED_LOCATION "${CJSON_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${CJSON_INCLUDE_DIR}"
+            )
+        endif()
+    endif()
+
+    if(CJSON_FOUND)
+        message(STATUS "cJSON found: enabling experimental DKIM2 support")
+        set(USE_DKIM2 1)
+    else()
+        message(FATAL_ERROR
+            "cJSON (libcjson) not found but WITH_DKIM2=ON. Install libcjson-dev / "
+            "libcjson-devel, or reconfigure with -DWITH_DKIM2=OFF to build without "
+            "experimental DKIM2 support.")
+    endif()
+endif()
+
 # ── strlcpy / strlcat detection ───────────────────────────────────────────────
 # Detection order per SCOPE.md:
 #   1. system libc (glibc 2.38+, FreeBSD, OpenBSD) → no extra library needed
@@ -337,6 +378,7 @@ set(LIBPHOENIXDKIM_SOURCES
     dkim.c
     util.c
     ${STRL_SOURCES}
+    ${DKIM2_SOURCES}
 )
 
 # ── Shared library ────────────────────────────────────────────────────────────
@@ -427,6 +469,11 @@ function(configure_phoenixdkim_target tgt)
     if(WITH_LUA)
         target_link_libraries(${tgt} PRIVATE ${LUA_LIBRARIES})
         target_include_directories(${tgt} PRIVATE ${LUA_INCLUDE_DIR})
+    endif()
+
+    if(WITH_DKIM2)
+        target_link_libraries(${tgt} PRIVATE PkgConfig::CJSON)
+        target_compile_definitions(${tgt} PRIVATE USE_DKIM2=1)
     endif()
 endfunction()
 

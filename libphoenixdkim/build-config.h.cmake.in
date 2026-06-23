@@ -25,6 +25,10 @@
 /* libidn2 (RFC 8616 U-label <-> A-label domain handling) support */
 #cmakedefine USE_IDN 1
 
+/* Experimental DKIM2 (draft-ietf-dkim-dkim2-spec) support (enabled with
+   -DWITH_DKIM2=ON; requires cJSON) */
+#cmakedefine USE_DKIM2 1
+
 /* DNS resolver capability checks */
 #cmakedefine HAVE_RES_NINIT 1
 #cmakedefine HAVE_RES_SETSERVERS 1
