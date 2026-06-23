@@ -1,0 +1,47 @@
+  Here's how each reflector test lands:
+
+  ┌──────────────────────────────┬──────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │             Test             │ Can you do   │                                                                  Why                                                                   │
+  │                              │   it now?    │                                                                                                                                        │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-fresh@dkim2.com    │ ✅ Yes       │ Reflector originates a minimal message (one MI + one sig). You only need to verify an inbound core chain — exactly what DKIM2Mode      │
+  │                              │              │ verify does.                                                                                                                           │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-raw@dkim2.com      │ ✅ Yes       │ Re-signs an unchanged message. You originate-sign outbound, it adds a hop, you verify the multi-hop chain. No modification → the       │
+  │                              │              │ originator hash still matches. Pure core.                                                                                              │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-damage@dkim2.com   │ ✅ Yes       │ It mutates the body after signing; the expected result is a body-hash FAIL. Your verifier detects exactly this. (With                  │
+  │                              │              │ DKIM2RejectOnFail it'd even reject.)                                                                                                   │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-brand@dkim2.com    │ ⚠ Mostly    │ ESP brand delegation via DNS CNAME — the chain itself is core; the delegation is just key lookup, which your live-DNS verify follows.  │
+  │                              │              │ Doable, but needs the CNAME/key delegation set up, and it's the least-exercised path.                                                  │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-subject@dkim2.com  │ ❌ No        │ Subject modified + reversible recipe (r=). Extended profile — you neither emit nor process recipes.                                    │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-body@dkim2.com     │ ❌ No        │ Body footer + reversible recipe. Extended.                                                                                             │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-both@dkim2.com     │ ❌ No        │ Subject + body recipes. Extended.                                                                                                      │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-redacted@dkim2.com │ ❌ No        │ Non-reversible change r={"b":null} — the test wants verify-passes-but-reconstruct-fails, which is recipe semantics your core verifier  │
+  │                              │              │ doesn't implement.                                                                                                                     │
+  └──────────────────────────────┴──────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  │                              │              │ verify does.                                                                                                                           │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-raw@dkim2.com      │ ✅ Yes       │ Re-signs an unchanged message. You originate-sign outbound, it adds a hop, you verify the multi-hop chain. No modification → the       │
+  │                              │              │ originator hash still matches. Pure core.                                                                                              │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-damage@dkim2.com   │ ✅ Yes       │ It mutates the body after signing; the expected result is a body-hash FAIL. Your verifier detects exactly this. (With                  │
+  │                              │              │ DKIM2RejectOnFail it'd even reject.)                                                                                                   │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-brand@dkim2.com    │ ⚠ Mostly    │ ESP brand delegation via DNS CNAME — the chain itself is core; the delegation is just key lookup, which your live-DNS verify follows.  │
+  │                              │              │ Doable, but needs the CNAME/key delegation set up, and it's the least-exercised path.                                                  │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-subject@dkim2.com  │ ❌ No        │ Subject modified + reversible recipe (r=). Extended profile — you neither emit nor process recipes.                                    │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-body@dkim2.com     │ ❌ No        │ Body footer + reversible recipe. Extended.                                                                                             │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-both@dkim2.com     │ ❌ No        │ Subject + body recipes. Extended.                                                                                                      │
+  ├──────────────────────────────┼──────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reflector-redacted@dkim2.com │ ❌ No        │ Non-reversible change r={"b":null} — the test wants verify-passes-but-reconstruct-fails, which is recipe semantics your core verifier  │
+  │                              │              │ doesn't implement.                                                                                                                     │
+  └──────────────────────────────┴──────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
