@@ -12,7 +12,9 @@
 **
 **    {"h": {"<field-name>": [ops]}, "b": [ops]}
 **
-**  with "h": null marking an irreversible modification.  Operations are
+**  with a null part ("h": null, "b": null, or a null recipe) marking the
+**  modification irreversible: that instance cannot be reconstructed, so a
+**  verifier stops the backward walk there.  Operations are
 **  line/field-ordinal based, never byte offsets:
 **
 **    {"c":[start,end]}   copy field-instances (under h) or body lines (under b)

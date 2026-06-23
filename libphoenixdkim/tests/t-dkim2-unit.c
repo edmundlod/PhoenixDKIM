@@ -320,6 +320,20 @@ test_recipe(void)
 	                          &ph, &pnh, &pb, &pbl) == 1);
 	free(nb);
 	dkim2_recipe_free(r2);
+
+	/* a null part on either side is irreversible (the dkim2.com redacted
+	** reflector sends {"b":null}) */
+	{
+		const char *bnull = "eyJiIjpudWxsfQ==";	/* base64 {"b":null} */
+		const char *hnull = "eyJoIjpudWxsfQ==";	/* base64 {"h":null} */
+
+		r2 = dkim2_recipe_parse(bnull, strlen(bnull));
+		assert(r2 != NULL && r2->re_null);
+		dkim2_recipe_free(r2);
+		r2 = dkim2_recipe_parse(hnull, strlen(hnull));
+		assert(r2 != NULL && r2->re_null);
+		dkim2_recipe_free(r2);
+	}
 }
 
 /* Sign a modifying hop: records a recipe reverting (cur) to (orig). */

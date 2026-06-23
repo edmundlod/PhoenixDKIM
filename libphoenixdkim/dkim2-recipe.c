@@ -370,8 +370,10 @@ dkim2_recipe_parse(const char *b64, size_t len)
 	h = cJSON_GetObjectItemCaseSensitive(json, "h");
 	b = cJSON_GetObjectItemCaseSensitive(json, "b");
 
-	/* "h": null marks an irreversible modification. */
-	if (h != NULL && cJSON_IsNull(h))
+	/* A null part ("h":null or "b":null, or a null recipe) marks the
+	** modification irreversible for that part: the previous instance cannot be
+	** reconstructed, so a verifier stops the backward walk at this hop. */
+	if ((h != NULL && cJSON_IsNull(h)) || (b != NULL && cJSON_IsNull(b)))
 	{
 		r->re_null = 1;
 		cJSON_Delete(json);
