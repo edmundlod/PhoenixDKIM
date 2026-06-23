@@ -12980,8 +12980,9 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		(void) dkimf_insheader(ctx, 0, field, val);
 	}
 
-	dkimf_log(conf, LOG_INFO, "%s: DKIM2 signature added (d=%s, a=%s)",
-	       dfc->mctx_jobid, conf->conf_dkim2domain,
+	dkimf_log(conf, LOG_INFO,
+	       "%s: DKIM2-Signature field added (s=%s, d=%s, a=%s)",
+	       dfc->mctx_jobid, conf->conf_dkim2selector, conf->conf_dkim2domain,
 	       dkim2_alg_name(conf->conf_dkim2alg));
 
 	free(mi);
@@ -14180,9 +14181,9 @@ mlfi_eom(SMFICTX *ctx)
 						s = (char *) conf->conf_selector;
 
 					dkimf_log(conf, LOG_INFO,
-					       "%s: %s field added (s=%s, d=%s)",
+					       "%s: %s field added (s=%s, d=%s, a=%s)",
 					       dfc->mctx_jobid, DKIM_SIGNHEADER,
-					       s, d);
+					       s, d, dkimf_signalg_str(salg));
 				}
 			}
 		}
