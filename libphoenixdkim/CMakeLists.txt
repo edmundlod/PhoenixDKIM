@@ -495,6 +495,28 @@ apply_hardening(phoenixdkim_static)
 apply_sanitizers(phoenixdkim)
 apply_sanitizers(phoenixdkim_static)
 
+# ── DKIM2 standalone test CLIs ────────────────────────────────────────────────
+# phoenixdkim2-sign / phoenixdkim2-verify let the DKIM2 chain be exercised
+# against interop fixtures without an MTA.  Built only with WITH_DKIM2; the eml
+# splitter is compiled into them (the milter does not parse files).
+if(WITH_DKIM2)
+    foreach(_dkim2_tool sign verify)
+        add_executable(phoenixdkim2-${_dkim2_tool}
+            phoenixdkim2-${_dkim2_tool}.c
+            dkim2-eml.c)
+        target_include_directories(phoenixdkim2-${_dkim2_tool}
+            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+        target_link_libraries(phoenixdkim2-${_dkim2_tool}
+            PRIVATE phoenixdkim_static PkgConfig::CJSON OpenSSL::Crypto)
+        if(RESOLV_LIBRARY)
+            target_link_libraries(phoenixdkim2-${_dkim2_tool}
+                PRIVATE ${RESOLV_LIBRARY})
+        endif()
+        apply_hardening(phoenixdkim2-${_dkim2_tool})
+        apply_sanitizers(phoenixdkim2-${_dkim2_tool})
+    endforeach()
+endif()
+
 # Coverage-guided fuzzing needs the library under test instrumented with
 # SanitizerCoverage; -fsanitize=fuzzer (on the fuzz target) only instruments the
 # harness.  -fsanitize=fuzzer-no-link adds the coverage callbacks without pulling
