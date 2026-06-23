@@ -64,17 +64,29 @@ dkim2_canon_field_85(const char *field)
 
 /* ── small builders ──────────────────────────────────────────────────────── */
 
-/* base64 a byte buffer into a fresh string (NULL on OOM/error). */
+/* base64 a byte buffer into a fresh string (NULL on OOM/error).  The bytes are
+** copied into a non-const scratch buffer first, since the project base64 codec
+** takes a writable pointer and we must not cast away the caller's const. */
 static char *
 dkim2_b64_bytes(const unsigned char *data, size_t len)
 {
 	size_t cap = 4 * ((len + 2) / 3) + 1;
-	char *out = malloc(cap);
+	unsigned char *tmp = malloc(len > 0 ? len : 1);
+	char *out;
 	int n;
 
-	if (out == NULL)
+	if (tmp == NULL)
 		return NULL;
-	n = dkim_base64_encode((u_char *) data, len, (u_char *) out, cap);
+	memcpy(tmp, data, len);
+
+	out = malloc(cap);
+	if (out == NULL)
+	{
+		free(tmp);
+		return NULL;
+	}
+	n = dkim_base64_encode(tmp, len, (u_char *) out, cap);
+	free(tmp);
 	if (n < 0)
 	{
 		free(out);
@@ -84,21 +96,11 @@ dkim2_b64_bytes(const unsigned char *data, size_t len)
 	return out;
 }
 
-/* base64 a C string (copies first, so the const codec input is not cast away). */
+/* base64 a C string. */
 static char *
 dkim2_b64_str(const char *s)
 {
-	unsigned char *tmp;
-	size_t n = strlen(s);
-	char *out;
-
-	tmp = malloc(n > 0 ? n : 1);
-	if (tmp == NULL)
-		return NULL;
-	memcpy(tmp, s, n);
-	out = dkim2_b64_bytes(tmp, n);
-	free(tmp);
-	return out;
+	return dkim2_b64_bytes((const unsigned char *) s, strlen(s));
 }
 
 /* Build a DKIM2-Signature value; sig_b64 == "" yields the incomplete form. */

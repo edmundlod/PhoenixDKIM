@@ -46,9 +46,14 @@ static char *
 b64(const unsigned char *d, size_t n)
 {
 	size_t cap = 4 * ((n + 2) / 3) + 1;
+	unsigned char *tmp = malloc(n > 0 ? n : 1);
 	char *o = malloc(cap);
-	int e = dkim_base64_encode((u_char *) d, n, (u_char *) o, cap);
+	int e;
 
+	assert(tmp != NULL && o != NULL);
+	memcpy(tmp, d, n);
+	e = dkim_base64_encode(tmp, n, (u_char *) o, cap);
+	free(tmp);
 	assert(e >= 0);
 	o[e] = '\0';
 	return o;
