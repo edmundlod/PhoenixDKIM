@@ -1,0 +1,68 @@
+.TH phoenixdkim2-verify 1 "PhoenixDKIM"
+.SH NAME
+.B phoenixdkim2-verify
+\- DKIM2 chain verifier (test tool)
+.SH SYNOPSIS
+.B phoenixdkim2-verify
+[\-\-mail\-from "<a@b>"]
+[\-\-rcpt\-to "<c@d>"]...
+[\-\-ignore\-timestamps]
+[\-\-dns\-fixture FILE]
+.SH DESCRIPTION
+.B phoenixdkim2-verify
+reads a message on standard input and verifies its experimental DKIM2 chain
+(draft\-ietf\-dkim\-dkim2\-spec): the signature chain, the envelope binding, and
+the body and header hashes.  When the message carries more than one
+.I Message\-Instance
+it also walks the chain backward, reconstructing each prior instance from the
+modifying instance's recipe and re\-checking that instance's hashes
+.RI ( DKIM2\-extended ).
+The verdict is printed to standard output and reflected in the exit status.
+.PP
+It exists to exercise the chain against interop fixtures without an MTA; the
+milter
+.RI ( phoenixdkim (8),
+.I DKIM2Mode )
+is the production verification path.  Built only when PhoenixDKIM is compiled
+with experimental DKIM2 support
+.RI ( WITH_DKIM2 ).
+.SH OPTIONS
+.TP
+.I \-\-mail\-from "<a@b>"
+The live SMTP reverse\-path to check against the top signature's
+.IR mf= .
+.TP
+.I \-\-rcpt\-to "<c@d>"
+A live SMTP forward\-path to check against the top signature's
+.IR rt= .
+May be repeated.
+.TP
+.I \-\-ignore\-timestamps
+Skip the signature\-age (14\-day) check.
+.TP
+.I \-\-dns\-fixture FILE
+Resolve public keys from a fixture file of
+.I "qname<WSP>TXT\-record"
+lines instead of live DNS, making a chain verifiable offline.
+.SH EXIT STATUS
+.TP
+.B 0
+PASS \- the chain verified.
+.TP
+.B 1
+FAIL \- a hash or signature did not match.
+.TP
+.B 2
+PERMERROR \- malformed, missing, or otherwise unrecoverable.
+.TP
+.B 3
+TEMPERROR \- a transient failure (for example, a key could not be fetched).
+.TP
+.B 4
+NONE \- no
+.I DKIM2\-Signature
+was present.
+.SH SEE ALSO
+.I phoenixdkim2-sign (1),
+.I phoenixdkim (8),
+.I phoenixdkim.conf (5)

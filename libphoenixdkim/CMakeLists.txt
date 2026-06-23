@@ -516,6 +516,14 @@ if(WITH_DKIM2)
         apply_hardening(phoenixdkim2-${_dkim2_tool})
         apply_sanitizers(phoenixdkim2-${_dkim2_tool})
     endforeach()
+
+    # Man pages for the test CLIs (section 1), installed only with DKIM2.
+    include(GNUInstallDirs)
+    install(FILES
+        phoenixdkim2-sign.1
+        phoenixdkim2-verify.1
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+    )
 endif()
 
 # Coverage-guided fuzzing needs the library under test instrumented with
