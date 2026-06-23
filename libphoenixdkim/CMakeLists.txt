@@ -248,6 +248,7 @@ if(WITH_DKIM2)
             dkim2-json.c
             dkim2-hash.c
             dkim2-header.c
+            dkim2-dns.c
         )
     else()
         message(FATAL_ERROR
