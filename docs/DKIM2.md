@@ -65,12 +65,14 @@ Per the deployment-profile draft, DKIM2 splits into two profiles:
 | `mf=` | base64 SMTP `MAIL FROM` (reverse-path) |
 | `rt=` | base64 SMTP `RCPT TO` (forward-path), comma-separated |
 | `d=` | signing domain (must align with the `mf=` domain) |
-| `s=` | signature value(s): `selector:alg:sig` as base64-JSON |
-| `n=` | optional nonce |
+| `s=` | signature value(s): `selector:alg:sig` triples, comma-separated |
+| `n=` | optional nonce (<= 64 chars) |
 | `f=` | optional flags (`donotmodify`, `donotexplode`, `feedback`, `exploded`, ...) |
 
-`Message-Instance` (extended) carries `v=` (version), `r=` (recipes, base64-JSON,
-optional) and `h=` (hashes, base64-JSON).
+`Message-Instance` carries `m=` (revision number), `h=` (hashes:
+`sha256:<header-hash>:<body-hash>` triples, comma-separated) and the optional
+`r=` (recipes). These are all flat tag structures — only `r=` is base64-JSON,
+and `r=` belongs to the extended profile.
 
 Mandatory algorithms: **rsa-sha256** and **ed25519-sha256** (both must be
 supported by verifiers; signers should offer both). Keys live in DNS at the
@@ -90,9 +92,10 @@ the two can coexist on one message.
 - Existing facilities are reused rather than duplicated: base64
   (`libphoenixdkim/base64.c`), DNS (`libphoenixdkim/dkim-dns.c`), and the
   OpenSSL/LibreSSL crypto shim (`libphoenixdkim/openssl-compat.h`).
-- JSON uses **cJSON** (`libcjson`), pulled in only under `WITH_DKIM2`. ietf-02
-  encodes `s=`/`h=`/`r=` as base64-JSON, so a JSON parser is required even for
-  core.
+- JSON uses **cJSON** (`libcjson`), pulled in only under `WITH_DKIM2`. The core
+  tags are all flat (`mf=`/`rt=` base64, `s=`/`h=` colon-delimited), so JSON is
+  needed only for `r=` recipes in the **extended** profile; the dependency is
+  brought in ahead of that work so the gate and packaging settle once.
 - Two standalone test binaries, `phoenixdkim2-sign` and `phoenixdkim2-verify`,
   read a `.eml` on stdin so the chain can be exercised against the interop
   fixtures without standing up an MTA.
