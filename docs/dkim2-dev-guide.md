@@ -22,13 +22,17 @@ profile as a library, plus standalone CLIs, CTest tests, and fuzz harnesses.
 into the daemon behind default-off config keys, with the DKIM1 paths untouched
 (see [Milter integration](#milter-integration-done)).
 
+**Also done:** **DKIM2-extended** (body recipes / Message-Instance rollback) at
+the library + CLI level — the recipe module, cross-instance hash verification,
+modification signing, unit tests, and a fuzzer. See
+[DKIM2-extended](#dkim2-extended-done) below for how it landed; the
+deferred in-milter modification *engine* is still the only open piece.
+
 **Not done:**
 
-- **DKIM2-extended** (body recipes / Message-Instance rollback). **Designed,
-  not yet coded** — the full implementation spec (recipe semantics, module API,
-  the exact sign/verify/CLI hook points, staging, and the deferred-milter
-  rationale) is in [DKIM2-extended (next work)](#dkim2-extended-next-work) below.
-  Start there.
+- **In-milter modification engine** — a daemon-side footer / subject-tag /
+  header-rewrite that performs *and* records changes itself. See
+  [Deferred follow-up](#deferred-follow-up-in-milter-modification-engine).
 
 ## Module map (`libphoenixdkim/`)
 
@@ -45,7 +49,7 @@ All compiled only under `WITH_DKIM2` (appended to `DKIM2_SOURCES` in
 | `dkim2-crypto.{c,h}` | RSA/Ed25519 sign+verify, key loading | `dkim2_sign_data`, `dkim2_verify_data`, `dkim2_pubkey_load`, `dkim2_privkey_load_pem` |
 | `dkim2-sign.{c,h}` | **DKIM2-core signing** + §8.5 canon | `dkim2_sign`, `dkim2_canon_field_85` |
 | `dkim2-verify.{c,h}` | **DKIM2-core chain verification** | `dkim2_verify`, `dkim2_verify_result_clear` |
-| `dkim2-recipe.{c,h}` | _(planned, extended)_ body/header recipes §4/§9.2 | `dkim2_recipe_parse/format/free/apply/generate` |
+| `dkim2-recipe.{c,h}` | body/header recipes §4/§9.2 (extended) | `dkim2_recipe_parse/format/free/apply/generate` |
 | `dkim2-eml.{c,h}` | `.eml` splitter (CLIs only, not the lib) | `dkim2_eml_parse` |
 | `phoenixdkim2-{sign,verify}.c` | standalone CLIs | — |
 
@@ -149,11 +153,36 @@ default build compiles the milter unchanged. Where it lives:
 Still open here: live-DNS verification has no offline integration test (the
 override hook is not reachable from the daemon), and resolver bridging as above.
 
-## DKIM2-extended (next work)
+## DKIM2-extended (done)
 
-Body recipes + cross-instance hash verification. This section is the full,
-self-contained implementation spec — a new session should be able to execute it
-without any external notes. The `r=` plumbing already exists: `dkim2_mi_t.mi_r`
+Body recipes + cross-instance hash verification, at the library + CLI level.
+**This landed** along the staging below; the rest of this section is the
+implementation spec it was built from, kept as a reference for the still-deferred
+in-milter engine and for anyone touching the recipe code.
+
+**As built (deltas from the spec below worth knowing):**
+
+- `dkim2-recipe.{c,h}` carries the model and the **single CRLF line-split
+  convention** (`body_split_lines`/`body_join_lines`); `generate` does an LCS
+  line-diff for the body and a per-field-name diff for headers (one `{"d":[…]}`
+  of the old values per changed name — correct, if not the most compact).
+- Header data literals are the **field value** (leading WSP trimmed); apply
+  rebuilds `name: value`. The §5.2 header canon lowercases names and
+  collapses/trims WSP, so reconstruction is hash-equal without byte-exactness.
+- **§8.5 fix (important):** a signature's signing input must include only the
+  Message-Instance fields it covers — those with `m <= sig.m=`. With one instance
+  (core) this was a no-op, so the original `dkim2_build_input_85` emitted *all*
+  MIs; multi-instance messages exposed it (sig `i=1` would wrongly hash `m=2`).
+  Both the verifier (`dkim2_build_input_85`, filtered) and the signer (only ever
+  references the highest `m`, so it was already correct) now agree. If you add a
+  path that signs referencing a non-top instance, keep this filter in mind.
+- **Missing-recipe PERMERROR is defensive, not test-reachable:** the recipe lives
+  in a signed Message-Instance, so stripping `r=` breaks that hop's signature
+  (checked at 10.6, before the 9.2 walk) and surfaces as FAIL. The unit test
+  therefore exercises the reachable paths — tamper → FAIL, `"h":null` → PASS — and
+  leaves the `mi_r == NULL` branch as a guard.
+
+The `r=` plumbing already existed: `dkim2_mi_t.mi_r`
 carries the base64-JSON recipe opaquely (`dkim2-header.c` parses/round-trips
 it), `dkim2-json.{c,h}` (`dkim2_json_b64_decode/encode` over cJSON) moves between
 that text and a cJSON tree, and `dkim2_header_is_signed()` already excludes

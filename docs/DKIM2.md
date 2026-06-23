@@ -50,11 +50,12 @@ Per the deployment-profile draft, DKIM2 splits into two profiles:
   current SMTP session and the message headers, so it maps directly onto a
   milter with no persistent state. **This is the scope of the current work.**
 - **DKIM2-extended** — adds body *recipes* via `Message-Instance` headers so
-  intermediaries can declare reversible modifications. **This is the next
-  milestone**, scoped to the recipe *library* + cross-instance verification +
-  CLIs (the surface a mailing-list operator or corporate gateway integrates
-  against). The full implementation spec lives in the
-  [developer guide](dkim2-dev-guide.md#dkim2-extended-next-work). The stateful
+  intermediaries can declare reversible modifications. **Done** at the library +
+  CLI level: the recipe module, cross-instance hash verification (which reaches
+  the milter verify path with no new daemon code), modification signing, and the
+  `--orig`/`--recipe` CLI options — the surface a mailing-list operator or
+  corporate gateway integrates against. See the
+  [developer guide](dkim2-dev-guide.md#dkim2-extended-done). The stateful
   in-milter modification *engine* that would let phoenixdkim itself rewrite and
   record messages stays deferred beyond that.
 
@@ -157,13 +158,11 @@ DKIM2-core lands as a sequence of self-contained commits:
     from within the daemon, in parallel to the untouched DKIM1 paths. See the
     [developer guide](dkim2-dev-guide.md#milter-integration-done).
 
-### Next milestone
-
-- **DKIM2-extended (library + CLI)**: `Message-Instance` body recipes,
-  cross-instance hash verification (reaches the milter verify path with no new
-  daemon code), and recipe generation/consumption in the CLIs. Designed and
-  ready to implement — see
-  [DKIM2-extended (next work)](dkim2-dev-guide.md#dkim2-extended-next-work).
+15. **DKIM2-extended (library + CLI)**: `Message-Instance` body recipes,
+    cross-instance hash verification (reaches the milter verify path with no new
+    daemon code), and recipe generation/consumption in the CLIs (`--orig` /
+    `--recipe`). **Done** — see
+    [DKIM2-extended](dkim2-dev-guide.md#dkim2-extended-done).
 
 ### Out of scope (for now)
 
