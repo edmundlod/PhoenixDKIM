@@ -8,7 +8,12 @@
 **
 **  Usage:
 **    phoenixdkim2-sign --key FILE --domain D --selector S --mail-from "<a@b>" \
-**        [--alg rsa-sha256|ed25519-sha256] [--rcpt-to "<c@d>"]... [--time N]
+**        [--alg rsa-sha256|ed25519-sha256] [--rcpt-to "<c@d>"]... [--time N] \
+**        [--orig FILE] [--recipe FILE]
+**
+**  --orig gives the pre-modification message so the signer records a reversible
+**  recipe in a new Message-Instance (extended profile); --recipe supplies a
+**  ready-made base64-JSON recipe instead and wins if both are given.
 */
 
 #include <stdint.h>
@@ -53,17 +58,22 @@ main(int argc, char **argv)
 {
 	const char *keyfile = NULL, *domain = NULL, *selector = NULL;
 	const char *mailfrom = NULL, *algname = NULL;
+	const char *origfile = NULL, *recipefile = NULL;
 	const char **rcpt = NULL;
 	size_t nrcpt = 0;
 	uint64_t t = 0;
 	int i;
 	char *keypem, *msg, *mi = NULL, *sig = NULL;
 	size_t keylen, msglen;
+	char *origmsg = NULL, *recipe = NULL;
+	size_t origlen = 0, recipelen = 0;
+	dkim2_eml_t *origeml = NULL;
 	EVP_PKEY *key;
 	dkim2_eml_t *eml;
 	dkim2_sign_params_t p;
 	dkim2_alg_t alg;
 	FILE *kf;
+	int ret = 2;
 
 	rcpt = calloc((size_t) argc, sizeof *rcpt);
 	if (rcpt == NULL)
@@ -85,6 +95,10 @@ main(int argc, char **argv)
 			rcpt[nrcpt++] = argv[++i];
 		else if (strcmp(argv[i], "--time") == 0 && i + 1 < argc)
 			t = strtoull(argv[++i], NULL, 10);
+		else if (strcmp(argv[i], "--orig") == 0 && i + 1 < argc)
+			origfile = argv[++i];
+		else if (strcmp(argv[i], "--recipe") == 0 && i + 1 < argc)
+			recipefile = argv[++i];
 		else
 		{
 			fprintf(stderr, "phoenixdkim2-sign: unknown option '%s'\n",
@@ -136,10 +150,43 @@ main(int argc, char **argv)
 	if (eml == NULL)
 	{
 		fprintf(stderr, "phoenixdkim2-sign: cannot parse message\n");
-		EVP_PKEY_free(key);
-		free(msg);
-		free(rcpt);
-		return 2;
+		goto done;
+	}
+
+	/* Extended profile: --orig is the pre-modification message to diff
+	** against; --recipe is a ready-made base64-JSON recipe (it wins). */
+	if (origfile != NULL)
+	{
+		FILE *of = fopen(origfile, "rb");
+
+		origmsg = of != NULL ? read_all(of, &origlen) : NULL;
+		if (of != NULL)
+			fclose(of);
+		origeml = origmsg != NULL ? dkim2_eml_parse(origmsg, origlen) : NULL;
+		if (origeml == NULL)
+		{
+			fprintf(stderr, "phoenixdkim2-sign: cannot read --orig '%s'\n",
+			        origfile);
+			goto done;
+		}
+	}
+	if (recipefile != NULL)
+	{
+		FILE *rf = fopen(recipefile, "rb");
+
+		recipe = rf != NULL ? read_all(rf, &recipelen) : NULL;
+		if (rf != NULL)
+			fclose(rf);
+		if (recipe == NULL)
+		{
+			fprintf(stderr, "phoenixdkim2-sign: cannot read --recipe '%s'\n",
+			        recipefile);
+			goto done;
+		}
+		/* trim a trailing newline so the file is convenient to author */
+		while (recipelen > 0 && (recipe[recipelen - 1] == '\n' ||
+		                         recipe[recipelen - 1] == '\r'))
+			recipe[--recipelen] = '\0';
 	}
 
 	memset(&p, 0, sizeof p);
@@ -151,29 +198,40 @@ main(int argc, char **argv)
 	p.sp_rt = rcpt;
 	p.sp_rt_count = nrcpt;
 	p.sp_t = t;
+	if (recipe != NULL)
+		p.sp_recipe = recipe;
+	else if (origeml != NULL)
+	{
+		p.sp_orig_headers = (const char *const *) origeml->em_headers;
+		p.sp_orig_nheaders = origeml->em_nheaders;
+		p.sp_orig_body = origeml->em_body;
+		p.sp_orig_bodylen = origeml->em_bodylen;
+	}
 
 	if (dkim2_sign(&p, (const char *const *) eml->em_headers,
 	               eml->em_nheaders, eml->em_body, eml->em_bodylen,
 	               &mi, &sig) != 0)
 	{
 		fprintf(stderr, "phoenixdkim2-sign: signing failed\n");
-		dkim2_eml_free(eml);
-		EVP_PKEY_free(key);
-		free(msg);
-		free(rcpt);
-		return 1;
+		ret = 1;
+		goto done;
 	}
 
 	if (mi != NULL)
 		printf("%s\r\n", mi);
 	printf("%s\r\n", sig);
 	fwrite(msg, 1, msglen, stdout);
+	ret = 0;
 
+  done:
 	free(mi);
 	free(sig);
 	dkim2_eml_free(eml);
+	dkim2_eml_free(origeml);
 	EVP_PKEY_free(key);
 	free(msg);
+	free(origmsg);
+	free(recipe);
 	free(rcpt);
-	return 0;
+	return ret;
 }

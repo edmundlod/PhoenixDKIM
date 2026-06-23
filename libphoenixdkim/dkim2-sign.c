@@ -15,6 +15,7 @@
 #include "base64.h"
 #include "dkim2-hash.h"
 #include "dkim2-header.h"
+#include "dkim2-recipe.h"
 
 /* ── Section 8.5 field canonicalization ──────────────────────────────────── */
 
@@ -182,6 +183,7 @@ dkim2_sign(const dkim2_sign_params_t *p,
 	size_t idx;
 	uint64_t next_i = 1, ref_m = 1;
 	int originator;
+	int modifying;
 	char *mi_value = NULL;
 	char *mf_b64 = NULL;
 	char **rt_b64 = NULL;
@@ -248,16 +250,25 @@ dkim2_sign(const dkim2_sign_params_t *p,
 	}
 
 	originator = (nsig == 0);
+	/* A re-signer that supplies a pre-modification message or an explicit
+	** recipe is recording a reversible modification: it adds a new
+	** Message-Instance.  Without either it is a plain core re-sign. */
+	modifying = (!originator &&
+	    (p->sp_orig_headers != NULL || p->sp_recipe != NULL));
 
 	qsort(mis, nmi, sizeof *mis, dkim2_chain_cmp);
 	qsort(sigs, nsig, sizeof *sigs, dkim2_chain_cmp);
 
-	/* Originator adds Message-Instance m=1 with the message hashes; a
-	** re-signer references the existing top instance and adds no MI. */
-	if (originator)
+	/* The originator adds Message-Instance m=1; a modifying re-signer adds the
+	** next instance with the current hashes and a recipe reverting to the
+	** previous one; a plain re-signer references the top instance and adds no
+	** MI. */
+	if (originator || modifying)
 	{
 		unsigned char hh[DKIM2_HASH_LEN], bh[DKIM2_HASH_LEN];
 		char *hh_b64 = NULL, *bh_b64 = NULL;
+		uint64_t newm = (originator || nmi == 0) ? 1
+		                                         : mis[nmi - 1].cf_key + 1;
 
 		if (dkim2_header_hash(headers, nheaders, hh) != 0 ||
 		    dkim2_body_hash(body, bodylen, bh) != 0)
@@ -271,8 +282,40 @@ dkim2_sign(const dkim2_sign_params_t *p,
 			goto done;
 		}
 
-		ref_m = 1;
-		if (asprintf(&mi_value, "m=1; h=sha256:%s:%s;", hh_b64, bh_b64) < 0)
+		ref_m = newm;
+		if (modifying)
+		{
+			char *recipe_b64 = NULL;
+
+			if (p->sp_recipe != NULL)
+				recipe_b64 = strdup(p->sp_recipe);
+			else
+			{
+				dkim2_recipe_t *rg = dkim2_recipe_generate(
+				    p->sp_orig_headers, p->sp_orig_nheaders,
+				    p->sp_orig_body, p->sp_orig_bodylen,
+				    headers, nheaders, body, bodylen);
+
+				if (rg != NULL)
+				{
+					recipe_b64 = dkim2_recipe_format(rg);
+					dkim2_recipe_free(rg);
+				}
+			}
+			if (recipe_b64 == NULL)
+			{
+				free(hh_b64);
+				free(bh_b64);
+				goto done;
+			}
+			if (asprintf(&mi_value, "m=%llu; h=sha256:%s:%s; r=%s;",
+			             (unsigned long long) newm, hh_b64, bh_b64,
+			             recipe_b64) < 0)
+				mi_value = NULL;
+			free(recipe_b64);
+		}
+		else if (asprintf(&mi_value, "m=%llu; h=sha256:%s:%s;",
+		                  (unsigned long long) newm, hh_b64, bh_b64) < 0)
 			mi_value = NULL;
 		free(hh_b64);
 		free(bh_b64);
@@ -325,7 +368,12 @@ dkim2_sign(const dkim2_sign_params_t *p,
 			else { fwrite(_c, 1, strlen(_c), f); free(_c); }       \
 		} while (0)
 
-		if (originator)
+		if (!originator)
+		{
+			for (k = 0; k < nmi; k++)
+				EMIT_CANON(mis[k].cf_field);
+		}
+		if (originator || modifying)
 		{
 			char *mi_field = NULL;
 
@@ -337,11 +385,6 @@ dkim2_sign(const dkim2_sign_params_t *p,
 				EMIT_CANON(mi_field);
 				free(mi_field);
 			}
-		}
-		else
-		{
-			for (k = 0; k < nmi; k++)
-				EMIT_CANON(mis[k].cf_field);
 		}
 
 		for (k = 0; k < nsig && !ferr; k++)
@@ -383,7 +426,7 @@ dkim2_sign(const dkim2_sign_params_t *p,
 		*sig_out = NULL;
 		goto done;
 	}
-	if (originator && mi_out != NULL)
+	if ((originator || modifying) && mi_out != NULL)
 	{
 		if (asprintf(mi_out, "Message-Instance: %s", mi_value) < 0)
 		{

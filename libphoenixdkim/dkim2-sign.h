@@ -8,9 +8,13 @@
 **  ordered Message-Instance and DKIM2-Signature fields per Section 8.5, sign
 **  it, and drop the signature value into s=.
 **
-**  This implements the stateless DKIM2-core profile: it declares no body or
-**  header recipes, so a re-signer adds only a new DKIM2-Signature and never a
-**  new Message-Instance.
+**  This implements the stateless DKIM2-core profile: a plain re-signer adds only
+**  a new DKIM2-Signature and never a new Message-Instance.
+**
+**  The extended profile adds a third, *modifying* path: when an intermediary has
+**  rewritten the message it supplies the pre-modification message (sp_orig_*) or
+**  a ready-made recipe (sp_recipe), and the signer adds a new Message-Instance
+**  carrying the new hashes plus the reversible recipe (Section 4 / 9.2).
 */
 
 #ifndef PHOENIXDKIM_DKIM2_SIGN_H
@@ -31,6 +35,16 @@ typedef struct dkim2_sign_params
 	const char *const *sp_rt;	/* SMTP forward-paths */
 	size_t		  sp_rt_count;
 	uint64_t	  sp_t;		/* timestamp; 0 means "use current time" */
+
+	/* Extended profile (optional): inputs for a modifying re-signer that
+	** records a reversible diff in a new Message-Instance.  When neither is
+	** set on a re-sign, the stateless core path runs and no MI is added. */
+	const char *const *sp_orig_headers;	/* pre-modification headers */
+	size_t		  sp_orig_nheaders;
+	const char	 *sp_orig_body;		/* pre-modification body */
+	size_t		  sp_orig_bodylen;
+	const char	 *sp_recipe;		/* ready-made base64-JSON r=, wins
+						** over diffing sp_orig_* */
 } dkim2_sign_params_t;
 
 /*
@@ -44,8 +58,9 @@ typedef struct dkim2_sign_params
 **  	nheaders -- number of header fields
 **  	body -- the raw message body
 **  	bodylen -- body length in bytes
-**  	mi_out -- receives a malloc'd "Message-Instance: ..." field, or NULL when
-**  	          none is added (re-signing); may itself be set to NULL
+**  	mi_out -- receives a malloc'd "Message-Instance: ..." field (added by the
+**  	          originator and by a modifying re-signer), or NULL when none is
+**  	          added (a plain core re-sign); may itself be set to NULL
 **  	sig_out -- receives a malloc'd "DKIM2-Signature: ..." field
 **
 **  Return value:
