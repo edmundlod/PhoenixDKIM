@@ -245,6 +245,7 @@ if(WITH_DKIM2)
         set(USE_DKIM2 1)
         list(APPEND DKIM2_SOURCES
             dkim2-tags.c
+            dkim2-json.c
         )
     else()
         message(FATAL_ERROR
