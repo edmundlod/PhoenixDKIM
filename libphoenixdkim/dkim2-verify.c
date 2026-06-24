@@ -526,7 +526,8 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			if (alg == DKIM2_ALG_UNKNOWN)
 				continue;	/* 3.4: ignore unknown algorithms */
 
-			kr = dkim2_dns_getkey(e->se_selector, s->sig_d, &st);
+			kr = dkim2_dns_getkey(e->se_selector, s->sig_d, &st,
+			                      opts->vo_dns_txt, opts->vo_dns_ctx);
 			if (kr == NULL)
 			{
 				dkim2_vstate_t state =

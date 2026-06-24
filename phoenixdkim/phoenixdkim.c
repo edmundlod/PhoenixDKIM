@@ -93,6 +93,7 @@
 #ifdef USE_DKIM2
 # include "base64.h"
 # include "dkim2-crypto.h"
+# include "dkim2-dns.h"
 # include "dkim2-eml.h"
 # include "dkim2-hash.h"
 # include "dkim2-header.h"
@@ -13455,6 +13456,36 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 }
 
 /*
+**  DKIMF_DKIM2_LIB_TXT -- dkim2_dns_txt_func that resolves a key TXT record
+**  through libphoenixdkim's configured resolver (ctx is the DKIM_LIB).  This is
+**  how the DKIM2 verifier shares the daemon's single DNS path -- DNSSEC,
+**  caching, Nameservers and the TestDNSData file-DNS harness all apply, the
+**  same as for DKIM1 -- instead of issuing its own libc res_query().
+*/
+
+static char *
+dkimf_dkim2_lib_txt(void *ctx, const char *qname, dkim2_dns_status_t *status)
+{
+	DKIM_LIB *lib = (DKIM_LIB *) ctx;
+	unsigned char answer[8192];	/* MAXPACKET, as in dkim-keys.c */
+	size_t anslen = sizeof answer;
+
+	if (lib == NULL)
+	{
+		*status = DKIM2_DNS_TEMPFAIL;
+		return NULL;
+	}
+
+	if (dkim_dns_query_txt(lib, qname, answer, &anslen, NULL) != DKIM_DNS_SUCCESS)
+	{
+		*status = DKIM2_DNS_TEMPFAIL;
+		return NULL;
+	}
+
+	return dkim2_dns_parse_answer(answer, anslen, status);
+}
+
+/*
 **  DKIMF_DKIM2_VERIFY_MSG -- verify the DKIM2 chain on the current message,
 **  optionally add an Authentication-Results field, and translate the state
 **  into a milter disposition.
@@ -13496,6 +13527,8 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 	                    ? (const char *) dfc->mctx_dkim2mailfrom : NULL;
 	opts.vo_rcpt_to = rcpts;
 	opts.vo_rcpt_count = nrcpts;
+	opts.vo_dns_txt = dkimf_dkim2_lib_txt;
+	opts.vo_dns_ctx = conf->conf_libphoenixdkim;
 
 	memset(&res, 0, sizeof res);
 	if (dkim2_verify((const char *const *) headers, nheaders,

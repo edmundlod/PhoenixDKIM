@@ -17,8 +17,6 @@
 /* libphoenixdkim includes */
 #include "dkim2-tags.h"
 
-char *(*dkim2_dns_override)(const char *qname) = NULL;
-
 int
 dkim2_dns_queryname(const char *selector, const char *domain,
                     char *buf, size_t buflen)
@@ -94,35 +92,24 @@ dkim2_keyrecord_free(dkim2_keyrecord_t *kr)
 }
 
 /*
-**  DKIM2_DNS_TXT_LIVE -- live TXT lookup, concatenating the record's
-**  character-strings into one malloc'd NUL-terminated string.
+**  DKIM2_DNS_PARSE_ANSWER -- extract the first TXT record from a wire-format
+**  DNS reply, concatenating its character-strings into one malloc'd
+**  NUL-terminated string.
 **
 **  ns_c_in / ns_t_txt (rather than the BIND-8 C_IN / T_TXT spellings) are used
 **  for portability to platforms that gate the legacy names behind
 **  BIND_8_COMPAT (e.g. macOS).
 */
-static char *
-dkim2_dns_txt_live(const char *qname, dkim2_dns_status_t *status)
+char *
+dkim2_dns_parse_answer(const unsigned char *answer, size_t len,
+                       dkim2_dns_status_t *status)
 {
-	unsigned char answer[NS_PACKETSZ];
 	ns_msg handle;
 	ns_rr rr;
-	int len;
 	int count;
 	int i;
 
-	len = res_query(qname, ns_c_in, ns_t_txt, answer, sizeof answer);
-	if (len < 0)
-	{
-		/* NXDOMAIN or no TXT data is "no key"; anything else is transient. */
-		if (h_errno == HOST_NOT_FOUND || h_errno == NO_DATA)
-			*status = DKIM2_DNS_NOKEY;
-		else
-			*status = DKIM2_DNS_TEMPFAIL;
-		return NULL;
-	}
-
-	if (ns_initparse(answer, len, &handle) < 0)
+	if (ns_initparse(answer, (int) len, &handle) < 0)
 	{
 		*status = DKIM2_DNS_TEMPFAIL;
 		return NULL;
@@ -174,9 +161,37 @@ dkim2_dns_txt_live(const char *qname, dkim2_dns_status_t *status)
 	return NULL;
 }
 
+/*
+**  DKIM2_DNS_TXT_LIVE -- the bundled live TXT lookup via libc res_query().
+**  ctx is unused; the signature matches dkim2_dns_txt_func so it can serve as
+**  the default resolver.
+*/
+char *
+dkim2_dns_txt_live(void *ctx, const char *qname, dkim2_dns_status_t *status)
+{
+	unsigned char answer[NS_PACKETSZ];
+	int len;
+
+	(void) ctx;
+
+	len = res_query(qname, ns_c_in, ns_t_txt, answer, sizeof answer);
+	if (len < 0)
+	{
+		/* NXDOMAIN or no TXT data is "no key"; anything else is transient. */
+		if (h_errno == HOST_NOT_FOUND || h_errno == NO_DATA)
+			*status = DKIM2_DNS_NOKEY;
+		else
+			*status = DKIM2_DNS_TEMPFAIL;
+		return NULL;
+	}
+
+	return dkim2_dns_parse_answer(answer, (size_t) len, status);
+}
+
 dkim2_keyrecord_t *
 dkim2_dns_getkey(const char *selector, const char *domain,
-                 dkim2_dns_status_t *status)
+                 dkim2_dns_status_t *status, dkim2_dns_txt_func txt_func,
+                 void *txt_ctx)
 {
 	char qname[NS_MAXDNAME];
 	char *txt;
@@ -189,15 +204,10 @@ dkim2_dns_getkey(const char *selector, const char *domain,
 		return NULL;
 	}
 
-	if (dkim2_dns_override != NULL)
-	{
-		txt = dkim2_dns_override(qname);
-		st = (txt != NULL) ? DKIM2_DNS_OK : DKIM2_DNS_NOKEY;
-	}
-	else
-	{
-		txt = dkim2_dns_txt_live(qname, &st);
-	}
+	if (txt_func == NULL)
+		txt_func = dkim2_dns_txt_live;
+
+	txt = txt_func(txt_ctx, qname, &st);
 
 	if (txt == NULL)
 	{
