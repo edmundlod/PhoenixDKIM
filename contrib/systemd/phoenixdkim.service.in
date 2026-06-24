@@ -14,6 +14,14 @@ Before=postfix.service sendmail.service exim.service exim4.service opensmtpd.ser
 Type=@SD_TYPE@
 RuntimeDirectory=phoenixdkim
 RuntimeDirectoryMode=0750
+
+# Persistent, daemon-private state.  Creates /var/lib/phoenixdkim and the
+# dkim2-snapshots subdir owned by the service user and adds them to the writable
+# set, so DKIM2SnapshotDirectory=/var/lib/phoenixdkim/dkim2-snapshots (the
+# modifying-resign snapshot store) works with no extra setup.  The daemon never
+# creates this path itself, and the MTA never touches it.
+StateDirectory=phoenixdkim phoenixdkim/dkim2-snapshots
+StateDirectoryMode=0750
 ExecStart=@CMAKE_INSTALL_FULL_SBINDIR@/phoenixdkim -f -x /etc/phoenixdkim/phoenixdkim.conf
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure

@@ -55,6 +55,7 @@ struct configdef dkimf_config[] =
 	{ "DKIM2Mode",			CONFIG_TYPE_STRING,	FALSE },
 	{ "DKIM2RejectOnFail",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DKIM2Selector",		CONFIG_TYPE_STRING,	FALSE },
+	{ "DKIM2SnapshotDirectory",	CONFIG_TYPE_STRING,	FALSE },
 #endif /* USE_DKIM2 */
 	{ "DNSConnect",			CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DNSSECProbe",		CONFIG_TYPE_STRING,	FALSE },

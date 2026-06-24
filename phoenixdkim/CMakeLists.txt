@@ -358,6 +358,7 @@ add_executable(phoenixdkim_daemon
     phoenixdkim-arf.c
     phoenixdkim-crypto.c
     phoenixdkim-db.c
+    phoenixdkim-dkim2store.c
     phoenixdkim-dns.c
     phoenixdkim-lua.c
     phoenixdkim-stats.c
@@ -585,6 +586,27 @@ if(WITH_REDIS)
     set_tests_properties(t-db-redis PROPERTIES
         TIMEOUT 10
         SKIP_RETURN_CODE 77
+    )
+endif()
+
+# ── DKIM2 snapshot store unit test (offline) ─────────────────────────────────
+# t-dkim2store.c #includes phoenixdkim-dkim2store.c to reach its static helpers,
+# so that translation unit is NOT listed as a source (it would double-define).
+
+if(WITH_DKIM2)
+    add_executable(t-dkim2store
+        tests/t-dkim2store.c
+    )
+    configure_daemon_target(t-dkim2store)
+    apply_hardening(t-dkim2store)
+    apply_sanitizers(t-dkim2store)
+    target_link_libraries(t-dkim2store PRIVATE OpenSSL::Crypto)
+    add_test(
+        NAME t-dkim2store
+        COMMAND t-dkim2store
+    )
+    set_tests_properties(t-dkim2store PROPERTIES
+        TIMEOUT 10
     )
 endif()
 

@@ -79,7 +79,13 @@
 #define AUTHRESULTSHDR	"Authentication-Results"
 #define ORCPTHEADER	"Original-Recipient"
 
-#define	SWHEADERNAME	"DKIM-Filter"
+/*
+**  Software (trace) header name.  Carries the "X-" prefix so that DKIM2's
+**  header-field hash (draft-ietf-dkim-dkim2-spec-02 §5.2) skips it: any field
+**  we add that is not on that skip-list would invalidate a prior
+**  Message-Instance.  X-* is the spec's mechanism for proprietary trace headers.
+*/
+#define	SWHEADERNAME	"X-DKIM-Filter"
 #define	SELECTCANONHDR	"Canonicalization"
 
 

@@ -91,7 +91,11 @@
 /* libphoenixdkim includes */
 #include "dkim.h"
 #ifdef USE_DKIM2
+# include "base64.h"
 # include "dkim2-crypto.h"
+# include "dkim2-eml.h"
+# include "dkim2-hash.h"
+# include "dkim2-header.h"
 # include "dkim2-sign.h"
 # include "dkim2-verify.h"
 #endif /* USE_DKIM2 */
@@ -118,6 +122,9 @@
 #include "phoenixdkim-ar.h"
 #include "phoenixdkim-arf.h"
 #include "phoenixdkim-dns.h"
+#ifdef USE_DKIM2
+# include "phoenixdkim-dkim2store.h"
+#endif /* USE_DKIM2 */
 #include "phoenixdkim-stats.h"
 #ifdef USE_LUA
 # include "phoenixdkim-lua.h"
@@ -352,6 +359,7 @@ struct dkimf_config
 	char *		conf_dkim2selector;	/* DKIM2 selector */
 	char *		conf_dkim2keyfile;	/* DKIM2 private key file */
 	char *		conf_dkim2algstr;	/* DKIM2Algorithm string */
+	char *		conf_dkim2snapshotdir;	/* DKIM2 modifying-resign snapshots */
 	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
 #endif /* USE_DKIM2 */
 };
@@ -7840,6 +7848,9 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		(void) config_get(data, "DKIM2AuthResults",
 		                  &conf->conf_dkim2addar,
 		                  sizeof conf->conf_dkim2addar);
+		(void) config_get(data, "DKIM2SnapshotDirectory",
+		                  &conf->conf_dkim2snapshotdir,
+		                  sizeof conf->conf_dkim2snapshotdir);
 	}
 
 	if (conf->conf_dkim2modestr != NULL)
@@ -7941,6 +7952,34 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		{
 			(void) snprintf(err, errlen,
 			         "DKIM2 algorithm is unknown or does not match the key");
+			return -1;
+		}
+	}
+
+	/*
+	**  The modifying-resign snapshot directory is the admin's to provision (the
+	**  bundled systemd unit creates it via StateDirectory); the daemon only
+	**  writes hashed shard subdirectories inside it, and never creates the
+	**  configured path itself.  Validate it up front so a typo or a missing
+	**  directory fails loudly at start rather than silently disabling recipes.
+	*/
+	if (conf->conf_dkim2snapshotdir != NULL)
+	{
+		struct stat st;
+
+		if (stat(conf->conf_dkim2snapshotdir, &st) != 0 ||
+		    !S_ISDIR(st.st_mode))
+		{
+			(void) snprintf(err, errlen,
+			         "DKIM2SnapshotDirectory \"%s\": not a directory",
+			         conf->conf_dkim2snapshotdir);
+			return -1;
+		}
+		if (access(conf->conf_dkim2snapshotdir, W_OK | X_OK) != 0)
+		{
+			(void) snprintf(err, errlen,
+			         "DKIM2SnapshotDirectory \"%s\": not writable: %s",
+			         conf->conf_dkim2snapshotdir, strerror(errno));
 			return -1;
 		}
 	}
@@ -12894,6 +12933,297 @@ dkimf_dkim2_body(msgctx dfc, const char **body, size_t *bodylen)
 }
 
 /*
+**  DKIMF_FIELD_IS -- whether "Name: value" field has the given (lowercase) name.
+*/
+
+static int
+dkimf_field_is(const char *field, const char *name)
+{
+	const char *colon = field != NULL ? strchr(field, ':') : NULL;
+	size_t nl;
+
+	if (colon == NULL)
+		return 0;
+	nl = (size_t) (colon - field);
+	while (nl > 0 && (field[nl - 1] == ' ' || field[nl - 1] == '\t'))
+		nl--;
+	return nl == strlen(name) && strncasecmp(field, name, nl) == 0;
+}
+
+/* base64 a byte buffer into a fresh NUL-terminated string (NULL on error). */
+
+static char *
+dkimf_dkim2_b64(unsigned char *data, size_t len)
+{
+	size_t cap = 4 * ((len + 2) / 3) + 1;
+	char *out = malloc(cap);
+	int n;
+
+	if (out == NULL)
+		return NULL;
+	n = dkim_base64_encode(data, len, (u_char *) out, cap);
+	if (n < 0)
+	{
+		free(out);
+		return NULL;
+	}
+	out[(size_t) n] = '\0';
+	return out;
+}
+
+/*
+**  DKIMF_DKIM2_ASSEMBLE -- reconstruct the full RFC 5322 message (CRLF) from the
+**  materialised header array and body, ready for snapshotting or re-parsing.
+**  Returns a malloc'd buffer (caller frees) and its length, or NULL on error.
+*/
+
+static char *
+dkimf_dkim2_assemble(char *const *headers, size_t nheaders,
+                     const char *body, size_t bodylen, size_t *outlen)
+{
+	char *buf = NULL;
+	size_t buflen = 0;
+	FILE *f = open_memstream(&buf, &buflen);
+	size_t i;
+
+	if (f == NULL)
+		return NULL;
+	for (i = 0; i < nheaders; i++)
+	{
+		if (headers[i] == NULL)
+			continue;
+		fwrite(headers[i], 1, strlen(headers[i]), f);
+		fwrite("\r\n", 1, 2, f);
+	}
+	fwrite("\r\n", 1, 2, f);
+	if (body != NULL && bodylen > 0)
+		fwrite(body, 1, bodylen, f);
+	if (fclose(f) != 0)
+	{
+		free(buf);
+		return NULL;
+	}
+	*outlen = buflen;
+	return buf;
+}
+
+/* One Message-Instance reference: borrowed value pointer and its m= number. */
+struct dkimf_mi_ref
+{
+	const char	*mr_value;	/* points into a headers[] field */
+	uint64_t	 mr_m;
+};
+
+static int
+dkimf_mi_ref_cmp_desc(const void *a, const void *b)
+{
+	uint64_t ma = ((const struct dkimf_mi_ref *) a)->mr_m;
+	uint64_t mb = ((const struct dkimf_mi_ref *) b)->mr_m;
+
+	return ma < mb ? 1 : (ma > mb ? -1 : 0);
+}
+
+/*
+**  DKIMF_DKIM2_COLLECT_MIS -- gather the message's Message-Instance fields as
+**  (value, m) pairs sorted by descending m.  Returns a malloc'd array (caller
+**  frees) and its count, or NULL on error / when there are none.
+*/
+
+static struct dkimf_mi_ref *
+dkimf_dkim2_collect_mis(char *const *headers, size_t nheaders, size_t *nout)
+{
+	struct dkimf_mi_ref *arr;
+	size_t n = 0;
+	size_t i;
+
+	arr = calloc(nheaders != 0 ? nheaders : 1, sizeof *arr);
+	if (arr == NULL)
+		return NULL;
+	for (i = 0; i < nheaders; i++)
+	{
+		const char *value;
+		dkim2_mi_t *mi;
+
+		if (!dkimf_field_is(headers[i], "message-instance"))
+			continue;
+		value = strchr(headers[i], ':') + 1;
+		mi = dkim2_mi_parse(value, strlen(value));
+		if (mi == NULL)
+			continue;
+		arr[n].mr_value = value;
+		arr[n].mr_m = mi->mi_m;
+		n++;
+		dkim2_mi_free(mi);
+	}
+	if (n == 0)
+	{
+		free(arr);
+		return NULL;
+	}
+	qsort(arr, n, sizeof *arr, dkimf_mi_ref_cmp_desc);
+	*nout = n;
+	return arr;
+}
+
+/*
+**  DKIMF_DKIM2_TOP_MI_MATCHES -- does the top Message-Instance's SHA-256 header
+**  and body hash match the current content?  1 = yes (plain re-sign), 0 = no
+**  (content changed since the previous hop), -1 on error.
+*/
+
+static int
+dkimf_dkim2_top_mi_matches(char *const *headers, size_t nheaders,
+                           const char *body, size_t bodylen,
+                           const char *top_mi_value)
+{
+	unsigned char hh[DKIM2_HASH_LEN], bh[DKIM2_HASH_LEN];
+	char *hh_b64 = NULL, *bh_b64 = NULL;
+	dkim2_mi_t *mi;
+	dkim2_hashentry_t *he;
+	int rc = -1;
+
+	mi = dkim2_mi_parse(top_mi_value, strlen(top_mi_value));
+	if (mi == NULL)
+		return -1;
+	if (dkim2_header_hash((const char *const *) headers, nheaders, hh) != 0 ||
+	    dkim2_body_hash(body, bodylen, bh) != 0)
+		goto done;
+	hh_b64 = dkimf_dkim2_b64(hh, sizeof hh);
+	bh_b64 = dkimf_dkim2_b64(bh, sizeof bh);
+	if (hh_b64 == NULL || bh_b64 == NULL)
+		goto done;
+	for (he = mi->mi_h; he != NULL; he = he->he_next)
+	{
+		if (he->he_name == NULL ||
+		    strcasecmp(he->he_name, "sha256") != 0)
+			continue;
+		rc = (he->he_header != NULL && he->he_body != NULL &&
+		      strcmp(he->he_header, hh_b64) == 0 &&
+		      strcmp(he->he_body, bh_b64) == 0) ? 1 : 0;
+		break;
+	}
+
+  done:
+	free(hh_b64);
+	free(bh_b64);
+	dkim2_mi_free(mi);
+	return rc;
+}
+
+/*
+**  DKIMF_DKIM2_STRIP_MI_HEADERS -- copy the header array, dropping every
+**  Message-Instance field whose m= is in vers[].  Used to remove broken
+**  intermediate instances (added after our inbound snapshot) so the diff and
+**  signing input start from the snapshot's top instance.  Returns a malloc'd
+**  array of malloc'd strings (free each, then the array), or NULL on error.
+*/
+
+static char **
+dkimf_dkim2_strip_mi_headers(char *const *headers, size_t nheaders,
+                             const uint64_t *vers, size_t nvers, size_t *outn)
+{
+	char **out;
+	size_t n = 0;
+	size_t i;
+
+	out = calloc(nheaders != 0 ? nheaders : 1, sizeof *out);
+	if (out == NULL)
+		return NULL;
+	for (i = 0; i < nheaders; i++)
+	{
+		int skip = 0;
+
+		if (dkimf_field_is(headers[i], "message-instance"))
+		{
+			const char *value = strchr(headers[i], ':') + 1;
+			dkim2_mi_t *mi = dkim2_mi_parse(value, strlen(value));
+			size_t j;
+
+			if (mi != NULL)
+			{
+				for (j = 0; j < nvers; j++)
+				{
+					if (mi->mi_m == vers[j])
+					{
+						skip = 1;
+						break;
+					}
+				}
+				dkim2_mi_free(mi);
+			}
+		}
+		if (skip)
+			continue;
+		out[n] = strdup(headers[i]);
+		if (out[n] == NULL)
+		{
+			while (n > 0)
+				free(out[--n]);
+			free(out);
+			return NULL;
+		}
+		n++;
+	}
+	*outn = n;
+	return out;
+}
+
+/*
+**  DKIMF_DKIM2_WIRE_STRIP_MIS -- delete the Message-Instance fields whose m= is
+**  in vers[] from the outbound message.  Run before inserting our new fields so
+**  the smfi instance indices still match the received order.  Highest occurrence
+**  first, since each deletion renumbers the rest.
+*/
+
+static void
+dkimf_dkim2_wire_strip_mis(SMFICTX *ctx, msgctx dfc,
+                           const uint64_t *vers, size_t nvers)
+{
+	char miname[] = "Message-Instance";
+	int *idxs;
+	size_t nidx = 0;
+	size_t nmi = 0;
+	int occ = 0;
+	Header h;
+
+	for (h = dfc->mctx_hqhead; h != NULL; h = h->hdr_next)
+	{
+		if (strcasecmp(h->hdr_hdr, miname) == 0)
+			nmi++;
+	}
+	if (nmi == 0)
+		return;
+	idxs = calloc(nmi, sizeof *idxs);
+	if (idxs == NULL)
+		return;
+	for (h = dfc->mctx_hqhead; h != NULL; h = h->hdr_next)
+	{
+		dkim2_mi_t *mi;
+		size_t j;
+
+		if (strcasecmp(h->hdr_hdr, miname) != 0)
+			continue;
+		occ++;
+		mi = dkim2_mi_parse(h->hdr_val != NULL ? h->hdr_val : "",
+		                    h->hdr_val != NULL ? strlen(h->hdr_val) : 0);
+		if (mi == NULL)
+			continue;
+		for (j = 0; j < nvers; j++)
+		{
+			if (mi->mi_m == vers[j])
+			{
+				idxs[nidx++] = occ;
+				break;
+			}
+		}
+		dkim2_mi_free(mi);
+	}
+	while (nidx > 0)
+		(void) dkimf_chgheader(ctx, miname, idxs[--nidx], NULL);
+	free(idxs);
+}
+
+/*
 **  DKIMF_DKIM2_SIGN_MSG -- sign the current message with DKIM2 and prepend the
 **  resulting Message-Instance / DKIM2-Signature header fields.
 **
@@ -12917,6 +13247,18 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	char *sig = NULL;
 	int rc;
 	int k;
+	const char *dir = conf->conf_dkim2snapshotdir;
+	const char *resign = "originate/plain";
+	char **work_headers;
+	size_t work_nheaders;
+	char **stripped = NULL;		/* owned stripped header copy, or NULL */
+	uint64_t *strip_vers = NULL;	/* MI versions removed from the wire */
+	size_t nstrip = 0;
+	struct dkimf_mi_ref *mis = NULL;
+	size_t nmis = 0;
+	const char *snap_key = NULL;	/* MI value whose snapshot we consumed */
+	dkim2_eml_t *snapeml = NULL;	/* owns p.sp_orig_* while signing */
+	sfsistat ret = SMFIS_CONTINUE;
 
 	headers = dkimf_dkim2_headers(dfc, &nheaders);
 	if (headers == NULL)
@@ -12928,6 +13270,8 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		return SMFIS_TEMPFAIL;
 	}
 	dkimf_dkim2_body(dfc, &body, &bodylen);
+	work_headers = headers;
+	work_nheaders = nheaders;
 
 	memset(&p, 0, sizeof p);
 	p.sp_domain = conf->conf_dkim2domain;
@@ -12940,11 +13284,106 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	p.sp_rt_count = nrcpts;
 	p.sp_t = 0;
 
-	rc = dkim2_sign(&p, (const char *const *) headers, nheaders,
-	                body, bodylen, &mi, &sig);
+	/*
+	**  Modifying re-sign (draft Section 8.1): a hop that rewrote a covered
+	**  header or the body must add a NEW Message-Instance carrying a recipe
+	**  that reverts to the previous one.  We can only build that recipe from
+	**  the pre-modification bytes, which a milter has only on the inbound
+	**  transaction -- so on inbound (verify pass) we snapshot the message, and
+	**  here we look it up.  If the top instance still matches the current
+	**  content nothing changed: plain re-sign.  If it changed and we have the
+	**  snapshot, diff against it to record the recipe.  If it changed and we
+	**  have NO snapshot, we cannot record a recipe -- and, crucially, a missing
+	**  snapshot also means we never verified this message inbound (we only
+	**  snapshot a chain that passed), so we must not vouch for it: deliver it
+	**  unsigned rather than extend a chain we cannot reconstruct or attest.
+	**  This mirrors bin/dkim2-milter.pl's refusal (its line ~346) to extend a
+	**  chain that does not verify; a null/irreversible recipe is reserved for a
+	**  future in-daemon *deliberate* modifier, which is a different case.
+	*/
+	if (dir != NULL)
+		mis = dkimf_dkim2_collect_mis(headers, nheaders, &nmis);
+	if (mis != NULL &&
+	    dkimf_dkim2_top_mi_matches(headers, nheaders, body, bodylen,
+	                               mis[0].mr_value) == 0)
+	{
+		char *snap = NULL;
+		size_t snaplen = 0;
+		size_t i;
 
-	dkimf_dkim2_headers_free(headers, nheaders);
-	free(rcpts);
+		for (i = 0; i < nmis && snap == NULL; i++)
+		{
+			snap = dkimf_dkim2_store_get(dir, mis[i].mr_value, &snaplen);
+			if (snap != NULL)
+				snap_key = mis[i].mr_value;
+		}
+		if (snap != NULL)
+		{
+			snapeml = dkim2_eml_parse(snap, snaplen);
+			free(snap);
+		}
+
+		if (snapeml != NULL)
+		{
+			struct dkimf_mi_ref *smis;
+			size_t nsmis = 0;
+			uint64_t snap_top = 0;
+
+			/* Broken intermediate instances (added after our snapshot)
+			** are everything numbered above the snapshot's top; strip
+			** them from the diff input and from the wire so our recipe
+			** reverts straight to the snapshot. */
+			smis = dkimf_dkim2_collect_mis(
+			    (char *const *) snapeml->em_headers,
+			    snapeml->em_nheaders, &nsmis);
+			if (smis != NULL)
+			{
+				snap_top = smis[0].mr_m;
+				free(smis);
+			}
+			strip_vers = calloc(nmis, sizeof *strip_vers);
+			if (strip_vers == NULL)
+			{
+				ret = SMFIS_TEMPFAIL;
+				goto cleanup;
+			}
+			for (i = 0; i < nmis; i++)
+			{
+				if (mis[i].mr_m > snap_top)
+					strip_vers[nstrip++] = mis[i].mr_m;
+			}
+			if (nstrip > 0)
+			{
+				stripped = dkimf_dkim2_strip_mi_headers(headers,
+				    nheaders, strip_vers, nstrip, &work_nheaders);
+				if (stripped == NULL)
+				{
+					ret = SMFIS_TEMPFAIL;
+					goto cleanup;
+				}
+				work_headers = stripped;
+			}
+			p.sp_orig_headers =
+			    (const char *const *) snapeml->em_headers;
+			p.sp_orig_nheaders = snapeml->em_nheaders;
+			p.sp_orig_body = snapeml->em_body;
+			p.sp_orig_bodylen = snapeml->em_bodylen;
+			resign = nstrip > 0 ? "modify/recipe (stripped)"
+			                    : "modify/recipe";
+		}
+		else
+		{
+			dkimf_log(conf, LOG_WARNING,
+			       "%s: DKIM2 not signed: content changed since the "
+			       "previous hop and no inbound snapshot is available to "
+			       "record a recipe; delivering unsigned",
+			       dfc->mctx_jobid);
+			goto cleanup;
+		}
+	}
+
+	rc = dkim2_sign(&p, (const char *const *) work_headers, work_nheaders,
+	                body, bodylen, &mi, &sig);
 
 	if (rc != 0 || sig == NULL)
 	{
@@ -12953,8 +13392,14 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		       dfc->mctx_jobid);
 		free(mi);
 		free(sig);
-		return SMFIS_CONTINUE;
+		goto cleanup;
 	}
+
+	/* Remove broken intermediate Message-Instance fields from the outbound
+	** message before inserting ours (so smfi instance indices still match the
+	** received order). */
+	if (nstrip > 0)
+		dkimf_dkim2_wire_strip_mis(ctx, dfc, strip_vers, nstrip);
 
 	/*
 	**  dkim2_sign() returns whole "Name: value" fields, but smfi_insheader
@@ -12980,13 +13425,33 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		(void) dkimf_insheader(ctx, 0, field, val);
 	}
 
-	dkimf_log(conf, LOG_INFO, "%s: DKIM2 signature added (d=%s, a=%s)",
-	       dfc->mctx_jobid, conf->conf_dkim2domain,
-	       dkim2_alg_name(conf->conf_dkim2alg));
+	/* The snapshot has served its purpose; drop it so the spool does not grow. */
+	if (snap_key != NULL)
+		(void) dkimf_dkim2_store_remove(dir, snap_key);
+
+	dkimf_log(conf, LOG_INFO,
+	       "%s: DKIM2-Signature field added (s=%s, d=%s, a=%s, resign=%s)",
+	       dfc->mctx_jobid, conf->conf_dkim2selector, conf->conf_dkim2domain,
+	       dkim2_alg_name(conf->conf_dkim2alg), resign);
 
 	free(mi);
 	free(sig);
-	return SMFIS_CONTINUE;
+
+  cleanup:
+	if (stripped != NULL)
+	{
+		size_t i;
+
+		for (i = 0; i < work_nheaders; i++)
+			free(stripped[i]);
+		free(stripped);
+	}
+	dkim2_eml_free(snapeml);
+	free(strip_vers);
+	free(mis);
+	dkimf_dkim2_headers_free(headers, nheaders);
+	free(rcpts);
+	return ret;
 }
 
 /*
@@ -13013,6 +13478,7 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 	dkim2_verify_result_t res;
 	sfsistat ret = SMFIS_CONTINUE;
 	const char *state;
+	const char *dir = conf->conf_dkim2snapshotdir;
 
 	headers = dkimf_dkim2_headers(dfc, &nheaders);
 	if (headers == NULL)
@@ -13040,6 +13506,39 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 		dkimf_log(conf, LOG_WARNING, "%s: DKIM2 verify internal error",
 		       dfc->mctx_jobid);
 		return SMFIS_CONTINUE;
+	}
+
+	/*
+	**  On a verified chain, snapshot the message keyed by its top
+	**  Message-Instance so that, if this host forwards or list-explodes the
+	**  message and rewrites covered content, the outbound signer can diff
+	**  against these pre-modification bytes and emit a recipe (Section 8.1).
+	**  Only meaningful when there is an existing instance to preserve; a fresh
+	**  message is originated, not diffed.
+	*/
+	if (res.vr_state == DKIM2_V_PASS && dir != NULL)
+	{
+		size_t nmis = 0;
+		struct dkimf_mi_ref *mis = dkimf_dkim2_collect_mis(headers,
+		    nheaders, &nmis);
+
+		if (mis != NULL)
+		{
+			size_t msglen = 0;
+			char *msg = dkimf_dkim2_assemble(headers, nheaders, body,
+			                                 bodylen, &msglen);
+
+			if (msg != NULL)
+			{
+				if (dkimf_dkim2_store_put(dir, mis[0].mr_value, msg,
+				                          msglen) != 0)
+					dkimf_log(conf, LOG_WARNING,
+					       "%s: DKIM2 snapshot store failed",
+					       dfc->mctx_jobid);
+				free(msg);
+			}
+			free(mis);
+		}
 	}
 
 	dkimf_dkim2_headers_free(headers, nheaders);
@@ -13127,8 +13626,18 @@ dkimf_dkim2_eom(SMFICTX *ctx, connctx cc, msgctx dfc,
 			return ret;	/* rejected/tempfailed: do not sign */
 	}
 
+	/*
+	**  Sign outbound only.  A DKIM2 signature's d= must align with its mf=
+	**  domain and its mf= must chain to the previous hop's rt=
+	**  (chain of custody).  Both hold only when we are the originator or a
+	**  forwarder re-injecting with a MAIL FROM in our own domain, i.e. an
+	**  internal/authorized source.  Signing on inbound final delivery would
+	**  emit d=<our-domain> with mf=<external-sender>, which can never align;
+	**  such mail is verified above, not signed.
+	*/
 	if ((conf->conf_dkim2mode & DKIMF_DKIM2_SIGN) != 0 &&
-	    conf->conf_dkim2key != NULL)
+	    conf->conf_dkim2key != NULL &&
+	    dfc->mctx_internal)
 	{
 		sfsistat s = dkimf_dkim2_sign_msg(ctx, dfc, conf);
 
@@ -14180,9 +14689,9 @@ mlfi_eom(SMFICTX *ctx)
 						s = (char *) conf->conf_selector;
 
 					dkimf_log(conf, LOG_INFO,
-					       "%s: %s field added (s=%s, d=%s)",
+					       "%s: %s field added (s=%s, d=%s, a=%s)",
 					       dfc->mctx_jobid, DKIM_SIGNHEADER,
-					       s, d);
+					       s, d, dkimf_signalg_str(salg));
 				}
 			}
 		}
