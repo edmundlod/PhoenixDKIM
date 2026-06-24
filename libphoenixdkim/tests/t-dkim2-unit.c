@@ -149,6 +149,37 @@ test_components(void)
 	/* signature model rejects a missing required tag */
 	s = dkim2_signature_parse("i=1; m=1; t=2; mf=x; d=e;", 25);
 	assert(s == NULL);	/* no rt=/s= */
+
+	/* Section 7.3: a 64-char nonce is accepted; 65 chars or a space is not */
+	{
+		char buf[256];
+		char nonce[80];
+		size_t j;
+
+		for (j = 0; j < 64; j++)
+			nonce[j] = 'a';
+		nonce[64] = '\0';
+		snprintf(buf, sizeof buf,
+		    "i=1; m=1; t=2; mf=x; rt=y; d=e; s=sel:rsa-sha256:z; n=%s;",
+		    nonce);
+		s = dkim2_signature_parse(buf, strlen(buf));
+		assert(s != NULL && s->sig_n != NULL && strlen(s->sig_n) == 64);
+		dkim2_signature_free(s);
+
+		nonce[64] = 'a';	/* 65 chars */
+		nonce[65] = '\0';
+		snprintf(buf, sizeof buf,
+		    "i=1; m=1; t=2; mf=x; rt=y; d=e; s=sel:rsa-sha256:z; n=%s;",
+		    nonce);
+		assert(dkim2_signature_parse(buf, strlen(buf)) == NULL);
+
+		{
+			const char *sp =
+			    "i=1; m=1; t=2; mf=x; rt=y; d=e; s=sel:rsa-sha256:z; n=a b;";
+
+			assert(dkim2_signature_parse(sp, strlen(sp)) == NULL);
+		}
+	}
 }
 
 /* ── full chain ──────────────────────────────────────────────────────────── */
@@ -565,6 +596,47 @@ test_flags(dkim2_alg_t alg, int bits)
 	zone_add("s2._domainkey.list.example", k2, alg);
 	memset(&vo, 0, sizeof vo);
 	vo.vo_dns_txt = zone_lookup;
+
+	/* Section 7.3: a caller-supplied nonce is signed in and round-trips; an
+	** over-length nonce is refused at signing time. */
+	{
+		const char *h0[] = { from, to, subj0, date };
+		dkim2_sign_params_t pn;
+		char *mn = NULL, *sn = NULL;
+		char toolong[70];
+		size_t j;
+
+		memset(&pn, 0, sizeof pn);
+		pn.sp_domain = "example.com";
+		pn.sp_selector = "s1";
+		pn.sp_key = k1;
+		pn.sp_alg = alg;
+		pn.sp_mf = "<alice@example.com>";
+		pn.sp_rt = rt1;
+		pn.sp_rt_count = 1;
+		pn.sp_nonce = "dsn-index-42";
+		assert(dkim2_sign(&pn, h0, 4, body0, strlen(body0),
+		                  &mn, &sn) == 0);
+		assert(strstr(sn, "n=dsn-index-42;") != NULL);
+		{
+			const char *full[] = { from, to, subj0, date, mn, sn };
+
+			memset(&r, 0, sizeof r);
+			assert(dkim2_verify(full, 6, body0, strlen(body0),
+			    &vo, &r) == 0);
+			assert(r.vr_state == DKIM2_V_PASS);
+			dkim2_verify_result_clear(&r);
+		}
+		free(mn); free(sn);
+
+		for (j = 0; j < 65; j++)
+			toolong[j] = 'a';
+		toolong[65] = '\0';
+		pn.sp_nonce = toolong;
+		mn = sn = NULL;
+		assert(dkim2_sign(&pn, h0, 4, body0, strlen(body0),
+		                  &mn, &sn) == -1);
+	}
 
 	/* donotmodify: an originator forbids modification; a downstream hop that
 	** adds a modifying instance with different hashes must FAIL at i=1. */
