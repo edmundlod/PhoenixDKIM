@@ -13128,8 +13128,18 @@ dkimf_dkim2_eom(SMFICTX *ctx, connctx cc, msgctx dfc,
 			return ret;	/* rejected/tempfailed: do not sign */
 	}
 
+	/*
+	**  Sign outbound only.  A DKIM2 signature's d= must align with its mf=
+	**  domain and its mf= must chain to the previous hop's rt=
+	**  (chain of custody).  Both hold only when we are the originator or a
+	**  forwarder re-injecting with a MAIL FROM in our own domain, i.e. an
+	**  internal/authorized source.  Signing on inbound final delivery would
+	**  emit d=<our-domain> with mf=<external-sender>, which can never align;
+	**  such mail is verified above, not signed.
+	*/
 	if ((conf->conf_dkim2mode & DKIMF_DKIM2_SIGN) != 0 &&
-	    conf->conf_dkim2key != NULL)
+	    conf->conf_dkim2key != NULL &&
+	    dfc->mctx_internal)
 	{
 		sfsistat s = dkimf_dkim2_sign_msg(ctx, dfc, conf);
 
