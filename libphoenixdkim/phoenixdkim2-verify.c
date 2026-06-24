@@ -26,15 +26,21 @@ static char **g_fix_rec;
 static size_t g_fix_n;
 
 static char *
-fixture_lookup(const char *qname)
+fixture_lookup(void *ctx, const char *qname, dkim2_dns_status_t *status)
 {
 	size_t i;
+
+	(void) ctx;
 
 	for (i = 0; i < g_fix_n; i++)
 	{
 		if (strcmp(g_fix_q[i], qname) == 0)
+		{
+			*status = DKIM2_DNS_OK;
 			return strdup(g_fix_rec[i]);
+		}
 	}
+	*status = DKIM2_DNS_NOKEY;
 	return NULL;
 }
 
@@ -81,7 +87,6 @@ load_fixture(const char *path)
 		g_fix_n++;
 	}
 	fclose(f);
-	dkim2_dns_override = fixture_lookup;
 	return 0;
 }
 
@@ -160,6 +165,7 @@ main(int argc, char **argv)
 				free(rcpt);
 				return 2;
 			}
+			opts.vo_dns_txt = fixture_lookup;
 		}
 		else
 		{

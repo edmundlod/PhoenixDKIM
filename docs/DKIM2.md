@@ -102,9 +102,11 @@ the two can coexist on one message.
   tags are all flat (`mf=`/`rt=` base64, `s=`/`h=` colon-delimited), so JSON is
   needed only for `r=` recipes in the **extended** profile; the dependency is
   brought in ahead of that work so the gate and packaging settle once.
-- Two standalone test binaries, `phoenixdkim2-sign` and `phoenixdkim2-verify`,
-  read a `.eml` on stdin so the chain can be exercised against the interop
-  fixtures without standing up an MTA.
+- Three standalone test binaries, `phoenixdkim2-sign`, `phoenixdkim2-verify` and
+  `phoenixdkim2-undo`, read a `.eml` on stdin so the chain can be exercised
+  against the interop fixtures without standing up an MTA.  `phoenixdkim2-undo`
+  walks the Message-Instance recipes backward to reconstruct an earlier instance
+  (the inverse of the modifying re-sign), mirroring the interop `dkim2undo` tool.
 
 ### Build gate
 

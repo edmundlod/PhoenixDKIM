@@ -103,4 +103,11 @@ extern dkim2_mi_t *dkim2_mi_parse(const char *value, size_t len);
 extern char *dkim2_mi_format(const dkim2_mi_t *mi);
 extern void dkim2_mi_free(dkim2_mi_t *mi);
 
+/*
+**  DKIM2_NONCE_VALID -- whether v is a syntactically valid n= nonce value
+**  (Section 7.3): at most 64 characters, each printable ASCII excluding space
+**  and ';'.  Returns 1 if valid, 0 otherwise.
+*/
+extern int dkim2_nonce_valid(const char *v);
+
 #endif /* PHOENIXDKIM_DKIM2_HEADER_H */

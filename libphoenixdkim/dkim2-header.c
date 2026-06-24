@@ -195,6 +195,25 @@ dkim2_sigentry_parse(const char *s)
 	return NULL;
 }
 
+/* A valid n= value (Section 7.3): at most 64 characters, each printable ASCII
+** (%x21-3A / %x3C-7E) -- i.e. excluding space and the ';' tag separator. */
+int
+dkim2_nonce_valid(const char *v)
+{
+	size_t i;
+
+	if (strlen(v) > 64)
+		return 0;
+	for (i = 0; v[i] != '\0'; i++)
+	{
+		unsigned char c = (unsigned char) v[i];
+
+		if (c < 0x21 || c > 0x7e || c == 0x3b)
+			return 0;
+	}
+	return 1;
+}
+
 dkim2_signature_t *
 dkim2_signature_parse(const char *value, size_t len)
 {
@@ -246,8 +265,15 @@ dkim2_signature_parse(const char *value, size_t len)
 
 	/* optional tags */
 	v = dkim2_taglist_get(tl, "n");
-	if (v != NULL && (sig->sig_n = strdup(v)) == NULL)
-		goto fail;
+	if (v != NULL)
+	{
+		/* Section 7.3: reject a nonce that exceeds 64 chars or is not
+		** simple semicolon-free ASCII. */
+		if (!dkim2_nonce_valid(v))
+			goto fail;
+		if ((sig->sig_n = strdup(v)) == NULL)
+			goto fail;
+	}
 	v = dkim2_taglist_get(tl, "f");
 	if (v != NULL && (sig->sig_f = strdup(v)) == NULL)
 		goto fail;

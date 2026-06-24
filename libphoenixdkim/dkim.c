@@ -8718,6 +8718,78 @@ dkim_dns_init(DKIM_LIB *lib)
 }
 
 /*
+**  DKIM_DNS_QUERY_TXT -- issue a TXT query through the library's configured
+**                        resolver and return the raw (wire-format) answer.
+**
+**  This is the one place that drives the dkiml_dns_* vtable for an arbitrary
+**  name, so any consumer -- DKIM1 key/report lookups or the DKIM2 verifier --
+**  shares a single resolver path (stock stub, file-DNS test harness, or the
+**  DNSSEC-validating libunbound backend, whichever is installed) instead of
+**  reaching for libc res_query() on the side.  The reply is left in wire form
+**  so the caller can parse it with whichever TXT extractor it already owns.
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	qname -- the name to query
+**  	buf -- answer buffer (filled with the wire-format reply)
+**  	buflen -- in: capacity of buf; out: bytes of reply written
+**  	dnssec -- if non-NULL, receives the resolver's DNSSEC status
+**  	          (one of the DKIM_DNSSEC_* constants)
+**
+**  Return value:
+**  	DKIM_DNS_SUCCESS, DKIM_DNS_EXPIRED (timed out), or DKIM_DNS_ERROR.
+*/
+
+int
+dkim_dns_query_txt(DKIM_LIB *lib, const char *qname,
+                   unsigned char *buf, size_t *buflen, int *dnssec)
+{
+	int status;
+	int error = 0;
+	int ds = 0;
+	size_t anslen;
+	void *qh = NULL;
+	struct timeval to;
+
+	assert(lib != NULL);
+	assert(qname != NULL);
+	assert(buf != NULL);
+	assert(buflen != NULL);
+
+	if (lib->dkiml_dns_start == NULL || lib->dkiml_dns_waitreply == NULL)
+		return DKIM_DNS_ERROR;
+
+	if (lib->dkiml_dns_service == NULL &&
+	    lib->dkiml_dns_init != NULL &&
+	    lib->dkiml_dns_init(&lib->dkiml_dns_service) != 0)
+		return DKIM_DNS_ERROR;
+
+	anslen = *buflen;
+	status = lib->dkiml_dns_start(lib->dkiml_dns_service, T_TXT,
+	                              (unsigned char *) qname, buf, anslen, &qh);
+	if (status != DKIM_DNS_SUCCESS)
+		return DKIM_DNS_ERROR;
+
+	to.tv_sec = lib->dkiml_timeout;
+	to.tv_usec = 0;
+	status = lib->dkiml_dns_waitreply(lib->dkiml_dns_service, qh,
+	                                  lib->dkiml_timeout == 0 ? NULL : &to,
+	                                  &anslen, &error, &ds);
+	if (lib->dkiml_dns_cancel != NULL)
+		(void) lib->dkiml_dns_cancel(lib->dkiml_dns_service, qh);
+
+	if (status != DKIM_DNS_SUCCESS)
+		return (status == DKIM_DNS_EXPIRED) ? DKIM_DNS_EXPIRED
+		                                    : DKIM_DNS_ERROR;
+
+	*buflen = anslen;
+	if (dnssec != NULL)
+		*dnssec = ds;
+
+	return DKIM_DNS_SUCCESS;
+}
+
+/*
 **  DKIM_DNS_CLOSE -- force nameserver shutdown
 **
 **  Parameters:

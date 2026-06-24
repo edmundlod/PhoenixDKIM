@@ -104,12 +104,15 @@ dkim2_b64_str(const char *s)
 	return dkim2_b64_bytes((const unsigned char *) s, strlen(s));
 }
 
-/* Build a DKIM2-Signature value; sig_b64 == "" yields the incomplete form. */
+/* Build a DKIM2-Signature value; sig_b64 == "" yields the incomplete form.
+** flags, when non-NULL and non-empty, appends an f= tag; it is part of the
+** signed bytes, so it must be identical in the incomplete and complete forms. */
 static char *
 dkim2_build_sig_value(uint64_t i, uint64_t m, uint64_t t,
                       const char *mf_b64, char *const *rt_b64, size_t rt_count,
                       const char *domain, const char *selector,
-                      const char *alg, const char *sig_b64)
+                      const char *alg, const char *sig_b64,
+                      const char *nonce, const char *flags)
 {
 	char *buf = NULL;
 	size_t buflen = 0;
@@ -125,6 +128,10 @@ dkim2_build_sig_value(uint64_t i, uint64_t m, uint64_t t,
 	for (k = 0; k < rt_count; k++)
 		fprintf(f, "%s%s", k ? "," : "", rt_b64[k]);
 	fprintf(f, "; d=%s; s=%s:%s:%s;", domain, selector, alg, sig_b64);
+	if (nonce != NULL && nonce[0] != '\0')
+		fprintf(f, " n=%s;", nonce);
+	if (flags != NULL && flags[0] != '\0')
+		fprintf(f, " f=%s;", flags);
 
 	if (fclose(f) != 0)
 	{
@@ -199,6 +206,9 @@ dkim2_sign(const dkim2_sign_params_t *p,
 		return -1;
 	algname = dkim2_alg_name(p->sp_alg);
 	if (algname == NULL)
+		return -1;
+	/* Section 7.3: refuse to emit an out-of-spec nonce. */
+	if (p->sp_nonce != NULL && !dkim2_nonce_valid(p->sp_nonce))
 		return -1;
 	if (mi_out != NULL)
 		*mi_out = NULL;
@@ -346,7 +356,8 @@ dkim2_sign(const dkim2_sign_params_t *p,
 	/* Incomplete DKIM2-Signature (empty s= signature). */
 	incomplete = dkim2_build_sig_value(next_i, ref_m, t, mf_b64,
 	                                   rt_b64, rt_n, p->sp_domain,
-	                                   p->sp_selector, algname, "");
+	                                   p->sp_selector, algname, "",
+	                                   p->sp_nonce, p->sp_flags);
 	if (incomplete == NULL)
 		goto done;
 
@@ -417,7 +428,8 @@ dkim2_sign(const dkim2_sign_params_t *p,
 
 	complete = dkim2_build_sig_value(next_i, ref_m, t, mf_b64,
 	                                 rt_b64, rt_n, p->sp_domain,
-	                                 p->sp_selector, algname, sigval);
+	                                 p->sp_selector, algname, sigval,
+	                                 p->sp_nonce, p->sp_flags);
 	if (complete == NULL)
 		goto done;
 

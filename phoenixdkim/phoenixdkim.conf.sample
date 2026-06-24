@@ -216,6 +216,52 @@
 
 # DKIM2Algorithm		rsa-sha256
 
+##  DKIM2Flags flag[,flag...]
+##  	default (none)
+##
+##  Flags to stamp in the f= tag of every DKIM2 signature this host adds.
+##  "donotmodify" forbids downstream modification; "donotexplode" forbids a
+##  mailing list explosion.  A verifier rejects a chain that breaks a flag set
+##  upstream.
+
+# DKIM2Flags		donotmodify
+
+##  DKIM2Nonce value
+##  	default (none)
+##
+##  Opaque value for the n= tag of every DKIM2 signature this host adds; it has
+##  meaning only to this host (e.g. a DSN index).  At most 64 printable ASCII
+##  characters, no semicolon.
+
+# DKIM2Nonce		myindex
+
+##  DKIM2SubjectTag tag
+##  	default (none)
+##
+##  Prepended verbatim to the Subject of every outbound message before DKIM2
+##  signing (e.g. a mailing-list tag).  Not re-added if already present.  Setting
+##  this (or DKIM2Footer) makes this host a deliberate modifier: it rewrites the
+##  message and records the change as a modifying re-sign.
+
+# DKIM2SubjectTag	[list]
+
+##  DKIM2Footer text
+##  	default (none)
+##
+##  Appended to the body of every outbound message before DKIM2 signing (e.g. a
+##  list footer).  See DKIM2SubjectTag.
+
+# DKIM2Footer		-- Sent via the list
+
+##  DKIM2ModifyIrreversible { yes | no }
+##  	default "no"
+##
+##  When this host is a deliberate modifier, record the change as a null
+##  (irreversible) recipe instead of a reversible diff -- the intended use of a
+##  null recipe, for a one-way change such as a redaction.
+
+# DKIM2ModifyIrreversible	No
+
 ##  DKIM2RejectOnFail { yes | no }
 ##  	default "no"
 ##

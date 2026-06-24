@@ -35,6 +35,10 @@ typedef struct dkim2_sign_params
 	const char *const *sp_rt;	/* SMTP forward-paths */
 	size_t		  sp_rt_count;
 	uint64_t	  sp_t;		/* timestamp; 0 means "use current time" */
+	const char	 *sp_nonce;	/* n= nonce (<=64 printable ASCII chars,
+					** no ';'), or NULL for none */
+	const char	 *sp_flags;	/* f= flags (comma-separated), or NULL for
+					** none, e.g. "donotmodify,donotexplode" */
 
 	/* Extended profile (optional): inputs for a modifying re-signer that
 	** records a reversible diff in a new Message-Instance.  When neither is

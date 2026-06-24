@@ -1763,6 +1763,26 @@ extern int dkim_dns_nslist(DKIM_LIB *, const char *);
 extern int dkim_dns_init(DKIM_LIB *);
 
 /*
+**  DKIM_DNS_QUERY_TXT -- issue a TXT query through the library's configured
+**                        resolver, returning the raw wire-format answer.  Lets
+**                        the DKIM2 verifier share the one resolver path rather
+**                        than calling libc res_query() independently.
+**
+**  Parameters:
+**  	lib -- DKIM library handle
+**  	qname -- the name to query
+**  	buf -- answer buffer (filled with the wire-format reply)
+**  	buflen -- in: capacity of buf; out: bytes written
+**  	dnssec -- if non-NULL, receives the resolver's DKIM_DNSSEC_* status
+**
+**  Return value:
+**  	DKIM_DNS_SUCCESS, DKIM_DNS_EXPIRED, or DKIM_DNS_ERROR.
+*/
+
+extern int dkim_dns_query_txt(DKIM_LIB *, const char *, unsigned char *,
+                              size_t *, int *);
+
+/*
 **  DKIM_DNS_CLOSE -- force resolver shutdown
 **
 **  Parameters:

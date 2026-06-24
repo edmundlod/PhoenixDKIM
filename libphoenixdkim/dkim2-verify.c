@@ -117,6 +117,32 @@ dkim2_path_domain(const char *path)
 	return d;
 }
 
+/* Equal SMTP paths, ignoring case and a single surrounding "<...>" pair.  The
+** reference impl base64s the bare address in mf=/rt= (e.g. "user@dom"), while
+** the live SMTP envelope retains its angle brackets ("<user@dom>"); normalise
+** both before the exact match.  "<>" (null sender) is left intact. */
+static int
+dkim2_path_equal(const char *a, const char *b)
+{
+	size_t la, lb;
+
+	if (a == NULL || b == NULL)
+		return 0;
+	la = strlen(a);
+	lb = strlen(b);
+	if (la > 2 && a[0] == '<' && a[la - 1] == '>')
+	{
+		a++;
+		la -= 2;
+	}
+	if (lb > 2 && b[0] == '<' && b[lb - 1] == '>')
+	{
+		b++;
+		lb -= 2;
+	}
+	return la == lb && strncasecmp(a, b, la) == 0;
+}
+
 /* Relaxed domain match: mf == d, or mf is a subdomain of d (Section 7.7). */
 static int
 dkim2_domain_match(const char *mf, const char *d)
@@ -291,6 +317,48 @@ mi_hash_check(const char *const *headers, size_t nheaders,
 	free(hh_b64);
 	free(bh_b64);
 	return rc;
+}
+
+/* The sha256 hash entry of a Message-Instance, or NULL if it carries none. */
+static const dkim2_hashentry_t *
+mi_sha256(const dkim2_mi_t *mi)
+{
+	const dkim2_hashentry_t *he;
+
+	for (he = mi->mi_h; he != NULL; he = he->he_next)
+		if (strcmp(he->he_name, "sha256") == 0)
+			return he;
+	return NULL;
+}
+
+/* Whether comma-separated flag list FLAGS contains the token NAME.  Tokens are
+** matched case-sensitively (Section 7 flags are lowercase) with surrounding WSP
+** ignored. */
+static int
+dkim2_flag_present(const char *flags, const char *name)
+{
+	size_t nl = strlen(name);
+	const char *p = flags;
+
+	if (flags == NULL)
+		return 0;
+	while (*p != '\0')
+	{
+		const char *start, *end;
+
+		while (*p == ',' || *p == ' ' || *p == '\t')
+			p++;
+		start = p;
+		while (*p != '\0' && *p != ',')
+			p++;
+		end = p;
+		while (end > start && (end[-1] == ' ' || end[-1] == '\t'))
+			end--;
+		if ((size_t) (end - start) == nl &&
+		    strncmp(start, name, nl) == 0)
+			return 1;
+	}
+	return 0;
 }
 
 /* ── verification ────────────────────────────────────────────────────────── */
@@ -469,7 +537,7 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 	{
 		const dkim2_signature_t *top = sigs[nsig - 1].sig;
 		char *mf = dkim2_b64_decode_str(top->sig_mf);
-		int ok = (mf != NULL && strcasecmp(mf, opts->vo_mail_from) == 0);
+		int ok = (mf != NULL && dkim2_path_equal(mf, opts->vo_mail_from));
 
 		free(mf);
 		if (!ok)
@@ -489,7 +557,7 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 				char *rt = dkim2_b64_decode_str(top->sig_rt[r]);
 
 				if (rt != NULL &&
-				    strcasecmp(rt, opts->vo_rcpt_to[i]) == 0)
+				    dkim2_path_equal(rt, opts->vo_rcpt_to[i]))
 					found = 1;
 				free(rt);
 			}
@@ -526,7 +594,8 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			if (alg == DKIM2_ALG_UNKNOWN)
 				continue;	/* 3.4: ignore unknown algorithms */
 
-			kr = dkim2_dns_getkey(e->se_selector, s->sig_d, &st);
+			kr = dkim2_dns_getkey(e->se_selector, s->sig_d, &st,
+			                      opts->vo_dns_txt, opts->vo_dns_ctx);
 			if (kr == NULL)
 			{
 				dkim2_vstate_t state =
@@ -604,6 +673,51 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			    (unsigned long long) s->sig_i);
 			rc = dkim2_result(out, DKIM2_V_PERMERROR, s->sig_i, msg);
 			goto cleanup;
+		}
+	}
+
+	/* 10.8: honour donotmodify / donotexplode requests carried in f=.  A
+	** donotmodify signature forbids the instance it covers (m=) from differing
+	** from the next instance (m+1); donotexplode forbids any later signature
+	** from declaring the message exploded. */
+	for (k = 0; k < nsig; k++)
+	{
+		const dkim2_signature_t *s = sigs[k].sig;
+
+		if (s->sig_f == NULL)
+			continue;
+
+		if (dkim2_flag_present(s->sig_f, "donotmodify") &&
+		    s->sig_m >= 1 && s->sig_m + 1 <= (uint64_t) nmi)
+		{
+			const dkim2_hashentry_t *a = mi_sha256(mis[s->sig_m - 1].mi);
+			const dkim2_hashentry_t *b = mi_sha256(mis[s->sig_m].mi);
+
+			if (a != NULL && b != NULL &&
+			    (strcmp(a->he_header, b->he_header) != 0 ||
+			     strcmp(a->he_body, b->he_body) != 0))
+			{
+				snprintf(msg, sizeof msg,
+				    "DKIM2-Signature i=%llu message modified despite donotmodify",
+				    (unsigned long long) s->sig_i);
+				rc = dkim2_result(out, DKIM2_V_FAIL, s->sig_i, msg);
+				goto cleanup;
+			}
+		}
+
+		if (dkim2_flag_present(s->sig_f, "donotexplode"))
+		{
+			size_t j;
+
+			for (j = k + 1; j < nsig; j++)
+				if (dkim2_flag_present(sigs[j].sig->sig_f, "exploded"))
+				{
+					snprintf(msg, sizeof msg,
+					    "DKIM2-Signature i=%llu message exploded despite donotexplode",
+					    (unsigned long long) s->sig_i);
+					rc = dkim2_result(out, DKIM2_V_FAIL, s->sig_i, msg);
+					goto cleanup;
+				}
 		}
 	}
 

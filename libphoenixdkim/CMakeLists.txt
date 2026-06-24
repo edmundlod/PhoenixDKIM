@@ -502,7 +502,7 @@ apply_sanitizers(phoenixdkim_static)
 # against interop fixtures without an MTA.  Built only with WITH_DKIM2; the eml
 # splitter now lives in the library (the milter's snapshot re-sign uses it too).
 if(WITH_DKIM2)
-    foreach(_dkim2_tool sign verify)
+    foreach(_dkim2_tool sign verify undo)
         add_executable(phoenixdkim2-${_dkim2_tool}
             phoenixdkim2-${_dkim2_tool}.c)
         target_include_directories(phoenixdkim2-${_dkim2_tool}
@@ -520,12 +520,13 @@ if(WITH_DKIM2)
     # Install the CLIs and their man pages (section 8, in sbin to match the
     # other phoenixdkim* tools), only with DKIM2.
     include(GNUInstallDirs)
-    install(TARGETS phoenixdkim2-sign phoenixdkim2-verify
+    install(TARGETS phoenixdkim2-sign phoenixdkim2-verify phoenixdkim2-undo
         RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
     )
     install(FILES
         phoenixdkim2-sign.8
         phoenixdkim2-verify.8
+        phoenixdkim2-undo.8
         DESTINATION ${CMAKE_INSTALL_MANDIR}/man8
     )
 endif()

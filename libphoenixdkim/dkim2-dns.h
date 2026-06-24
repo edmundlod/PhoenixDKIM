@@ -11,8 +11,11 @@
 **  key); turning those into a usable key and verifying with it is the crypto
 **  module's job (dkim2-crypto), keeping DNS free of crypto.
 **
-**  A test/CLI override hook lets the lookup be driven from a fixture zone
-**  without touching live DNS.
+**  The actual TXT lookup is supplied by the caller as a dkim2_dns_txt_func, so
+**  the milter can route DKIM2 key fetches through libphoenixdkim's resolver
+**  (sharing its DNSSEC/cache/test-DNS configuration with the DKIM1 path) while
+**  the standalone CLIs and unit tests plug in a fixture or the bundled live
+**  res_query() lookup.  When no function is supplied the live lookup is used.
 */
 
 #ifndef PHOENIXDKIM_DKIM2_DNS_H
@@ -57,9 +60,36 @@ extern dkim2_keyrecord_t *dkim2_keyrecord_parse(const char *txt);
 extern void dkim2_keyrecord_free(dkim2_keyrecord_t *kr);
 
 /*
+**  DKIM2_DNS_TXT_FUNC -- caller-supplied TXT resolver.  Given a query name it
+**  returns the record as a malloc'd, NUL-terminated string (the caller frees
+**  it) and sets *status to DKIM2_DNS_OK, or returns NULL and sets *status to
+**  NOKEY / TEMPFAIL.  ctx is the opaque handle the caller registered alongside.
+*/
+typedef char *(*dkim2_dns_txt_func)(void *ctx, const char *qname,
+                                    dkim2_dns_status_t *status);
+
+/*
+**  DKIM2_DNS_PARSE_ANSWER -- extract a TXT string from a wire-format DNS reply
+**  (as returned by libc res_query() or libphoenixdkim's resolver).  Returns
+**  the first TXT record's concatenated character-strings as a malloc'd string
+**  with *status = OK, or NULL with *status = NOKEY / TEMPFAIL.  Exposed so a
+**  resolver adapter can reuse the DKIM2 extraction.
+*/
+extern char *dkim2_dns_parse_answer(const unsigned char *answer, size_t len,
+                                    dkim2_dns_status_t *status);
+
+/*
+**  DKIM2_DNS_TXT_LIVE -- the bundled live TXT lookup via libc res_query(),
+**  usable as a dkim2_dns_txt_func default (ctx is ignored).
+*/
+extern char *dkim2_dns_txt_live(void *ctx, const char *qname,
+                                dkim2_dns_status_t *status);
+
+/*
 **  DKIM2_DNS_GETKEY -- fetch and parse the key for selector._domainkey.domain.
 **
-**  Uses the dkim2_dns_override hook if set, otherwise a live TXT query.
+**  txt supplies the TXT lookup (with its ctx); when NULL the live res_query()
+**  lookup is used.
 **
 **  Return value:
 **  	The parsed record with *status = DKIM2_DNS_OK, or NULL with *status set
@@ -67,13 +97,7 @@ extern void dkim2_keyrecord_free(dkim2_keyrecord_t *kr);
 */
 extern dkim2_keyrecord_t *dkim2_dns_getkey(const char *selector,
                                            const char *domain,
-                                           dkim2_dns_status_t *status);
-
-/*
-**  DKIM2_DNS_OVERRIDE -- test/CLI hook.  If non-NULL it is called with the
-**  query name and must return a malloc'd TXT string (the caller frees it) or
-**  NULL to fall through to live DNS.
-*/
-extern char *(*dkim2_dns_override)(const char *qname);
+                                           dkim2_dns_status_t *status,
+                                           dkim2_dns_txt_func txt, void *ctx);
 
 #endif /* PHOENIXDKIM_DKIM2_DNS_H */

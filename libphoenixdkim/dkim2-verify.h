@@ -24,6 +24,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dkim2-dns.h"
+
 typedef enum
 {
 	DKIM2_V_PASS = 0,	/* verified */
@@ -39,6 +41,8 @@ typedef struct dkim2_verify_opts
 	const char	 *vo_mail_from;		/* live SMTP MAIL FROM, or NULL */
 	const char *const *vo_rcpt_to;		/* live SMTP RCPT TO list, or NULL */
 	size_t		  vo_rcpt_count;
+	dkim2_dns_txt_func vo_dns_txt;		/* key TXT resolver (NULL => live) */
+	void		 *vo_dns_ctx;		/* opaque passed to vo_dns_txt */
 } dkim2_verify_opts_t;
 
 typedef struct dkim2_verify_result
@@ -64,8 +68,9 @@ typedef struct dkim2_verify_result
 **  Return value:
 **  	0 if a result was produced (inspect out->vr_state), -1 on internal error.
 **
-**  Public keys are fetched through dkim2-dns, so the dkim2_dns_override hook
-**  makes the whole chain verifiable against a fixture zone offline.
+**  Public keys are fetched through dkim2-dns using opts->vo_dns_txt; leave it
+**  NULL for a live res_query() lookup, or supply a fixture/library resolver to
+**  verify a whole chain offline or via libphoenixdkim's shared resolver.
 */
 extern int dkim2_verify(const char *const *headers, size_t nheaders,
                         const char *body, size_t bodylen,
