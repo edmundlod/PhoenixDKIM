@@ -3,9 +3,11 @@ usr/sbin/phoenixdkim-testmsg
 usr/sbin/phoenixdkim-genzone
 usr/sbin/phoenixdkim2-sign
 usr/sbin/phoenixdkim2-verify
+usr/sbin/phoenixdkim2-undo
 usr/share/man/man8/phoenixdkim-testkey.8
 usr/share/man/man8/phoenixdkim-testmsg.8
 usr/share/man/man8/phoenixdkim-genzone.8
 usr/share/man/man8/phoenixdkim2-sign.8
 usr/share/man/man8/phoenixdkim2-verify.8
+usr/share/man/man8/phoenixdkim2-undo.8
 
