@@ -336,3 +336,32 @@ MessageInstance.pm), per draft-ietf-dkim-dkim2-spec-02.
 
 Crypto itself was never at fault: the validator never rejected a signature
 value, only the mf=/d= binding and the MI header hash.
+
+
+Follow-up (2026-06-24): "DKIM2 verify=permerror - MAIL FROM did not match"
+--------------------------------------------------------------------------
+
+After the two fixes above, the reflector tests pass at dkim2.com, but inbound
+verification of the reflected mail logged a permerror on the live-envelope
+(Section 10.4) match -- the top signature's mf= did not equal the SMTP MAIL
+FROM.  Root cause was a bracket-convention mismatch, not crypto or custody:
+
+  - The reference impl base64s the BARE address in mf=/rt=
+    (Signature.pm: encode_base64($MailFrom)); the reflector's i=2 signature
+    carries mf=cmVmbGVjdG9yLWJvdW5jZXNAZGtpbTIuY29t = "reflector-bounces@dkim2.com".
+  - PhoenixDKIM captured the SMTP envelope verbatim ("<reflector-bounces@dkim2.com>")
+    and compared it byte-for-byte, so "<addr>" != "addr" -> permerror.
+  - The reference VALIDATOR never hits this: it is a paste-an-email tool with no
+    live envelope, and its mf=/rt= chain checks (Verifier.pm) match only at the
+    DOMAIN level via extract_domain(), which strips "^.*<".  Our exact
+    live-envelope match is a milter-only Section 10.4 addition.
+
+FIX (two parts):
+  a. Verify: the mf=/rt= live-envelope comparison is now bracket-insensitive
+     (dkim2_path_equal() in dkim2-verify.c), so we accept either convention from
+     a remote signer.  "<>" (null sender) is left intact.
+  b. Sign: we now emit mf=/rt= as the bare address, matching the reference's
+     canonical on-wire form.  The reverse-path is bracket-stripped when captured
+     in mlfi_envfrom()/mlfi_envrcpt() (an empty MAIL FROM stays the null sender,
+     signed/verified as "<>").  This corrects the earlier "bind the envelope
+     verbatim" assumption.

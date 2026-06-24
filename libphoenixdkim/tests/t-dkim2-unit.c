@@ -235,6 +235,34 @@ test_chain(dkim2_alg_t alg, int bits)
 		assert(r.vr_state == DKIM2_V_PASS && r.vr_i == 2);
 		dkim2_verify_result_clear(&r);
 
+		/*
+		**  Section 10.4 live-envelope match tolerates the bracket
+		**  convention: the chain here signs the "<addr>" reverse-path,
+		**  while a receiving milter supplies the bare SMTP envelope.
+		*/
+		{
+			const char *rcpt_bare[] = { "carol@final.example" };
+
+			vo.vo_mail_from = "bounce@relay.example";
+			vo.vo_rcpt_to = rcpt_bare;
+			vo.vo_rcpt_count = 1;
+			assert(dkim2_verify(msg, 7, body, strlen(body), &vo, &r)
+			       == 0);
+			assert(r.vr_state == DKIM2_V_PASS);
+			dkim2_verify_result_clear(&r);
+
+			/* a genuinely different sender still fails */
+			vo.vo_mail_from = "attacker@evil.example";
+			assert(dkim2_verify(msg, 7, body, strlen(body), &vo, &r)
+			       == 0);
+			assert(r.vr_state == DKIM2_V_PERMERROR);
+			dkim2_verify_result_clear(&r);
+
+			vo.vo_mail_from = NULL;
+			vo.vo_rcpt_to = NULL;
+			vo.vo_rcpt_count = 0;
+		}
+
 		/* dropping hop 1 leaves an i= gap */
 		const char *gap[] = { hdrs[0], hdrs[1], hdrs[2], hdrs[3], mi, sig2 };
 

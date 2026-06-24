@@ -117,6 +117,32 @@ dkim2_path_domain(const char *path)
 	return d;
 }
 
+/* Equal SMTP paths, ignoring case and a single surrounding "<...>" pair.  The
+** reference impl base64s the bare address in mf=/rt= (e.g. "user@dom"), while
+** the live SMTP envelope retains its angle brackets ("<user@dom>"); normalise
+** both before the exact match.  "<>" (null sender) is left intact. */
+static int
+dkim2_path_equal(const char *a, const char *b)
+{
+	size_t la, lb;
+
+	if (a == NULL || b == NULL)
+		return 0;
+	la = strlen(a);
+	lb = strlen(b);
+	if (la > 2 && a[0] == '<' && a[la - 1] == '>')
+	{
+		a++;
+		la -= 2;
+	}
+	if (lb > 2 && b[0] == '<' && b[lb - 1] == '>')
+	{
+		b++;
+		lb -= 2;
+	}
+	return la == lb && strncasecmp(a, b, la) == 0;
+}
+
 /* Relaxed domain match: mf == d, or mf is a subdomain of d (Section 7.7). */
 static int
 dkim2_domain_match(const char *mf, const char *d)
@@ -469,7 +495,7 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 	{
 		const dkim2_signature_t *top = sigs[nsig - 1].sig;
 		char *mf = dkim2_b64_decode_str(top->sig_mf);
-		int ok = (mf != NULL && strcasecmp(mf, opts->vo_mail_from) == 0);
+		int ok = (mf != NULL && dkim2_path_equal(mf, opts->vo_mail_from));
 
 		free(mf);
 		if (!ok)
@@ -489,7 +515,7 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 				char *rt = dkim2_b64_decode_str(top->sig_rt[r]);
 
 				if (rt != NULL &&
-				    strcasecmp(rt, opts->vo_rcpt_to[i]) == 0)
+				    dkim2_path_equal(rt, opts->vo_rcpt_to[i]))
 					found = 1;
 				free(rt);
 			}

@@ -11019,17 +11019,6 @@ mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 		strlcpy((char *) dfc->mctx_envfrom, envfrom[0],
 		        sizeof dfc->mctx_envfrom);
 
-#ifdef USE_DKIM2
-		/*
-		**  DKIM2 binds the SMTP envelope verbatim (mf=), so keep the
-		**  raw "<path>" form before the brackets are stripped below for
-		**  the DKIM1 path.
-		*/
-		if (conf->conf_dkim2mode != 0)
-			strlcpy((char *) dfc->mctx_dkim2mailfrom, envfrom[0],
-			        sizeof dfc->mctx_dkim2mailfrom);
-#endif /* USE_DKIM2 */
-
 		len = strlen((char *) dfc->mctx_envfrom);
 		p = dfc->mctx_envfrom;
 		q = dfc->mctx_envfrom + len - 1;
@@ -11046,6 +11035,18 @@ mlfi_envfrom(SMFICTX *ctx, char **envfrom)
 			*(q + 1) = '\0';
 			memmove(dfc->mctx_envfrom, p, len + 1);
 		}
+
+#ifdef USE_DKIM2
+		/*
+		**  DKIM2's mf= is the bare address, matching the reference impl
+		**  (a "<user@dom>" reverse-path becomes "user@dom"); an empty
+		**  string here is the null sender, signed/verified as "<>".
+		*/
+		if (conf->conf_dkim2mode != 0)
+			strlcpy((char *) dfc->mctx_dkim2mailfrom,
+			        (char *) dfc->mctx_envfrom,
+			        sizeof dfc->mctx_dkim2mailfrom);
+#endif /* USE_DKIM2 */
 	}
 
 	/*
@@ -11092,14 +11093,15 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 
 #ifdef USE_DKIM2
 	/*
-	**  DKIM2 binds each forward-path verbatim (rt=); keep the raw "<path>"
-	**  strings in their delivery order, independent of the DKIM1 recipient
-	**  list (which is only built for a few features and is bracket-stripped).
+	**  DKIM2 records each forward-path as the bare address (rt=), matching
+	**  the reference impl, in delivery order and independent of the DKIM1
+	**  recipient list (which is only built for a few features).
 	*/
 	if (conf->conf_dkim2mode != 0 && envrcpt[0] != NULL)
 	{
 		struct addrlist *a;
 		struct addrlist *tail;
+		size_t rl;
 
 		a = (struct addrlist *) malloc(sizeof(struct addrlist));
 		if (a == NULL || (a->a_addr = strdup(envrcpt[0])) == NULL)
@@ -11111,6 +11113,14 @@ mlfi_envrcpt(SMFICTX *ctx, char **envrcpt)
 			return SMFIS_TEMPFAIL;
 		}
 		a->a_next = NULL;
+
+		/* strip a surrounding "<...>" so rt= holds the bare address */
+		rl = strlen(a->a_addr);
+		if (rl > 2 && a->a_addr[0] == '<' && a->a_addr[rl - 1] == '>')
+		{
+			a->a_addr[rl - 1] = '\0';
+			memmove(a->a_addr, a->a_addr + 1, rl - 1);
+		}
 
 		/* append so the chain preserves RCPT TO order */
 		if (dfc->mctx_dkim2rcpts == NULL)
