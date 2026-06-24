@@ -37,6 +37,7 @@ endforeach()
 if(NOT WITH_DKIM2)
     list(REMOVE_ITEM TEST_DRIVERS t-dkim2-sign)
     list(REMOVE_ITEM TEST_DRIVERS t-dkim2-resign)
+    list(REMOVE_ITEM TEST_DRIVERS t-dkim2-modify)
 endif()
 
 foreach(test_name ${TEST_DRIVERS})

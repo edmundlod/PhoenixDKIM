@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# DKIM2 deliberate-modifier test (experimental; requires WITH_DKIM2)
+
+if [ x"$srcdir" = x"" ]
+then
+	srcdir=`pwd`
+fi
+
+../../miltertest/miltertest $MILTERTESTFLAGS -s $srcdir/t-dkim2-modify.lua

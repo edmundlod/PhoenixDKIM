@@ -280,6 +280,18 @@ A verifier rejects a chain that violates a flag set upstream.  Default is unset
 .I f=
 tag).
 .TP
+.I DKIM2Footer (string)
+Text appended to the body of every outbound message before DKIM2 signing (for
+example a mailing-list footer).  Setting it (or
+.IR DKIM2SubjectTag )
+turns this host into a deliberate modifier: the message is rewritten on the wire
+and the change is recorded as a modifying re-sign (a new
+.I Message-Instance
+carrying a reversible recipe), so a verifier can still walk the chain across the
+change.  See
+.IR DKIM2ModifyIrreversible .
+Default is unset.
+.TP
 .I DKIM2KeyFile (string)
 Path to the PEM private key (RSA or Ed25519) used for DKIM2 signing.  Required
 when DKIM2 signing is enabled.  This key is independent of the DKIM1
@@ -302,6 +314,15 @@ was built with experimental DKIM2 support
 .RI ( WITH_DKIM2 ).
 
 .TP
+.I DKIM2ModifyIrreversible (Boolean)
+When this host is a deliberate modifier
+.RI ( DKIM2Footer " or " DKIM2SubjectTag ),
+record the change as a null (irreversible) recipe rather than a reversible diff.
+This is the intended use of a null recipe: a one-way modification, such as a
+redaction, that a downstream verifier cannot and should not undo.  Default is
+.IR no
+(record a reversible recipe).
+.TP
 .I DKIM2Nonce (string)
 An opaque value to place in the
 .I n=
@@ -321,6 +342,15 @@ causes a 4xx tempfail.  Default is
 .IR no ,
 which records the result (and continues) without changing the disposition.
 
+.TP
+.I DKIM2SubjectTag (string)
+A tag prepended verbatim to the Subject of every outbound message before DKIM2
+signing (for example
+.IR [list] ).
+It is not added again if the Subject already begins with it, so a forwarding loop
+does not stack tags.  Like
+.IR DKIM2Footer ,
+setting it makes this host a deliberate modifier.  Default is unset.
 .TP
 .I DKIM2SnapshotDirectory (string)
 Enables DKIM2 modifying re-signing for forwarders and mailing lists.  When set,

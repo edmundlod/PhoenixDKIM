@@ -97,6 +97,7 @@
 # include "dkim2-eml.h"
 # include "dkim2-hash.h"
 # include "dkim2-header.h"
+# include "dkim2-recipe.h"
 # include "dkim2-sign.h"
 # include "dkim2-verify.h"
 #endif /* USE_DKIM2 */
@@ -363,6 +364,9 @@ struct dkimf_config
 	char *		conf_dkim2snapshotdir;	/* DKIM2 modifying-resign snapshots */
 	char *		conf_dkim2flags;	/* DKIM2 f= flags to stamp on sign */
 	char *		conf_dkim2nonce;	/* DKIM2 n= nonce to stamp on sign */
+	char *		conf_dkim2subjecttag;	/* deliberate-modifier Subject prefix */
+	char *		conf_dkim2footer;	/* deliberate-modifier body footer */
+	_Bool		conf_dkim2modifyirrev;	/* modifier records a null recipe */
 	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
 #endif /* USE_DKIM2 */
 };
@@ -776,6 +780,33 @@ dkimf_chgheader(SMFICTX *ctx, char *hname, int idx, char *hvalue)
 	else
 		return smfi_chgheader(ctx, hname, idx, hvalue);
 }
+
+#ifdef USE_DKIM2
+/*
+**  DKIMF_REPLACEBODY -- wrapper for smfi_replacebody()
+**
+**  Replaces the entire message body.  Used only by the DKIM2 deliberate
+**  modifier; the in-process test harness has no body, so it is a no-op there.
+**
+**  Parameters:
+**  	ctx -- milter (or test) context
+**  	body -- replacement body bytes
+**  	bodylen -- replacement length
+**
+**  Return value:
+**  	An sfsistat.
+*/
+
+static sfsistat
+dkimf_replacebody(SMFICTX *ctx, const char *body, size_t bodylen)
+{
+	assert(ctx != NULL);
+
+	if (testmode)
+		return MI_SUCCESS;
+	return smfi_replacebody(ctx, (unsigned char *) body, (ssize_t) bodylen);
+}
+#endif /* USE_DKIM2 */
 
 /*
 **  DKIMF_QUARANTINE -- wrapper for smfi_quarantine()
@@ -7858,6 +7889,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  sizeof conf->conf_dkim2flags);
 		(void) config_get(data, "DKIM2Nonce", &conf->conf_dkim2nonce,
 		                  sizeof conf->conf_dkim2nonce);
+		(void) config_get(data, "DKIM2SubjectTag",
+		                  &conf->conf_dkim2subjecttag,
+		                  sizeof conf->conf_dkim2subjecttag);
+		(void) config_get(data, "DKIM2Footer", &conf->conf_dkim2footer,
+		                  sizeof conf->conf_dkim2footer);
+		(void) config_get(data, "DKIM2ModifyIrreversible",
+		                  &conf->conf_dkim2modifyirrev,
+		                  sizeof conf->conf_dkim2modifyirrev);
 	}
 
 	if (conf->conf_dkim2modestr != NULL)
@@ -10721,6 +10760,19 @@ mlfi_negotiate(SMFICTX *ctx,
 		reqactions |= SMFIF_QUARANTINE;
 # endif /* SMFIF_QUARANTINE */
 
+# ifdef USE_DKIM2
+	/* The DKIM2 deliberate modifier rewrites the Subject (a header change) and
+	** appends a footer (a body change); the snapshot re-sign strips broken
+	** intermediate Message-Instance fields (a header change). */
+	if (conf->conf_dkim2subjecttag != NULL || conf->conf_dkim2footer != NULL)
+	{
+		reqactions |= SMFIF_CHGHDRS;
+		reqactions |= SMFIF_CHGBODY;
+	}
+	if (conf->conf_dkim2snapshotdir != NULL)
+		reqactions |= SMFIF_CHGHDRS;
+# endif /* USE_DKIM2 */
+
 # ifdef USE_LUA
 	if (conf->conf_redirect != NULL || conf->conf_finalscript != NULL)
 # else /* USE_LUA */
@@ -13251,6 +13303,137 @@ dkimf_dkim2_wire_strip_mis(SMFICTX *ctx, msgctx dfc,
 }
 
 /*
+**  DKIMF_DKIM2_MODIFY -- deliberately rewrite the outbound message per the
+**  configured Subject tag and/or body footer, apply the change to the wire, and
+**  return the rewritten header array and body for signing.
+**
+**  This is the in-daemon home for a modifying re-sign whose pre-modification
+**  bytes are known in the same transaction, so no inbound snapshot is needed:
+**  the caller's headers/body are the originals, the returned ones the rewrite.
+**  The Subject tag is added only if not already present (so a forwarding loop
+**  does not stack tags); the footer is appended to the body.
+**
+**  Return value:
+**  	1 if the message was rewritten (caller frees *mod_headers entries and the
+**  	array, and *mod_body), 0 if nothing changed, -1 on error.
+*/
+
+static int
+dkimf_dkim2_modify(SMFICTX *ctx, struct dkimf_config *conf,
+                   char *const *headers, size_t nheaders,
+                   const char *body, size_t bodylen,
+                   char ***mod_headers, size_t *mod_nheaders,
+                   char **mod_body, size_t *mod_bodylen)
+{
+	const char *tag = conf->conf_dkim2subjecttag;
+	const char *footer = conf->conf_dkim2footer;
+	char **mh;
+	char *mb = NULL;
+	size_t mbl = 0;
+	size_t i;
+	char *new_subject = NULL;	/* tagged value, for the wire chgheader */
+	int changed = 0;
+
+	mh = calloc(nheaders != 0 ? nheaders : 1, sizeof *mh);
+	if (mh == NULL)
+		return -1;
+
+	for (i = 0; i < nheaders; i++)
+	{
+		if (tag != NULL && tag[0] != '\0' && new_subject == NULL &&
+		    dkimf_field_is(headers[i], "subject"))
+		{
+			const char *val = strchr(headers[i], ':');
+
+			val = (val != NULL) ? val + 1 : "";
+			while (*val == ' ' || *val == '\t')
+				val++;
+			if (strncmp(val, tag, strlen(tag)) != 0)
+			{
+				if (asprintf(&new_subject, "%s%s", tag, val) < 0)
+				{
+					new_subject = NULL;
+					goto oom;
+				}
+				if (asprintf(&mh[i], "Subject: %s", new_subject) < 0)
+				{
+					mh[i] = NULL;
+					goto oom;
+				}
+				changed = 1;
+				continue;
+			}
+		}
+		mh[i] = strdup(headers[i]);
+		if (mh[i] == NULL)
+			goto oom;
+	}
+
+	if (footer != NULL && footer[0] != '\0')
+	{
+		size_t flen = strlen(footer);
+		int needcrlf = (bodylen < 2 || body[bodylen - 2] != '\r' ||
+		                body[bodylen - 1] != '\n');
+
+		mbl = bodylen + (needcrlf ? 2 : 0) + flen + 2;
+		mb = malloc(mbl != 0 ? mbl : 1);
+		if (mb == NULL)
+			goto oom;
+		memcpy(mb, body, bodylen);
+		mbl = bodylen;
+		if (needcrlf)
+		{
+			mb[mbl++] = '\r';
+			mb[mbl++] = '\n';
+		}
+		memcpy(mb + mbl, footer, flen);
+		mbl += flen;
+		mb[mbl++] = '\r';
+		mb[mbl++] = '\n';
+		changed = 1;
+	}
+	else
+	{
+		mb = malloc(bodylen != 0 ? bodylen : 1);
+		if (mb == NULL)
+			goto oom;
+		memcpy(mb, body, bodylen);
+		mbl = bodylen;
+	}
+
+	if (!changed)
+	{
+		for (i = 0; i < nheaders; i++)
+			free(mh[i]);
+		free(mh);
+		free(mb);
+		free(new_subject);
+		return 0;
+	}
+
+	/* Apply the rewrite to the wire. */
+	if (new_subject != NULL)
+		(void) dkimf_chgheader(ctx, (char *) "Subject", 1, new_subject);
+	if (footer != NULL && footer[0] != '\0')
+		(void) dkimf_replacebody(ctx, mb, mbl);
+
+	free(new_subject);
+	*mod_headers = mh;
+	*mod_nheaders = nheaders;
+	*mod_body = mb;
+	*mod_bodylen = mbl;
+	return 1;
+
+  oom:
+	for (i = 0; i < nheaders; i++)
+		free(mh[i]);
+	free(mh);
+	free(mb);
+	free(new_subject);
+	return -1;
+}
+
+/*
 **  DKIMF_DKIM2_SIGN_MSG -- sign the current message with DKIM2 and prepend the
 **  resulting Message-Instance / DKIM2-Signature header fields.
 **
@@ -13285,6 +13468,12 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	size_t nmis = 0;
 	const char *snap_key = NULL;	/* MI value whose snapshot we consumed */
 	dkim2_eml_t *snapeml = NULL;	/* owns p.sp_orig_* while signing */
+	char **mod_headers = NULL;	/* deliberate-modifier rewrite (owned) */
+	size_t mod_nheaders = 0;
+	char *mod_body = NULL;		/* deliberate-modifier body (owned) */
+	size_t mod_bodylen = 0;
+	char *nullrec = NULL;		/* null recipe for an irreversible modify */
+	int modified = 0;
 	sfsistat ret = SMFIS_CONTINUE;
 
 	headers = dkimf_dkim2_headers(dfc, &nheaders);
@@ -13314,6 +13503,55 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	p.sp_flags = conf->conf_dkim2flags;	/* NULL when unset */
 
 	/*
+	**  Deliberate modifier: when a Subject tag or body footer is configured,
+	**  this host itself rewrites the message and records the change as a
+	**  modifying re-sign.  Because we make the change here, the originals are
+	**  the bytes we just received -- no inbound snapshot is needed.  An
+	**  irreversible modification records a null recipe instead of a diff (the
+	**  legitimate use of a null recipe: a one-way change such as a redaction).
+	*/
+	if (conf->conf_dkim2subjecttag != NULL || conf->conf_dkim2footer != NULL)
+	{
+		int mr = dkimf_dkim2_modify(ctx, conf, work_headers, work_nheaders,
+		    body, bodylen, &mod_headers, &mod_nheaders, &mod_body,
+		    &mod_bodylen);
+
+		if (mr < 0)
+		{
+			ret = SMFIS_TEMPFAIL;
+			goto cleanup;
+		}
+		if (mr == 1)
+		{
+			p.sp_orig_headers = (const char *const *) work_headers;
+			p.sp_orig_nheaders = work_nheaders;
+			p.sp_orig_body = body;
+			p.sp_orig_bodylen = bodylen;
+			if (conf->conf_dkim2modifyirrev)
+			{
+				dkim2_recipe_t rn;
+
+				memset(&rn, 0, sizeof rn);
+				rn.re_null = 1;
+				nullrec = dkim2_recipe_format(&rn);
+				if (nullrec == NULL)
+				{
+					ret = SMFIS_TEMPFAIL;
+					goto cleanup;
+				}
+				p.sp_recipe = nullrec;
+			}
+			work_headers = mod_headers;
+			work_nheaders = mod_nheaders;
+			body = mod_body;
+			bodylen = mod_bodylen;
+			modified = 1;
+			resign = conf->conf_dkim2modifyirrev
+			         ? "modify/null" : "modify/recipe(self)";
+		}
+	}
+
+	/*
 	**  Modifying re-sign (draft Section 8.1): a hop that rewrote a covered
 	**  header or the body must add a NEW Message-Instance carrying a recipe
 	**  that reverts to the previous one.  We can only build that recipe from
@@ -13330,7 +13568,7 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	**  chain that does not verify; a null/irreversible recipe is reserved for a
 	**  future in-daemon *deliberate* modifier, which is a different case.
 	*/
-	if (dir != NULL)
+	if (!modified && dir != NULL)
 		mis = dkimf_dkim2_collect_mis(headers, nheaders, &nmis);
 	if (mis != NULL &&
 	    dkimf_dkim2_top_mi_matches(headers, nheaders, body, bodylen,
@@ -13476,6 +13714,16 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		free(stripped);
 	}
 	dkim2_eml_free(snapeml);
+	if (mod_headers != NULL)
+	{
+		size_t i;
+
+		for (i = 0; i < mod_nheaders; i++)
+			free(mod_headers[i]);
+		free(mod_headers);
+	}
+	free(mod_body);
+	free(nullrec);
 	free(strip_vers);
 	free(mis);
 	dkimf_dkim2_headers_free(headers, nheaders);
