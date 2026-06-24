@@ -1342,8 +1342,10 @@ on the command line.
 .I SoftwareHeader (Boolean)
 Causes
 .I phoenixdkim
-to add an "DKIM-Filter" header field indicating the presence of this filter in
-the path of the message from injection to delivery.  The product's name,
+to add an "X-DKIM-Filter" header field indicating the presence of this filter in
+the path of the message from injection to delivery.  The "X-" prefix keeps the
+field out of the DKIM2 header-field hash (draft-ietf-dkim-dkim2-spec-02 \(sc5.2),
+so adding it never invalidates a Message-Instance.  The product's name,
 version, and the job ID are included in the header field's contents.  Note
 that the header field is not added if the
 .I Mode
