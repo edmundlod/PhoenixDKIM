@@ -253,6 +253,7 @@ if(WITH_DKIM2)
             dkim2-sign.c
             dkim2-verify.c
             dkim2-recipe.c
+            dkim2-eml.c
         )
     else()
         message(FATAL_ERROR
@@ -499,12 +500,11 @@ apply_sanitizers(phoenixdkim_static)
 # ── DKIM2 standalone test CLIs ────────────────────────────────────────────────
 # phoenixdkim2-sign / phoenixdkim2-verify let the DKIM2 chain be exercised
 # against interop fixtures without an MTA.  Built only with WITH_DKIM2; the eml
-# splitter is compiled into them (the milter does not parse files).
+# splitter now lives in the library (the milter's snapshot re-sign uses it too).
 if(WITH_DKIM2)
     foreach(_dkim2_tool sign verify)
         add_executable(phoenixdkim2-${_dkim2_tool}
-            phoenixdkim2-${_dkim2_tool}.c
-            dkim2-eml.c)
+            phoenixdkim2-${_dkim2_tool}.c)
         target_include_directories(phoenixdkim2-${_dkim2_tool}
             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
         target_link_libraries(phoenixdkim2-${_dkim2_tool}

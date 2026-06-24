@@ -301,6 +301,36 @@ causes a 4xx tempfail.  Default is
 which records the result (and continues) without changing the disposition.
 
 .TP
+.I DKIM2SnapshotDirectory (string)
+Enables DKIM2 modifying re-signing for forwarders and mailing lists.  When set,
+a message whose DKIM2 chain verifies is snapshotted under this directory, keyed
+by its topmost
+.IR Message-Instance .
+If this host then rewrites a covered header or the body and re-signs the message
+on the way out, the signer diffs the snapshot against the modified message and
+records a reversible recipe on a new
+.I Message-Instance
+(draft-ietf-dkim-dkim2-spec Section 8.1), so a verifier can walk the chain back
+across the change.  When the content changed but no snapshot is available, the
+message is delivered unsigned: a missing snapshot also means this host never
+verified the message inbound, so phoenixdkim does not vouch for a chain it can
+neither reconstruct nor attest.
+A snapshot is removed once it has been consumed.  The store is private to the
+phoenixdkim service \(em the MTA never accesses it \(em so the directory only
+needs to be writable by phoenixdkim's user.  It must already exist: the daemon
+validates it at start and refuses to run if it is missing or not writable.  The
+daemon never creates the configured path itself, only the hashed shard
+subdirectories inside it.  Use persistent local storage reachable by both the
+verifying (inbound) and signing (outbound) transactions.  The bundled
+.I systemd
+unit provisions
+.I /var/lib/phoenixdkim/dkim2-snapshots
+via
+.IR StateDirectory ,
+so that path needs no further setup.  When unset (the default) the signer only
+originates or plain re-signs and never adds a recipe.
+
+.TP
 .I DNSConnect (Boolean)
 Requests that the asynchronous resolver start using TCP immediately
 rather than using UDP until TCP is actually needed.  Does not work with

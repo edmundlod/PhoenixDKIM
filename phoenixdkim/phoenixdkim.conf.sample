@@ -233,6 +233,31 @@
 
 # DKIM2AuthResults	No
 
+##  DKIM2SnapshotDirectory path
+##  	default (none)
+##
+##  Enables DKIM2 modifying re-signing for forwarders and mailing lists.  When
+##  set, a verified inbound message is snapshotted under this directory, keyed by
+##  its topmost Message-Instance.  If this host then rewrites a covered header or
+##  the body and re-signs on the way out, the signer diffs the snapshot against
+##  the modified message and records a reversible recipe on a new
+##  Message-Instance (draft-ietf-dkim-dkim2-spec Section 8.1), so the chain stays
+##  verifiable across the change.  If content changed but no snapshot is found,
+##  the message is delivered unsigned: a missing snapshot also means this host
+##  never verified the message inbound, so phoenixdkim will not vouch for a chain
+##  it cannot reconstruct or attest.  Consumed snapshots are removed.  Only the
+##  phoenixdkim service writes here -- the MTA never touches it -- so the
+##  directory only needs to be writable by phoenixdkim's user.  It must already
+##  exist: the daemon validates it at startup and refuses to start if it is
+##  missing or not writable (it never creates the configured path itself, only
+##  the hashed shard subdirectories inside it).  Use persistent local storage
+##  reachable by both the verifying and signing transactions.  The bundled
+##  systemd unit provisions /var/lib/phoenixdkim/dkim2-snapshots via
+##  StateDirectory, so the path below works as-is.  Leave unset to keep the
+##  stateless behaviour (originate or plain re-sign only).
+
+# DKIM2SnapshotDirectory	/var/lib/phoenixdkim/dkim2-snapshots
+
 ##  DNSSECProbe qtype:qname
 ##  	default ns:.
 ##

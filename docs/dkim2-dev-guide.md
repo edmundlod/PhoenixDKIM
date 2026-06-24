@@ -119,7 +119,8 @@ default build compiles the milter unchanged. Where it lives:
    `phoenixdkim.c`, documented in `phoenixdkim.conf.5`/sample), all default off:
    `DKIM2Mode` (off/sign/verify/both), `DKIM2Domain`, `DKIM2Selector`,
    `DKIM2KeyFile`, `DKIM2Algorithm` (default infer from key), plus
-   `DKIM2RejectOnFail` and `DKIM2AuthResults`. Parsed into the `conf_dkim2*`
+   `DKIM2RejectOnFail`, `DKIM2AuthResults` and `DKIM2SnapshotDirectory` (enables
+   modifying re-signing — see below). Parsed into the `conf_dkim2*`
    fields of `struct dkimf_config`; the private key is loaded once with
    `dkim2_privkey_load_pem()` and freed in `dkimf_config_free()`. DKIM1 keys are
    never touched.
@@ -150,8 +151,35 @@ default build compiles the milter unchanged. Where it lives:
    `DKIM2Mode=sign` and asserts the inserted `Message-Instance` /
    `DKIM2-Signature`. Library/CLIs stay green (`t-dkim2-unit`).
 
+7. **Modifying re-sign** (`DKIM2SnapshotDirectory`, off by default). A forwarder
+   or mailing list that rewrites a covered header or the body must add a new
+   Message-Instance carrying a recipe back to the previous one (§8.1) — which
+   needs the *pre-modification* bytes the milter only has on the inbound
+   transaction. So, mirroring the `dkim2wg/interop` reference milter
+   (`MessageStore` + `DKIM2Verify`/`DKIM2Sign`):
+   `dkimf_dkim2_verify_msg()` snapshots a verified message under
+   `phoenixdkim-dkim2store.{c,h}` keyed by its top Message-Instance;
+   `dkimf_dkim2_sign_msg()` then, if the top MI no longer matches the current
+   content, fetches the snapshot (highest `m=` first), passes it as `sp_orig_*`
+   so `dkim2_sign()` generates the recipe, strips any broken intermediate MIs
+   from both the signing input and the wire, and removes the consumed snapshot.
+   With **no** snapshot the message is delivered **unsigned**: a missing snapshot
+   also means we never verified it inbound (we only snapshot a pass), so we must
+   not vouch for a chain we can neither reconstruct nor attest — matching
+   `bin/dkim2-milter.pl`'s line ~346 refusal to extend a non-`pass` chain. (A
+   null/irreversible recipe `{"h":null}` is reserved for a future in-daemon
+   *deliberate* modifier, a different case; the library supports it, the milter
+   does not emit it. Open upstream question filed on `dkim2wg/interop` about the
+   no-recipe policy and the line-346-vs-snapshot-diff tension.) `dkim2-eml.c`
+   moved into the library so the snapshot can be re-parsed. Unit test:
+   `phoenixdkim/tests/t-dkim2store.c`.
+
 Still open here: live-DNS verification has no offline integration test (the
 override hook is not reachable from the daemon), and resolver bridging as above.
+An out-of-process modifier that re-injects in a *separate* SMTP transaction
+(classic Mailman) is handled via the snapshot store only when the snapshot is on
+storage both transactions can reach; otherwise such flows still use the CLI
+`--orig` path.
 
 ## DKIM2-extended (done)
 
@@ -213,6 +241,17 @@ hash), so there is no in-daemon modification to record yet. Cross-instance
 *verification*, by contrast, needs no new milter code: the daemon already calls
 `dkim2_verify()`, so making that function recipe-aware reaches the verify path
 for free.
+
+**Resolved (2026-06-24) — the snapshot store.** The before/after constraint is
+satisfied without an in-milter modification *engine*: the daemon captures the
+"before" bytes on the inbound (verify) transaction and keeps them in a
+disk-backed snapshot keyed by the top Message-Instance, then diffs against the
+"after" bytes when it re-signs. This handles the real deployment — a list/gateway
+whose *own* software rewrites the message between our verify and our sign — and
+matches the reference milter's `MessageStore` model. See item 7 under *Milter
+integration* and `DKIM2SnapshotDirectory`. A self-applied footer/subject-tag
+engine (the daemon doing the rewrite itself) remains the only still-deferred
+piece, and it would feed the same `sp_orig_*` path.
 
 ### Recipe semantics (draft-ietf-dkim-dkim2-spec-02, §4 / §9.2)
 
