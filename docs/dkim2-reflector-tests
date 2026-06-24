@@ -292,3 +292,47 @@ body hash: match
 recipe: none
 undo: n/a
 
+
+=====================================================================================
+
+Diagnosis (2026-06-24) and resolution
+-------------------------------------
+
+Both tests failed for two INDEPENDENT reasons.  Confirmed against the reference
+implementation that runs both the reflector and the dkim2.com validator:
+github.com/dkim2wg/interop, brong/lib/Mail/DKIM2/ (Common.pm, Verifier.pm,
+MessageInstance.pm), per draft-ietf-dkim-dkim2-spec-02.
+
+1. Message-Instance "header hash mismatch" (body hash matched)
+   The MI header hash (Common.pm should_skip / spec 5.2) covers every header
+   EXCEPT received, return-path, message-instance, dkim2-signature,
+   dkim-signature, authentication-results, ^x-, ^arc-.  Two headers present at
+   validation but absent when the reflector computed the hash were NOT skipped,
+   so the recomputed hash differed:
+     a. DKIM-Filter   -- added by our milter (SoftwareHeader).  OUR bug.
+     b. Delivered-To  -- added by the local MDA (Dovecot LMTP) at final
+                         delivery.  Not ours.
+   The reflector even records what it signed: X-DKIM2-Info hn=content-type,date,
+   from,message-id,mime-version,subject,to -- exactly the non-skipped set.
+
+   FIX (a): the software header is now emitted as "X-DKIM-Filter" (the spec's
+   own mechanism for proprietary trace headers; X- is skipped by 5.2).  See
+   SWHEADERNAME in phoenixdkim.h.
+   CAVEAT (b): Delivered-To is added after we run.  When pasting raw DELIVERED
+   mail into the validator you MUST strip Delivered-To (and any other non-X-
+   header the MDA adds) first, or capture the message at milter output instead
+   of from the delivered mailbox.
+
+2. "d=proteamail.com does not match mf domain dkim2.com" on the signature WE add
+   Verifier.pm requires d= to relaxed-domain-match the mf= domain, AND mf= of
+   hop N to match an rt= of hop N-1 (chain of custody).  We signed inbound
+   final-delivery mail, so our signature had d=<our-domain> but mf=<external
+   MAIL FROM> -- which can never align.  Signing belongs on outbound mail
+   (originated or forwarded with MAIL FROM in our own domain); a final receiver
+   verifies, it does not sign.
+
+   FIX: DKIM2 signing is now gated on dfc->mctx_internal (outbound/authorized
+   source) in dkimf_dkim2_eom().  Inbound mail is verified only.
+
+Crypto itself was never at fault: the validator never rejected a signature
+value, only the mf=/d= binding and the MI header hash.
