@@ -173,6 +173,27 @@ sign_hop(const char *domain, const char *selector, EVP_PKEY *key,
 	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), mi, sig) == 0);
 }
 
+/* Like sign_hop, but stamps the DKIM2-Signature with f= flags. */
+static void
+sign_hop_f(const char *domain, const char *selector, EVP_PKEY *key,
+           dkim2_alg_t alg, const char *mf, const char *const *rt,
+           size_t nrt, const char *const *hdrs, size_t nh,
+           const char *body, const char *flags, char **mi, char **sig)
+{
+	dkim2_sign_params_t p;
+
+	memset(&p, 0, sizeof p);
+	p.sp_domain = domain;
+	p.sp_selector = selector;
+	p.sp_key = key;
+	p.sp_alg = alg;
+	p.sp_mf = mf;
+	p.sp_rt = rt;
+	p.sp_rt_count = nrt;
+	p.sp_flags = flags;
+	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), mi, sig) == 0);
+}
+
 static void
 test_chain(dkim2_alg_t alg, int bits)
 {
@@ -517,6 +538,130 @@ test_extended(dkim2_alg_t alg, int bits)
 	ZN = 0;
 }
 
+/* ── f= flags: donotmodify / donotexplode (Section 10.8) ─────────────────── */
+
+static void
+test_flags(dkim2_alg_t alg, int bits)
+{
+	EVP_PKEY *k1 = genkey(alg == DKIM2_ALG_RSA_SHA256 ? EVP_PKEY_RSA
+	                                                  : EVP_PKEY_ED25519, bits);
+	EVP_PKEY *k2 = genkey(alg == DKIM2_ALG_RSA_SHA256 ? EVP_PKEY_RSA
+	                                                  : EVP_PKEY_ED25519, bits);
+	const char *from = "From: Alice <alice@example.com>";
+	const char *to = "To: bob@dest.example";
+	const char *date = "Date: Mon, 23 Jun 2026 00:00:00 +0000";
+	const char *subj0 = "Subject: Hi";
+	const char *subj1 = "Subject: [list] Hi";
+	const char *body0 = "Hello\r\nBye\r\n";
+	const char *body1 = "Hello\r\nBye\r\n--\r\nsent via list\r\n";
+	const char *rt1[] = { "<bob@dest.example>" };
+	const char *rt2[] = { "<list@dest.example>" };
+	char *mi1 = NULL, *sig1 = NULL, *mi2 = NULL, *sig2 = NULL;
+	dkim2_verify_result_t r;
+	dkim2_verify_opts_t vo;
+
+	ZN = 0;
+	zone_add("s1._domainkey.example.com", k1, alg);
+	zone_add("s2._domainkey.list.example", k2, alg);
+	memset(&vo, 0, sizeof vo);
+	vo.vo_dns_txt = zone_lookup;
+
+	/* donotmodify: an originator forbids modification; a downstream hop that
+	** adds a modifying instance with different hashes must FAIL at i=1. */
+	{
+		const char *h0[] = { from, to, subj0, date };
+
+		sign_hop_f("example.com", "s1", k1, alg, "<alice@example.com>",
+		           rt1, 1, h0, 4, body0, "donotmodify", &mi1, &sig1);
+		assert(strstr(sig1, "f=donotmodify") != NULL);
+		{
+			const char *orig[] = { from, to, subj0, date, mi1, sig1 };
+			const char *cur[] = { from, to, subj1, date, mi1, sig1 };
+
+			sign_mod("list.example", "s2", k2, alg,
+			         "<list@list.example>", rt2, 1, cur, 6, body1,
+			         orig, 6, body0, &mi2, &sig2);
+			{
+				const char *full[] = { from, to, subj1, date,
+				                       mi1, sig1, mi2, sig2 };
+
+				memset(&r, 0, sizeof r);
+				assert(dkim2_verify(full, 8, body1,
+				    strlen(body1), &vo, &r) == 0);
+				assert(r.vr_state == DKIM2_V_FAIL && r.vr_i == 1);
+				dkim2_verify_result_clear(&r);
+			}
+		}
+		free(mi1); free(sig1); free(mi2); free(sig2);
+		mi1 = sig1 = mi2 = sig2 = NULL;
+	}
+
+	/* donotmodify with an unchanged core re-sign (no new instance) stays PASS. */
+	{
+		const char *h0[] = { from, to, subj0, date };
+
+		sign_hop_f("example.com", "s1", k1, alg, "<alice@example.com>",
+		           rt1, 1, h0, 4, body0, "donotmodify", &mi1, &sig1);
+		{
+			const char *h1[] = { from, to, subj0, date, mi1, sig1 };
+
+			sign_hop("list.example", "s2", k2, alg,
+			         "<relay@list.example>", rt2, 1, h1, 6, body0,
+			         &mi2, &sig2);
+			assert(mi2 == NULL && sig2 != NULL);
+			{
+				const char *full[] = { from, to, subj0, date,
+				                       mi1, sig1, sig2 };
+
+				memset(&r, 0, sizeof r);
+				assert(dkim2_verify(full, 7, body0,
+				    strlen(body0), &vo, &r) == 0);
+				assert(r.vr_state == DKIM2_V_PASS);
+				dkim2_verify_result_clear(&r);
+			}
+		}
+		free(mi1); free(sig1); free(sig2);
+		mi1 = sig1 = sig2 = NULL;
+	}
+
+	/* donotexplode: a later signature flagged 'exploded' must FAIL at i=1. */
+	{
+		const char *h0[] = { from, to, subj0, date };
+
+		sign_hop_f("example.com", "s1", k1, alg, "<alice@example.com>",
+		           rt1, 1, h0, 4, body0, "donotexplode", &mi1, &sig1);
+		{
+			const char *h1[] = { from, to, subj0, date, mi1, sig1 };
+
+			sign_hop_f("list.example", "s2", k2, alg,
+			           "<relay@list.example>", rt2, 1, h1, 6, body0,
+			           "exploded", &mi2, &sig2);
+			assert(mi2 == NULL && sig2 != NULL);
+			{
+				const char *full[] = { from, to, subj0, date,
+				                       mi1, sig1, sig2 };
+
+				memset(&r, 0, sizeof r);
+				assert(dkim2_verify(full, 7, body0,
+				    strlen(body0), &vo, &r) == 0);
+				assert(r.vr_state == DKIM2_V_FAIL && r.vr_i == 1);
+				dkim2_verify_result_clear(&r);
+			}
+		}
+		free(mi1); free(sig1); free(sig2);
+		mi1 = sig1 = sig2 = NULL;
+	}
+
+	EVP_PKEY_free(k1);
+	EVP_PKEY_free(k2);
+	for (ZN--; ZN >= 0; ZN--)
+	{
+		free(ZONE[ZN].q);
+		free(ZONE[ZN].rec);
+	}
+	ZN = 0;
+}
+
 int
 main(void)
 {
@@ -526,6 +671,8 @@ main(void)
 	test_recipe();
 	test_extended(DKIM2_ALG_RSA_SHA256, 2048);
 	test_extended(DKIM2_ALG_ED25519_SHA256, 0);
+	test_flags(DKIM2_ALG_RSA_SHA256, 2048);
+	test_flags(DKIM2_ALG_ED25519_SHA256, 0);
 	printf("t-dkim2-unit: PASS\n");
 	return 0;
 }

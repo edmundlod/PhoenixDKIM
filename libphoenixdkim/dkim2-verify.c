@@ -319,6 +319,48 @@ mi_hash_check(const char *const *headers, size_t nheaders,
 	return rc;
 }
 
+/* The sha256 hash entry of a Message-Instance, or NULL if it carries none. */
+static const dkim2_hashentry_t *
+mi_sha256(const dkim2_mi_t *mi)
+{
+	const dkim2_hashentry_t *he;
+
+	for (he = mi->mi_h; he != NULL; he = he->he_next)
+		if (strcmp(he->he_name, "sha256") == 0)
+			return he;
+	return NULL;
+}
+
+/* Whether comma-separated flag list FLAGS contains the token NAME.  Tokens are
+** matched case-sensitively (Section 7 flags are lowercase) with surrounding WSP
+** ignored. */
+static int
+dkim2_flag_present(const char *flags, const char *name)
+{
+	size_t nl = strlen(name);
+	const char *p = flags;
+
+	if (flags == NULL)
+		return 0;
+	while (*p != '\0')
+	{
+		const char *start, *end;
+
+		while (*p == ',' || *p == ' ' || *p == '\t')
+			p++;
+		start = p;
+		while (*p != '\0' && *p != ',')
+			p++;
+		end = p;
+		while (end > start && (end[-1] == ' ' || end[-1] == '\t'))
+			end--;
+		if ((size_t) (end - start) == nl &&
+		    strncmp(start, name, nl) == 0)
+			return 1;
+	}
+	return 0;
+}
+
 /* ── verification ────────────────────────────────────────────────────────── */
 
 int
@@ -631,6 +673,51 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			    (unsigned long long) s->sig_i);
 			rc = dkim2_result(out, DKIM2_V_PERMERROR, s->sig_i, msg);
 			goto cleanup;
+		}
+	}
+
+	/* 10.8: honour donotmodify / donotexplode requests carried in f=.  A
+	** donotmodify signature forbids the instance it covers (m=) from differing
+	** from the next instance (m+1); donotexplode forbids any later signature
+	** from declaring the message exploded. */
+	for (k = 0; k < nsig; k++)
+	{
+		const dkim2_signature_t *s = sigs[k].sig;
+
+		if (s->sig_f == NULL)
+			continue;
+
+		if (dkim2_flag_present(s->sig_f, "donotmodify") &&
+		    s->sig_m >= 1 && s->sig_m + 1 <= (uint64_t) nmi)
+		{
+			const dkim2_hashentry_t *a = mi_sha256(mis[s->sig_m - 1].mi);
+			const dkim2_hashentry_t *b = mi_sha256(mis[s->sig_m].mi);
+
+			if (a != NULL && b != NULL &&
+			    (strcmp(a->he_header, b->he_header) != 0 ||
+			     strcmp(a->he_body, b->he_body) != 0))
+			{
+				snprintf(msg, sizeof msg,
+				    "DKIM2-Signature i=%llu message modified despite donotmodify",
+				    (unsigned long long) s->sig_i);
+				rc = dkim2_result(out, DKIM2_V_FAIL, s->sig_i, msg);
+				goto cleanup;
+			}
+		}
+
+		if (dkim2_flag_present(s->sig_f, "donotexplode"))
+		{
+			size_t j;
+
+			for (j = k + 1; j < nsig; j++)
+				if (dkim2_flag_present(sigs[j].sig->sig_f, "exploded"))
+				{
+					snprintf(msg, sizeof msg,
+					    "DKIM2-Signature i=%llu message exploded despite donotexplode",
+					    (unsigned long long) s->sig_i);
+					rc = dkim2_result(out, DKIM2_V_FAIL, s->sig_i, msg);
+					goto cleanup;
+				}
 		}
 	}
 
