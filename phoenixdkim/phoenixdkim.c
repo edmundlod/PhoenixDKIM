@@ -361,6 +361,8 @@ struct dkimf_config
 	char *		conf_dkim2keyfile;	/* DKIM2 private key file */
 	char *		conf_dkim2algstr;	/* DKIM2Algorithm string */
 	char *		conf_dkim2snapshotdir;	/* DKIM2 modifying-resign snapshots */
+	char *		conf_dkim2flags;	/* DKIM2 f= flags to stamp on sign */
+	char *		conf_dkim2nonce;	/* DKIM2 n= nonce to stamp on sign */
 	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
 #endif /* USE_DKIM2 */
 };
@@ -7852,6 +7854,10 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		(void) config_get(data, "DKIM2SnapshotDirectory",
 		                  &conf->conf_dkim2snapshotdir,
 		                  sizeof conf->conf_dkim2snapshotdir);
+		(void) config_get(data, "DKIM2Flags", &conf->conf_dkim2flags,
+		                  sizeof conf->conf_dkim2flags);
+		(void) config_get(data, "DKIM2Nonce", &conf->conf_dkim2nonce,
+		                  sizeof conf->conf_dkim2nonce);
 	}
 
 	if (conf->conf_dkim2modestr != NULL)
@@ -7953,6 +7959,16 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		{
 			(void) snprintf(err, errlen,
 			         "DKIM2 algorithm is unknown or does not match the key");
+			return -1;
+		}
+
+		/* A configured nonce is stamped on every signature we add, so
+		** reject an out-of-spec one (Section 7.3) at start, not per-message. */
+		if (conf->conf_dkim2nonce != NULL &&
+		    !dkim2_nonce_valid(conf->conf_dkim2nonce))
+		{
+			(void) snprintf(err, errlen,
+			         "DKIM2Nonce must be at most 64 printable ASCII characters with no ';'");
 			return -1;
 		}
 	}
@@ -13294,6 +13310,8 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	p.sp_rt = rcpts;
 	p.sp_rt_count = nrcpts;
 	p.sp_t = 0;
+	p.sp_nonce = conf->conf_dkim2nonce;	/* NULL when unset */
+	p.sp_flags = conf->conf_dkim2flags;	/* NULL when unset */
 
 	/*
 	**  Modifying re-sign (draft Section 8.1): a hop that rewrote a covered

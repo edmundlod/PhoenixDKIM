@@ -10,6 +10,8 @@
 [\-\-time N]
 [\-\-orig FILE]
 [\-\-recipe FILE]
+[\-\-flags F]
+[\-\-nonce N]
 .SH DESCRIPTION
 .B phoenixdkim2-sign
 reads a message on standard input, signs it under the experimental DKIM2
@@ -85,6 +87,17 @@ read from
 Takes precedence over
 .I \-\-orig
 if both are given.
+.TP
+.I \-\-flags F
+A comma\-separated list of flags for the
+.I f=
+tag (for example
+.IR donotmodify ", " donotexplode ).
+.TP
+.I \-\-nonce N
+An opaque value for the
+.I n=
+tag; at most 64 printable ASCII characters with no semicolon.
 .SH EXIT STATUS
 .TP
 .B 0

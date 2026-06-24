@@ -269,6 +269,17 @@ tag.  Must align with the SMTP MAIL FROM domain.  Required when DKIM2 signing
 is enabled.
 
 .TP
+.I DKIM2Flags (string)
+A comma-separated list of flags to place in the
+.I f=
+tag of every DKIM2 signature this host adds.  The flags defined by the draft are
+.IR donotmodify " (downstream hops must not change the message) and "
+.IR donotexplode " (the message must not be exploded by a mailing list)."
+A verifier rejects a chain that violates a flag set upstream.  Default is unset
+(no
+.I f=
+tag).
+.TP
 .I DKIM2KeyFile (string)
 Path to the PEM private key (RSA or Ed25519) used for DKIM2 signing.  Required
 when DKIM2 signing is enabled.  This key is independent of the DKIM1
@@ -289,6 +300,16 @@ binding the SMTP envelope, the message hashes, and any prior signatures in the
 chain; DKIM2 verification walks that chain.  Available only when phoenixdkim
 was built with experimental DKIM2 support
 .RI ( WITH_DKIM2 ).
+
+.TP
+.I DKIM2Nonce (string)
+An opaque value to place in the
+.I n=
+tag of every DKIM2 signature this host adds.  It has meaning only to this host
+(for example, an index for handling Delivery Status Notifications) and must be at
+most 64 printable ASCII characters with no semicolon.  Default is unset (no
+.I n=
+tag).
 
 .TP
 .I DKIM2RejectOnFail (Boolean)

@@ -9,7 +9,7 @@
 **  Usage:
 **    phoenixdkim2-sign --key FILE --domain D --selector S --mail-from "<a@b>" \
 **        [--alg rsa-sha256|ed25519-sha256] [--rcpt-to "<c@d>"]... [--time N] \
-**        [--orig FILE] [--recipe FILE]
+**        [--orig FILE] [--recipe FILE] [--flags F] [--nonce N]
 **
 **  --orig gives the pre-modification message so the signer records a reversible
 **  recipe in a new Message-Instance (extended profile); --recipe supplies a
@@ -59,6 +59,7 @@ main(int argc, char **argv)
 	const char *keyfile = NULL, *domain = NULL, *selector = NULL;
 	const char *mailfrom = NULL, *algname = NULL;
 	const char *origfile = NULL, *recipefile = NULL;
+	const char *flags = NULL, *nonce = NULL;
 	const char **rcpt = NULL;
 	size_t nrcpt = 0;
 	uint64_t t = 0;
@@ -99,6 +100,10 @@ main(int argc, char **argv)
 			origfile = argv[++i];
 		else if (strcmp(argv[i], "--recipe") == 0 && i + 1 < argc)
 			recipefile = argv[++i];
+		else if (strcmp(argv[i], "--flags") == 0 && i + 1 < argc)
+			flags = argv[++i];
+		else if (strcmp(argv[i], "--nonce") == 0 && i + 1 < argc)
+			nonce = argv[++i];
 		else
 		{
 			fprintf(stderr, "phoenixdkim2-sign: unknown option '%s'\n",
@@ -113,7 +118,8 @@ main(int argc, char **argv)
 	{
 		fprintf(stderr, "usage: phoenixdkim2-sign --key FILE --domain D "
 		        "--selector S --mail-from \"<a@b>\" [--alg NAME] "
-		        "[--rcpt-to \"<c@d>\"]... [--time N]\n");
+		        "[--rcpt-to \"<c@d>\"]... [--time N] [--orig FILE] "
+		        "[--recipe FILE] [--flags F] [--nonce N]\n");
 		free(rcpt);
 		return 2;
 	}
@@ -198,6 +204,8 @@ main(int argc, char **argv)
 	p.sp_rt = rcpt;
 	p.sp_rt_count = nrcpt;
 	p.sp_t = t;
+	p.sp_flags = flags;
+	p.sp_nonce = nonce;
 	if (recipe != NULL)
 		p.sp_recipe = recipe;
 	else if (origeml != NULL)

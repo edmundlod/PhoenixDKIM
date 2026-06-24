@@ -216,6 +216,25 @@
 
 # DKIM2Algorithm		rsa-sha256
 
+##  DKIM2Flags flag[,flag...]
+##  	default (none)
+##
+##  Flags to stamp in the f= tag of every DKIM2 signature this host adds.
+##  "donotmodify" forbids downstream modification; "donotexplode" forbids a
+##  mailing list explosion.  A verifier rejects a chain that breaks a flag set
+##  upstream.
+
+# DKIM2Flags		donotmodify
+
+##  DKIM2Nonce value
+##  	default (none)
+##
+##  Opaque value for the n= tag of every DKIM2 signature this host adds; it has
+##  meaning only to this host (e.g. a DSN index).  At most 64 printable ASCII
+##  characters, no semicolon.
+
+# DKIM2Nonce		myindex
+
 ##  DKIM2RejectOnFail { yes | no }
 ##  	default "no"
 ##
