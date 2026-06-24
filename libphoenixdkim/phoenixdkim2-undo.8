@@ -1,0 +1,52 @@
+.TH phoenixdkim2-undo 8 "PhoenixDKIM"
+.SH NAME
+.B phoenixdkim2-undo
+\- reconstruct an earlier DKIM2 Message-Instance (test tool)
+.SH SYNOPSIS
+.B phoenixdkim2-undo
+[\-\-target\-version N]
+.SH DESCRIPTION
+.B phoenixdkim2-undo
+reads a signed message on standard input and walks the
+.I Message\-Instance
+recipes backward, undoing each modifying hop to reconstruct the message as it
+stood at an earlier instance, then writes that message to standard output.  It is
+the inverse of the modifying re\-sign path and mirrors the interop
+.I dkim2undo
+tool.
+.PP
+The output carries the
+.I DKIM2\-Signature
+and
+.I Message\-Instance
+fields whose
+.I m=
+is at most the target version, the reconstructed content header fields, a blank
+line, and the body.  A hop whose recipe is absent or marked irreversible
+(a null recipe) cannot be undone and is reported as an error.
+.PP
+This program is built only when PhoenixDKIM is compiled with experimental DKIM2
+support
+.RI ( WITH_DKIM2 ).
+.SH OPTIONS
+.TP
+.I \-\-target\-version N
+The instance to reconstruct back to.  The default
+.RI ( -1 )
+undoes a single hop (the highest instance minus one);
+.I 0
+reconstructs the original pre\-signing message (dropping the whole chain).
+.SH EXIT STATUS
+.TP
+.B 0
+The message was reconstructed.
+.TP
+.B 1
+A hop could not be undone (missing/irreversible recipe, or nothing to undo).
+.TP
+.B 2
+Usage error, or the message could not be read.
+.SH SEE ALSO
+.I phoenixdkim2-sign (8),
+.I phoenixdkim2-verify (8),
+.I phoenixdkim (8)
