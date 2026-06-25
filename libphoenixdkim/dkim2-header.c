@@ -405,8 +405,30 @@ dkim2_hashentry_parse(const char *s)
 	char **sets;
 	size_t nsets = 0;
 	size_t i;
+	char *clean;
+	size_t j;
 
-	sets = dkim2_split(s, ',', &nsets);
+	/*
+	**  The h= value is "alg:header-hash:body-hash", whose hashes are long
+	**  base64 strings that a generating MTA may fold across lines.  Unlike the
+	**  signature base64 (which is base64-decoded, and so tolerates embedded
+	**  whitespace), these hashes are compared as strings during verification,
+	**  so any retained folding whitespace makes them never match.  Strip all
+	**  whitespace up front; DKIM2's structured values carry none that is
+	**  significant.
+	*/
+	clean = malloc(strlen(s) + 1);
+	if (clean == NULL)
+		return NULL;
+	for (i = 0, j = 0; s[i] != '\0'; i++)
+	{
+		if (s[i] != ' ' && s[i] != '\t' && s[i] != '\r' && s[i] != '\n')
+			clean[j++] = s[i];
+	}
+	clean[j] = '\0';
+
+	sets = dkim2_split(clean, ',', &nsets);
+	free(clean);
 	if (sets == NULL)
 		return NULL;
 
