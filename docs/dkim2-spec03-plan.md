@@ -32,111 +32,31 @@ accountable from that point forward; the prior hop fails to re-verify.
 
 ## Changes
 
-### 1. `nd=` tag — parse, validate, verify
+## Make a plan for:
 
-**`libphoenixdkim/dkim2-header.h`** — add `char *sig_nd;` to
-`dkim2_signature_t` (struct at ~line 37).
-
-**`libphoenixdkim/dkim2-header.c` `dkim2_signature_parse()` (~217–288)** —
-rework required-tag logic per spec-03 §8:
-- Required: `i=`, `m=`, `t=`, `d=`, `s=` (unchanged for these).
-- Read `nd=` (optional). Then enforce the XOR:
-  - `nd=` present → `mf=` and `rt=` MUST be absent. If either is present,
-    fail (maps to spec error *"tag=<y> was unexpected"*).
-  - `nd=` absent → both `mf=` and `rt=` required (current behaviour).
-- `dkim2_signature_free()` must free `sig_nd`.
-
-**`libphoenixdkim/dkim2-header.c` `dkim2_signature_format()` (~290–337)** —
-when `sig_nd` is set, emit `i=; m=; t=; nd=<dom>; d=; s=;` (omit `mf=`/`rt=`);
-otherwise the existing `mf=`/`rt=` form. (Used for canonical reconstruction;
-raw-byte signing path already covers `nd=` automatically — confirmed via
-`dkim2_build_input_85`.)
-
-**`libphoenixdkim/dkim2-verify.c` chain-of-custody loop (~505–571, spec §10.4)** —
-for each signature in `i=` order:
-- If it carries `nd=` (no `mf=`/`rt=`): skip the `mf=`→`d=` match; instead
-  require an exact match between `nd=` and the `d=` of the **next** signature
-  in sequence. No next signature, or mismatch → PERMERROR
-  *"DKIM2-Signature i=<x> nd= does not match"*.
-- Else: existing `mf=` decode / `dkim2_domain_match` logic.
-- **Final-hop rule:** the highest-`i=` signature MUST carry `mf=`/`rt=` (not
-  `nd=`). Enforce before the live-envelope match (which only applies to that
-  top signature).
-- Update the human-readable error strings to the spec-03 forms that prefix
-  `DKIM2-Signature i=<x>` (MAIL FROM / RCPT TO / `d=` mismatches). The result
-  struct already carries the `i=`.
-
-### 2. Null recipe — forbid header-null, body-null only
-
-**`libphoenixdkim/dkim2-recipe.c` parse (~370–381)** — split the all-or-nothing
-`re_null`:
-- `{"h":null}` → **reject** (invalid per spec-03 §5.1) — fail the parse.
-- `{"b":null}` → set the body-null marker; header object still parsed normally.
-- Allow a recipe that carries both a concrete `h` object **and** body-null.
-
-**`libphoenixdkim/dkim2-recipe.c` format (~512–514)** — emit `{"b":null}` (not
-`{"h":null}`) for the body-null case, alongside any `h` object present.
-
-Represent this by letting the recipe hold header ops and a separate
-`re_body_null` flag simultaneously (reinterpret the existing `re_null` field as
-body-null, or add `re_body_null` — implementer's choice; keep it minimal).
-
-### 3. Daemon irreversible-modify path → body-null
-
-**`phoenixdkim/phoenixdkim.c` (~13530–13551)** — `conf_dkim2modifyirrev` no
-longer fabricates a whole-recipe null. Instead:
-- Header changes (e.g. the Subject-tag deliberate modifier) flow through the
-  existing recipe generator (`dkim2_recipe_generate`, reversible) so the chain
-  stays intact.
-- The body change is marked body-null.
-
-Cleanest wiring: add `int sp_body_null;` to `dkim2_sign_params_t`
-(`dkim2-sign.h`); in `dkim2-sign.c`'s recipe-generation path (the
-`sp_orig_*` branch) force the generated recipe's body to null when set. The
-daemon then sets `sp_body_null = conf->conf_dkim2modifyirrev` and stops
-building the manual `nullrec`. Result: `{"h":{…},"b":null}` when both change,
-`{"b":null}` when only the body changes, `{"h":{…}}` when only a header
-changes.
-
-### 4. `Delivered-To:` ignored in header hash
-
-**`libphoenixdkim/dkim2-hash.c` `dkim2_header_is_signed()` (~103–108)** — add
-`strcasecmp(name, "delivered-to") == 0 ||`. Single chokepoint; covers both
-signing and verification.
-
-### 5. `feedhere` flag
-
-Flags are opaque pass-through (`sig_f`), so emission already works via
-`DKIM2Flags`. Add `feedhere` to the documented/recognised token list (comments
-+ docs + man pages); no parser change required.
-
-### 6. Docs, tests, reference
-
-- **`libphoenixdkim/tests/t-dkim2-unit.c`** — add: valid `nd=` chain verifies;
-  `nd=` mismatch with next `d=` → PERMERROR; `nd=` with `mf=` present → reject;
-  `nd=`-only top signature → reject; `{"h":null}` rejected on parse;
-  `{"b":null}` still accepted; `Delivered-To:` excluded from the header hash.
-- **`docs/DKIM2.md`, `docs/dkim2-dev-guide.md`** — describe `nd=` verification,
-  the header-restorable / body-destroyable rule, `Delivered-To` exclusion,
-  `feedhere`; note DSN propagation and `nd=` emission as deferred. Update the
-  spec reference from -02 to -03.
-- Man pages (`phoenixdkim2-*.8`) — refresh the flag list if it enumerates
-  tokens.
-
-## Out of scope (deferred)
-
-- **`nd=` emission** / forward-signing in the daemon (future
+1. **`nd=` emission** / forward-signing in the daemon (future
   `conf_dkim2_no_destination`).
-- **DSN propagation** rewrite (§12) — no DSN code exists today.
+2. **DSN propagation** rewrite (§12) — no DSN code exists today.
 
-## Verification
 
-1. `make` / project build clean (clean rebuild before quoting any warning
-   counts, per project convention).
-2. `t-dkim2-unit` passes, including the new `nd=` and null-recipe cases.
-3. Integration: the existing `phoenixdkim/tests/t-dkim2-*` (sign, resign,
-   modify) still pass; the modify test now produces `{"b":null}` rather than
-   `{"h":null}` for the irreversible case — update its expected fixture.
-4. Hand-craft a 2-hop message using `nd=` (i=1 `nd=esp.tld`, i=2
-   `mf=`/`rt=` signed by esp.tld) and verify with `phoenixdkim2-verify`;
-   confirm a tampered `nd=` (≠ next `d=`) yields the new PERMERROR.
+# Additional tasks to plan
+
+## 1. Create an implemented-doc
+  Create a doc with a comparison between the current spec (spec-03)
+  and what/how/where we have implemented this. The purpose is to know what
+  part(s) (it should be all!) of the DKIM2 are implemented, how, and where.
+  No need to go into great technical details or list all line numbers; just
+  a brief indication where to look.
+  Besides, some parts of the spec will be very precise - we ought to have
+  implemented those exactly according to spec and reference (Perl).
+  Other parts leave room for interpretation, or leeway for the implementer /
+  sysadmin (perhaps with a knob). In that case, what did we choose, or what
+  knobs did we implement, and why did we choose that path?
+  The final document should give a very clear overview of the status of our
+  DKIM2 implementation, and perhaps result in questions to be asked to the
+  DKIM WG for further information.
+
+## 2. Can we create tags in git that belong only to a specific branch?
+  The idea would be to have a tag for spec-02 (when it was fully implemented;
+  we would have to temporarily roll back a few spec-03 commits), then a
+  working spec-03 tag, etc etc. Gives a nice roll-back in the future if wanted.
