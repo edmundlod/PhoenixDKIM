@@ -13813,6 +13813,31 @@ dkimf_dkim2_lib_txt(void *ctx, const char *qname, dkim2_dns_status_t *status)
 }
 
 /*
+**  DKIMF_DKIM2_LOG_BODYHEX -- log up to len octets of buf as space-separated
+**  hex.  A diagnostic for body-hash mismatches: it makes stray line endings
+**  (0d 0a vs a bare 0a), truncation, or unexpected trailing bytes visible in
+**  the captured (already CRLF-normalized) body.
+*/
+
+static void
+dkimf_dkim2_log_bodyhex(struct dkimf_config *conf, const char *jobid,
+                        const char *label, const char *buf, size_t len)
+{
+	char hex[3 * 64 + 1];
+	size_t i, off = 0;
+
+	for (i = 0; i < len && off + 4 <= sizeof hex; i++)
+		off += (size_t) snprintf(hex + off, sizeof hex - off, "%02x ",
+		    (unsigned char) buf[i]);
+	if (off > 0)
+		hex[off - 1] = '\0';
+	else
+		hex[0] = '\0';
+
+	dkimf_log(conf, LOG_INFO, "%s: DKIM2 body %s: %s", jobid, label, hex);
+}
+
+/*
 **  DKIMF_DKIM2_VERIFY_MSG -- verify the DKIM2 chain on the current message,
 **  optionally add an Authentication-Results field, and translate the state
 **  into a milter disposition.
@@ -13920,6 +13945,23 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 		       dfc->mctx_jobid, state,
 		       res.vr_message != NULL ? " - " : "",
 		       res.vr_message != NULL ? res.vr_message : "");
+	}
+
+	/*
+	**  On a body-hash failure, dump the head and tail of the captured body so
+	**  we can see exactly what was hashed (line endings, length, trailing
+	**  bytes) versus the delivered message.  Diagnostic only.
+	*/
+	if (conf->conf_dolog && res.vr_state == DKIM2_V_FAIL &&
+	    res.vr_message != NULL &&
+	    strstr(res.vr_message, "body hash") != NULL)
+	{
+		size_t n = bodylen < 64 ? bodylen : 64;
+
+		dkimf_dkim2_log_bodyhex(conf, dfc->mctx_jobid, "head", body, n);
+		if (bodylen > 64)
+			dkimf_dkim2_log_bodyhex(conf, dfc->mctx_jobid, "tail",
+			    body + bodylen - 64, 64);
 	}
 
 	/*

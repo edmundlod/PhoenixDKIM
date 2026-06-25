@@ -770,13 +770,44 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 	  case HC_MATCH:
 		break;
 	  case HC_MISMATCH_HEADER:
+	  {
+		/* Diagnostic: surface what we computed vs. what was signed, so a
+		** mismatch caused by canonicalization or capture is visible in the
+		** result string (and hence the verifier's log line). */
+		unsigned char hh[DKIM2_HASH_LEN];
+		char got[64], detail[192];
+		const dkim2_hashentry_t *he = mi_sha256(mis[nmi - 1].mi);
+
+		if (dkim2_header_hash(headers, nheaders, hh) == 0)
+			got[dkim_base64_encode(hh, sizeof hh,
+			    (u_char *) got, sizeof got)] = '\0';
+		else
+			got[0] = '\0';
+		(void) snprintf(detail, sizeof detail,
+		    "header hash did not match (computed=%s expected=%s)",
+		    got, he != NULL ? he->he_header : "(none)");
 		rc = dkim2_result(out, DKIM2_V_FAIL, mis[nmi - 1].mi->mi_m,
-		    "header hash did not match");
+		    detail);
 		goto cleanup;
+	  }
 	  case HC_MISMATCH_BODY:
+	  {
+		unsigned char bh[DKIM2_HASH_LEN];
+		char got[64], detail[192];
+		const dkim2_hashentry_t *he = mi_sha256(mis[nmi - 1].mi);
+
+		if (dkim2_body_hash(body, bodylen, bh) == 0)
+			got[dkim_base64_encode(bh, sizeof bh,
+			    (u_char *) got, sizeof got)] = '\0';
+		else
+			got[0] = '\0';
+		(void) snprintf(detail, sizeof detail,
+		    "body hash did not match (computed=%s expected=%s bodylen=%zu)",
+		    got, he != NULL ? he->he_body : "(none)", bodylen);
 		rc = dkim2_result(out, DKIM2_V_FAIL, mis[nmi - 1].mi->mi_m,
-		    "body hash did not match");
+		    detail);
 		goto cleanup;
+	  }
 	  case HC_NOHASH:
 		rc = dkim2_result(out, DKIM2_V_PERMERROR, mis[nmi - 1].mi->mi_m,
 		    "Message-Instance has no sha256 hash");
