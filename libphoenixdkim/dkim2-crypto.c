@@ -115,9 +115,29 @@ dkim2_pubkey_load(dkim2_alg_t alg, const char *p_b64)
 		break;
 	  }
 	  case DKIM2_ALG_ED25519_SHA256:
-		/* p= is the 32-byte raw key for Ed25519 (RFC 8463). */
-		key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL,
-		                                  der, (size_t) derlen);
+		/* RFC 8463 publishes the raw 32-byte key in p=, but some signers
+		** publish a DER SubjectPublicKeyInfo instead (as RSA does, and as
+		** anything piping "openssl pkey -pubout" produces). The DKIM2
+		** reference verifier accepts either form, so we do too. */
+		if (derlen == 32)
+		{
+			key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519,
+			                                  NULL, der,
+			                                  (size_t) derlen);
+		}
+		else
+		{
+			const unsigned char *q = der;
+
+			key = d2i_PUBKEY(NULL, &q, (long) derlen);
+			/* a non-Ed25519 SPKI must not masquerade as one */
+			if (key != NULL &&
+			    EVP_PKEY_base_id(key) != EVP_PKEY_ED25519)
+			{
+				EVP_PKEY_free(key);
+				key = NULL;
+			}
+		}
 		break;
 	  default:
 		break;

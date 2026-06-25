@@ -264,6 +264,26 @@ while (<$keyin>)
 
 close($keyin);
 
+## For Ed25519, RFC 8463 publishes the *raw* 32-byte public key in p=, not the
+## DER SubjectPublicKeyInfo that "openssl pkey -pubout" emits (and that the loop
+## above just captured).  Strict RFC 8463 verifiers -- phoenixdkim's own DKIM
+## and DKIM2 verifiers among them -- reject the SPKI form.  The Ed25519 SPKI is a
+## fixed 12-byte prefix followed by the 32 key octets, so take the trailing 32
+## bytes of the DER form and base64 them.  (openssl is reused here rather than a
+## Perl module so genkey gains no new dependency, matching the fingerprint code
+## below.)
+if (lc($keytype) eq "ed25519")
+{
+	my $raw = `openssl pkey -in $selector.private -pubout -outform DER 2>/dev/null | tail -c 32 | openssl base64 -A 2>/dev/null`;
+	$raw =~ s/\s+//g;			# strip any wrapping/newlines
+	if ($raw eq "")
+	{
+		print STDERR "$progname: failed to extract raw Ed25519 public key\n";
+		exit(1);
+	}
+	$keydata = $raw;
+}
+
 ## Compute the SHA-256 SPKI fingerprint of the public key: the SHA-256 digest
 ## of the DER-encoded SubjectPublicKeyInfo, base64-encoded ("SHA256:..." form,
 ## the same value "ssh-keygen -l" reports).  This is done with openssl rather
