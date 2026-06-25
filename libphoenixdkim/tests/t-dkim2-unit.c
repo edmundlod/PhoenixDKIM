@@ -167,6 +167,39 @@ test_body_eol(void)
 	free(norm);
 }
 
+/*
+**  A folded Message-Instance h= value (the long base64 hashes wrapped across
+**  lines, as a generating MTA emits them) must parse to clean hash components.
+**  Regression test for "body hash did not match" caused by fold whitespace
+**  surviving inside the parsed body hash and breaking the string comparison.
+*/
+static void
+test_mi_folded(void)
+{
+	/* same hashes, one inline and one folded mid-base64 with CRLF + WSP */
+	const char *flat =
+	    "m=2; h=sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=:"
+	    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=;";
+	const char *folded =
+	    "m=2; h=sha256:AAAAAAAAAAAAAAAAAAAA\r\n  AAAAAAAAAAAAAAAAAAAAAAA=:"
+	    "BBBBBBBBBBBBBBBB\r\n\tBBBBBBBBBBBBBBBBBBBBBBBBBBB=;";
+	dkim2_mi_t *a = dkim2_mi_parse(flat, strlen(flat));
+	dkim2_mi_t *b = dkim2_mi_parse(folded, strlen(folded));
+
+	assert(a != NULL && a->mi_h != NULL);
+	assert(b != NULL && b->mi_h != NULL);
+	/* folding must not leak into the parsed hash strings */
+	assert(strcmp(b->mi_h->he_name, "sha256") == 0);
+	assert(strcmp(b->mi_h->he_header, a->mi_h->he_header) == 0);
+	assert(strcmp(b->mi_h->he_body, a->mi_h->he_body) == 0);
+	assert(strchr(b->mi_h->he_body, ' ') == NULL &&
+	       strchr(b->mi_h->he_body, '\r') == NULL &&
+	       strchr(b->mi_h->he_body, '\n') == NULL &&
+	       strchr(b->mi_h->he_body, '\t') == NULL);
+	dkim2_mi_free(a);
+	dkim2_mi_free(b);
+}
+
 static void
 test_components(void)
 {
@@ -971,6 +1004,7 @@ int
 main(void)
 {
 	test_body_eol();
+	test_mi_folded();
 	test_components();
 	test_chain(DKIM2_ALG_RSA_SHA256, 2048);
 	test_chain(DKIM2_ALG_ED25519_SHA256, 0);
