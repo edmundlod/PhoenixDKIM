@@ -13004,6 +13004,46 @@ dkimf_dkim2_rcpts(msgctx dfc, size_t *nout)
 }
 
 /*
+**  DKIMF_DKIM2_FIX_BODY_EOL -- normalize the accumulated DKIM2 body to canonical
+**  CRLF line endings in place.
+**
+**  An MTA hands a milter the body in its internal representation (Postfix
+**  presents bare LF); DKIM2 body hashes are over the on-the-wire CRLF form, so
+**  the body must be normalized before signing or verifying.  The transform
+**  lives in libphoenixdkim (dkim2_body_to_crlf) so it can be unit-tested;
+**  here we just apply it to the captured buffer.  Returns 0 on success, -1 on
+**  allocation failure.
+*/
+
+static int
+dkimf_dkim2_fix_body_eol(msgctx dfc)
+{
+	const u_char *in;
+	size_t len;
+	char *norm;
+	size_t normlen;
+
+	if (dfc->mctx_dkim2body == NULL)
+		return 0;
+
+	in = dkimf_dstring_get(dfc->mctx_dkim2body);
+	len = (size_t) dkimf_dstring_len(dfc->mctx_dkim2body);
+
+	if (dkim2_body_to_crlf((const char *) in, len, &norm, &normlen) != 0)
+		return -1;
+
+	dkimf_dstring_blank(dfc->mctx_dkim2body);
+	if (!dkimf_dstring_catn(dfc->mctx_dkim2body, (const u_char *) norm,
+	                        normlen))
+	{
+		free(norm);
+		return -1;
+	}
+	free(norm);
+	return 0;
+}
+
+/*
 **  DKIMF_DKIM2_BODY -- the accumulated body buffer and length (empty when no
 **  body was seen).
 */
@@ -13940,6 +13980,18 @@ dkimf_dkim2_eom(SMFICTX *ctx, connctx cc, msgctx dfc,
                 struct dkimf_config *conf, const char *authservid)
 {
 	sfsistat ret = SMFIS_CONTINUE;
+
+	/*
+	**  Normalize the captured body to CRLF before any DKIM2 hashing, so that an
+	**  MTA that hands us bare-LF bodies (e.g. Postfix) does not break body-hash
+	**  verification or produce signatures over non-wire bytes.
+	*/
+	if (dkimf_dkim2_fix_body_eol(dfc) != 0)
+	{
+		dkimf_log(conf, LOG_ERR, "%s: DKIM2 body normalization failed",
+		       dfc->mctx_jobid);
+		return SMFIS_TEMPFAIL;
+	}
 
 	if ((conf->conf_dkim2mode & DKIMF_DKIM2_VERIFY) != 0)
 	{

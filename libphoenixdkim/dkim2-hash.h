@@ -41,6 +41,27 @@ extern int dkim2_body_hash(const char *body, size_t bodylen,
                            unsigned char digest[DKIM2_HASH_LEN]);
 
 /*
+**  DKIM2_BODY_TO_CRLF -- normalize a body to canonical CRLF line endings.
+**
+**  DKIM2 body hashes are defined over the on-the-wire (CRLF) form, but a milter
+**  receives the body in its MTA's internal representation -- Postfix, for one,
+**  presents bare LF.  Converting lone LF and lone CR to CRLF lets the body hash
+**  match a CRLF signature regardless of how the MTA delivered the bytes, and is
+**  idempotent for already-CRLF input.  The DKIM1 path gets this from libopendkim
+**  (DKIM_LIBFLAGS_FIXCRLF); the DKIM2 hasher must apply it before hashing.
+**
+**  Parameters:
+**  	in / inlen -- the raw body octets (in may be NULL iff inlen is 0)
+**  	out -- receives a malloc'd NUL-terminated CRLF copy (caller frees)
+**  	outlen -- receives the length of *out in bytes
+**
+**  Return value:
+**  	0 on success, -1 on allocation failure.
+*/
+extern int dkim2_body_to_crlf(const char *in, size_t inlen,
+                              char **out, size_t *outlen);
+
+/*
 **  DKIM2_HEADER_HASH -- SHA-256 of the canonicalized header fields (Section 5.2).
 **
 **  Parameters:

@@ -125,6 +125,48 @@ zone_add(const char *q, EVP_PKEY *k, dkim2_alg_t a)
 
 /* ── component sanity ────────────────────────────────────────────────────── */
 
+/*
+**  Body EOL normalization: a bare-LF body (as an MTA like Postfix hands a
+**  milter) must produce the same body hash as the on-the-wire CRLF form, since
+**  DKIM2 signatures are over CRLF.  Regression test for the verify-time
+**  "body hash did not match" against bare-LF inbound bodies.
+*/
+static void
+test_body_eol(void)
+{
+	const char *crlf = "Hello,\r\n\r\nfooter follows.\r\n-- \r\nsig\r\n";
+	const char *lf   = "Hello,\n\nfooter follows.\n-- \nsig\n";
+	const char *cr   = "Hello,\r\rfooter follows.\r-- \rsig\r";
+	unsigned char want[DKIM2_HASH_LEN], got[DKIM2_HASH_LEN];
+	char *norm;
+	size_t normlen;
+
+	/* reference hash is over the CRLF form */
+	assert(dkim2_body_hash(crlf, strlen(crlf), want) == 0);
+
+	/* bare LF normalizes to the same bytes -> same hash */
+	assert(dkim2_body_to_crlf(lf, strlen(lf), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	assert(dkim2_body_hash(norm, normlen, got) == 0);
+	assert(memcmp(want, got, DKIM2_HASH_LEN) == 0);
+	free(norm);
+
+	/* bare CR is normalized too */
+	assert(dkim2_body_to_crlf(cr, strlen(cr), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	free(norm);
+
+	/* idempotent on already-CRLF input */
+	assert(dkim2_body_to_crlf(crlf, strlen(crlf), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	free(norm);
+
+	/* empty body is handled */
+	assert(dkim2_body_to_crlf(NULL, 0, &norm, &normlen) == 0);
+	assert(normlen == 0);
+	free(norm);
+}
+
 static void
 test_components(void)
 {
@@ -928,6 +970,7 @@ test_delivered_to(void)
 int
 main(void)
 {
+	test_body_eol();
 	test_components();
 	test_chain(DKIM2_ALG_RSA_SHA256, 2048);
 	test_chain(DKIM2_ALG_ED25519_SHA256, 0);
