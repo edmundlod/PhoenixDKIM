@@ -7862,6 +7862,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 
 	conf->conf_dkim2mode = 0;
 
+	/*
+	**  Surfacing the DKIM2 verdict in Authentication-Results is safe to do by
+	**  default: per draft Section 4.3, A-R fields have purely local meaning and
+	**  are on the DKIM2 header ignore list (see dkim2_header_is_signed()), so
+	**  adding one is invisible to any downstream DKIM2 chain.
+	*/
+	conf->conf_dkim2addar = TRUE;
+
 	if (data != NULL)
 	{
 		(void) config_get(data, "DKIM2Mode", &conf->conf_dkim2modestr,
@@ -13875,9 +13883,11 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 	}
 
 	/*
-	**  Optionally record the result in an Authentication-Results field.  Note
-	**  that adding it counts as a message modification for any downstream
-	**  DKIM2 signer, hence default-off (DKIM2AuthResults).
+	**  Record the result in an Authentication-Results field (DKIM2AuthResults,
+	**  default on).  Unlike a covered header, this is safe: draft Section 4.3
+	**  places A-R fields outside the signed set -- they have purely local
+	**  meaning and sit on the DKIM2 header ignore list -- so writing one does
+	**  not perturb any downstream DKIM2 chain's header hash.
 	*/
 	if (conf->conf_dkim2addar && res.vr_state != DKIM2_V_NONE &&
 	    authservid != NULL)
