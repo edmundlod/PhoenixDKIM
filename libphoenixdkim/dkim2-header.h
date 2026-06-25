@@ -6,8 +6,10 @@
 **  header field value into a struct (and back), splitting the flat sub-fields
 **  the core profile uses:
 **
-**    DKIM2-Signature: i= m= t= mf= rt= d= s= [n=] [f=]
+**    DKIM2-Signature: i= m= t= [mf= rt= | nd=] d= s= [n=] [f=]
 **      mf= / rt=  base64 of the SMTP reverse-/forward-path (rt= comma-separated)
+**      nd=        "no destination" domain; spec-03 alternative to mf=+rt= for a
+**                 forward-signing ("imaginary hop") signature
 **      s=         comma-separated "selector:algorithm:base64-signature" triples
 **
 **    Message-Instance: m= h= [r=]
@@ -40,9 +42,10 @@ typedef struct dkim2_signature
 	uint64_t	 sig_i;		/* hop sequence number */
 	uint64_t	 sig_m;		/* highest Message-Instance number covered */
 	uint64_t	 sig_t;		/* timestamp (seconds since the epoch) */
-	char		*sig_mf;	/* base64 reverse-path */
-	char		**sig_rt;	/* base64 forward-paths */
+	char		*sig_mf;	/* base64 reverse-path, or NULL with nd= */
+	char		**sig_rt;	/* base64 forward-paths, or NULL with nd= */
 	size_t		 sig_rt_count;
+	char		*sig_nd;	/* "no destination" domain (spec-03), or NULL */
 	char		*sig_d;		/* signing domain */
 	dkim2_sigentry_t *sig_s;	/* signature set (one or more) */
 	char		*sig_n;		/* nonce, or NULL */
@@ -76,7 +79,9 @@ typedef struct dkim2_mi
 **
 **  Return value:
 **  	A heap struct, or NULL on a malformed list or a missing required tag
-**  	(i, m, t, mf, rt, d, s).  Free with dkim2_signature_free().
+**  	(i, m, t, d, s, plus either mf+rt or nd).  Per spec-03 a signature
+**  	carries exactly one of the mf=/rt= pair or nd=; supplying both fails.
+**  	Free with dkim2_signature_free().
 */
 extern dkim2_signature_t *dkim2_signature_parse(const char *value, size_t len);
 

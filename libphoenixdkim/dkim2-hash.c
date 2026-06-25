@@ -102,6 +102,7 @@ dkim2_header_is_signed(const char *name)
 	** structures that are either signed separately or covered directly. */
 	if (strcasecmp(name, "received") == 0 ||
 	    strcasecmp(name, "return-path") == 0 ||
+	    strcasecmp(name, "delivered-to") == 0 ||
 	    strcasecmp(name, "authentication-results") == 0 ||
 	    strcasecmp(name, "dkim-signature") == 0 ||
 	    strcasecmp(name, "message-instance") == 0 ||

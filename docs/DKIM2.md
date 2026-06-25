@@ -30,7 +30,7 @@ defeats replay and makes every intermediary accountable.
 ## Spec we track
 
 Authoritative target: **`draft-ietf-dkim-dkim2-spec`**, currently revision
-**-02** (IETF DKIM working group).
+**-03** (IETF DKIM working group).
 
 - Spec: <https://datatracker.ietf.org/doc/draft-ietf-dkim-dkim2-spec/>
 - Milter deployment profile (core vs extended):
@@ -59,7 +59,7 @@ Per the deployment-profile draft, DKIM2 splits into two profiles:
   in-milter modification *engine* that would let phoenixdkim itself rewrite and
   record messages stays deferred beyond that.
 
-### Header and tag shape (ietf-02)
+### Header and tag shape (ietf-03)
 
 `DKIM2-Signature` is a tag=value header. Core tags:
 
@@ -70,10 +70,17 @@ Per the deployment-profile draft, DKIM2 splits into two profiles:
 | `t=` | signature timestamp (Unix epoch) |
 | `mf=` | base64 SMTP `MAIL FROM` (reverse-path) |
 | `rt=` | base64 SMTP `RCPT TO` (forward-path), comma-separated |
+| `nd=` | spec-03 "no destination" domain: a forward-signing ("imaginary hop") alternative to `mf=`+`rt=`. Mutually exclusive with them; must equal the `d=` of the next signature in `i=` order |
 | `d=` | signing domain (must align with the `mf=` domain) |
 | `s=` | signature value(s): `selector:alg:sig` triples, comma-separated |
 | `n=` | optional nonce (<= 64 chars) |
-| `f=` | optional flags (`donotmodify`, `donotexplode`, `feedback`, `exploded`, ...) |
+| `f=` | optional flags (`donotmodify`, `donotexplode`, `feedback`, `feedhere`, `exploded`, ...) |
+
+A signature carries **either** the `mf=`/`rt=` pair (a real hop) **or** `nd=`
+(an imaginary forward-signing hop), never both; the highest-numbered signature
+must be a real `mf=`/`rt=` hop. We **verify** `nd=` chains (read, accept, and
+match against the next `d=`); **emitting** `nd=` is deferred. Flags are carried
+opaquely, so `feedhere` already round-trips through `DKIM2Flags`.
 
 `Message-Instance` carries `m=` (revision number), `h=` (hashes:
 `sha256:<header-hash>:<body-hash>` triples, comma-separated) and the optional
@@ -84,8 +91,22 @@ Mandatory algorithms: **rsa-sha256** and **ed25519-sha256** (both must be
 supported by verifiers; signers should offer both). Keys live in DNS at the
 same `selector._domainkey.domain` TXT records used by DKIM1.
 
-The header hash **excludes** `Received`, `Return-Path`, `Authentication-Results`,
-`Message-Instance`, `DKIM2-Signature`, `X-*`, `DKIM-Signature`, and `ARC-*`.
+The header hash **excludes** `Received`, `Return-Path`, `Delivered-To`,
+`Authentication-Results`, `Message-Instance`, `DKIM2-Signature`, `X-*`,
+`DKIM-Signature`, and `ARC-*`. (`Delivered-To` was added to the ignore list in
+spec-03, since it is appended in transit by the final delivering host.)
+
+### Reversibility: headers restorable, bodies destroyable (spec-03)
+
+Modifying intermediaries record a `Message-Instance` *recipe* that reverts the
+current instance to the previous one. spec-03 tightens what may be irreversible:
+**header changes must always be restorable**, and only the **body** may be
+destroyed. Accordingly the sole legal null recipe part is `{"b":null}`; a
+`{"h":null}` part is now invalid and rejected on parse. A hop that makes an
+irreversible body change keeps the reversible header diff and marks just the
+body null (`{"h":{…},"b":null}` when both change); the prior hop's body hash can
+no longer be re-verified, so the chain is accepted up to that point and the
+modifying hop is held accountable from there on.
 
 ## Architecture in this tree
 
@@ -174,7 +195,11 @@ DKIM2-core lands as a sequence of self-contained commits:
   has (it only inserts unhashed headers), so this is deferred until phoenixdkim
   acts as a modifying intermediary. List/gateway software uses the extended
   library/CLI above instead.
-- DSN/bounce return-path authentication and mailing-list explosion handling.
+- **`nd=` emission**: forward-signing where this host issues an imaginary-hop
+  signature for another domain (a future `conf_dkim2_no_destination` knob). We
+  verify inbound `nd=` chains today; emitting them is deferred.
+- **DSN propagation** (spec-03 §12) and DSN/bounce return-path authentication,
+  plus mailing-list explosion handling. No DSN code exists in the tree yet.
 - **ARC**: not extended. A draft proposes moving ARC to Historic because DKIM2
   is intended to supersede its intermediary-accountability role, so no new ARC
   surface is added.

@@ -12,10 +12,12 @@
 **
 **    {"h": {"<field-name>": [ops]}, "b": [ops]}
 **
-**  with a null part ("h": null, "b": null, or a null recipe) marking the
-**  modification irreversible: that instance cannot be reconstructed, so a
-**  verifier stops the backward walk there.  Operations are
-**  line/field-ordinal based, never byte offsets:
+**  Headers must always be restorable; only the body may be destroyed
+**  (spec-03 Section 5.1).  Accordingly the sole legal null part is "b": null,
+**  marking the body irreversible: that body cannot be reconstructed, so a
+**  verifier stops the backward walk there.  A "h": null part is invalid and
+**  rejected on parse.  Operations are line/field-ordinal based, never byte
+**  offsets:
 **
 **    {"c":[start,end]}   copy field-instances (under h) or body lines (under b)
 **                        numbered start..end inclusive from the *current* message
@@ -60,7 +62,7 @@ typedef struct dkim2_recipe_hdr
 /* A parsed recipe. */
 typedef struct dkim2_recipe
 {
-	int			 re_null;	/* 1 = irreversible ("h":null) */
+	int			 re_body_null;	/* 1 = body irreversible ("b":null) */
 	dkim2_recipe_hdr_t	*re_hdrs;	/* header recipes (NULL = unchanged) */
 	dkim2_recipe_op_t	*re_body;	/* body ops (NULL = unchanged) */
 } dkim2_recipe_t;
@@ -107,8 +109,8 @@ extern void dkim2_recipe_free(dkim2_recipe_t *r);
 **  	prev_body / prev_blen -- receive the reconstructed body (caller frees)
 **
 **  Return value:
-**  	0 on success, 1 when the recipe is irreversible (re_null: outputs are not
-**  	set and the caller stops the backward walk), -1 on error or an
+**  	0 on success, 1 when the body is irreversible (re_body_null: outputs are
+**  	not set and the caller stops the backward walk), -1 on error or an
 **  	out-of-range ordinal.
 */
 extern int dkim2_recipe_apply(const dkim2_recipe_t *r,

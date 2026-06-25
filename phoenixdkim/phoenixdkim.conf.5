@@ -273,8 +273,11 @@ is enabled.
 A comma-separated list of flags to place in the
 .I f=
 tag of every DKIM2 signature this host adds.  The flags defined by the draft are
-.IR donotmodify " (downstream hops must not change the message) and "
-.IR donotexplode " (the message must not be exploded by a mailing list)."
+.IR donotmodify " (downstream hops must not change the message), "
+.IR donotexplode " (the message must not be exploded by a mailing list), "
+.IR feedback " (the signer requests delivery feedback) and "
+.IR feedhere " (a privacy-conscious forwarder requests that feedback be relayed"
+via this hop).
 A verifier rejects a chain that violates a flag set upstream.  Default is unset
 (no
 .I f=

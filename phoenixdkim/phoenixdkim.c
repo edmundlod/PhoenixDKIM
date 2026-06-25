@@ -13472,7 +13472,6 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	size_t mod_nheaders = 0;
 	char *mod_body = NULL;		/* deliberate-modifier body (owned) */
 	size_t mod_bodylen = 0;
-	char *nullrec = NULL;		/* null recipe for an irreversible modify */
 	int modified = 0;
 	sfsistat ret = SMFIS_CONTINUE;
 
@@ -13507,8 +13506,8 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	**  this host itself rewrites the message and records the change as a
 	**  modifying re-sign.  Because we make the change here, the originals are
 	**  the bytes we just received -- no inbound snapshot is needed.  An
-	**  irreversible modification records a null recipe instead of a diff (the
-	**  legitimate use of a null recipe: a one-way change such as a redaction).
+	**  irreversible modification keeps the reversible header diff but marks the
+	**  body "b":null (spec-03: only bodies may be destroyed, never headers).
 	*/
 	if (conf->conf_dkim2subjecttag != NULL || conf->conf_dkim2footer != NULL)
 	{
@@ -13527,27 +13526,22 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 			p.sp_orig_nheaders = work_nheaders;
 			p.sp_orig_body = body;
 			p.sp_orig_bodylen = bodylen;
-			if (conf->conf_dkim2modifyirrev)
-			{
-				dkim2_recipe_t rn;
-
-				memset(&rn, 0, sizeof rn);
-				rn.re_null = 1;
-				nullrec = dkim2_recipe_format(&rn);
-				if (nullrec == NULL)
-				{
-					ret = SMFIS_TEMPFAIL;
-					goto cleanup;
-				}
-				p.sp_recipe = nullrec;
-			}
+			/*
+			**  An irreversible modify marks only the body "b":null;
+			**  the header change (e.g. a Subject tag) still flows
+			**  through the reversible recipe generator, so the chain
+			**  stays intact and this hop is held accountable for the
+			**  body (spec-03 Section 5.1).
+			*/
+			p.sp_body_null = conf->conf_dkim2modifyirrev;
 			work_headers = mod_headers;
 			work_nheaders = mod_nheaders;
 			body = mod_body;
 			bodylen = mod_bodylen;
 			modified = 1;
 			resign = conf->conf_dkim2modifyirrev
-			         ? "modify/null" : "modify/recipe(self)";
+			         ? "modify/recipe(body-null)"
+			         : "modify/recipe(self)";
 		}
 	}
 
@@ -13723,7 +13717,6 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 		free(mod_headers);
 	}
 	free(mod_body);
-	free(nullrec);
 	free(strip_vers);
 	free(mis);
 	dkimf_dkim2_headers_free(headers, nheaders);

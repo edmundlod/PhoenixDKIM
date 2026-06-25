@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -399,29 +400,41 @@ test_recipe(void)
 	dkim2_recipe_free(r);
 	dkim2_recipe_free(r2);
 
-	/* an irreversible (null) recipe round-trips and stops apply */
+	/* a body-null recipe round-trips (formats as {"b":null}) and stops apply */
 	memset(&rn, 0, sizeof rn);
-	rn.re_null = 1;
+	rn.re_body_null = 1;
 	nb = dkim2_recipe_format(&rn);
 	assert(nb != NULL);
 	r2 = dkim2_recipe_parse(nb, strlen(nb));
-	assert(r2 != NULL && r2->re_null);
+	assert(r2 != NULL && r2->re_body_null);
 	assert(dkim2_recipe_apply(r2, new_h, 3, new_b, strlen(new_b),
 	                          &ph, &pnh, &pb, &pbl) == 1);
 	free(nb);
 	dkim2_recipe_free(r2);
 
-	/* a null part on either side is irreversible (the dkim2.com redacted
-	** reflector sends {"b":null}) */
+	/* spec-03 Section 5.1: only the body may be destroyed.  {"b":null} is
+	** accepted and marks the body irreversible; {"h":null} is rejected. */
 	{
 		const char *bnull = "eyJiIjpudWxsfQ==";	/* base64 {"b":null} */
 		const char *hnull = "eyJoIjpudWxsfQ==";	/* base64 {"h":null} */
 
 		r2 = dkim2_recipe_parse(bnull, strlen(bnull));
-		assert(r2 != NULL && r2->re_null);
+		assert(r2 != NULL && r2->re_body_null);
 		dkim2_recipe_free(r2);
-		r2 = dkim2_recipe_parse(hnull, strlen(hnull));
-		assert(r2 != NULL && r2->re_null);
+		/* {"h":null} is invalid and must fail the parse */
+		assert(dkim2_recipe_parse(hnull, strlen(hnull)) == NULL);
+	}
+
+	/* a concrete header object alongside body-null: {"h":{…},"b":null}.
+	** base64 of {"h":{"subject":[{"d":["Old"]}]},"b":null} */
+	{
+		const char *mixed =
+		    "eyJoIjp7InN1YmplY3QiOlt7ImQiOlsiT2xkIl19XX0sImIiOm51bGx9";
+
+		r2 = dkim2_recipe_parse(mixed, strlen(mixed));
+		assert(r2 != NULL);
+		assert(r2->re_body_null);		/* body destroyed */
+		assert(r2->re_hdrs != NULL);		/* header still reversible */
 		dkim2_recipe_free(r2);
 	}
 }
@@ -515,8 +528,9 @@ test_extended(dkim2_alg_t alg, int bits)
 		dkim2_verify_result_clear(&r);
 	}
 
-	/* an explicit irreversible ("h":null) recipe verifies as PASS: the chain
-	** is accepted up to the irreversible hop, which can no longer be reverted */
+	/* an explicit body-null ("b":null) recipe verifies as PASS: the chain
+	** is accepted up to the irreversible-body hop, which can no longer be
+	** reverted */
 	{
 		dkim2_recipe_t rn;
 		char *nullr;
@@ -526,7 +540,7 @@ test_extended(dkim2_alg_t alg, int bits)
 		dkim2_sign_params_t p;
 
 		memset(&rn, 0, sizeof rn);
-		rn.re_null = 1;
+		rn.re_body_null = 1;
 		nullr = dkim2_recipe_format(&rn);
 		assert(nullr != NULL);
 
@@ -734,6 +748,205 @@ test_flags(dkim2_alg_t alg, int bits)
 	ZN = 0;
 }
 
+/* ── nd= forward-signing tag (spec-03 Section 8.7) ───────────────────────── */
+
+/*
+**  Build a complete i=1 nd= ("imaginary hop") DKIM2-Signature over a given
+**  Message-Instance field, signed by `key`.  nd= emission is not yet in
+**  dkim2_sign (deferred), so the test assembles and signs the field directly,
+**  mirroring the Section 8.5 input the verifier reconstructs: canon(MI) then
+**  canon(this signature with an empty s= value).
+*/
+static char *
+build_nd_sig(const char *mi, const char *nd, const char *d,
+             const char *selector, EVP_PKEY *key, dkim2_alg_t alg, uint64_t t)
+{
+	const char *algname = dkim2_alg_name(alg);
+	char *unsigned_field;
+	char *cmi;
+	char *csig;
+	char *input;
+	size_t ilen;
+	char *sigval;
+	char *full;
+
+	assert(asprintf(&unsigned_field,
+	    "DKIM2-Signature: i=1; m=1; t=%llu; nd=%s; d=%s; s=%s:%s:",
+	    (unsigned long long) t, nd, d, selector, algname) >= 0);
+
+	cmi = dkim2_canon_field_85(mi);
+	csig = dkim2_canon_field_85(unsigned_field);
+	assert(cmi != NULL && csig != NULL);
+	assert(asprintf(&input, "%s%s", cmi, csig) >= 0);
+	ilen = strlen(input);
+
+	sigval = dkim2_sign_data(alg, key, (const unsigned char *) input, ilen);
+	assert(sigval != NULL);
+
+	/* the signed bytes end at "s=sel:alg:"; append the value to complete it */
+	assert(asprintf(&full, "%s%s", unsigned_field, sigval) >= 0);
+
+	free(unsigned_field);
+	free(cmi);
+	free(csig);
+	free(input);
+	free(sigval);
+	return full;
+}
+
+static void
+test_nd(dkim2_alg_t alg, int bits)
+{
+	EVP_PKEY *k1 = genkey(alg == DKIM2_ALG_RSA_SHA256 ? EVP_PKEY_RSA
+	                                                  : EVP_PKEY_ED25519, bits);
+	EVP_PKEY *k2 = genkey(alg == DKIM2_ALG_RSA_SHA256 ? EVP_PKEY_RSA
+	                                                  : EVP_PKEY_ED25519, bits);
+	const char *hdrs[] = {
+		"From: Alice <alice@example.com>",
+		"To: bob@dest.example",
+		"Subject: nd test",
+		"Date: Mon, 23 Jun 2026 00:00:00 +0000",
+	};
+	const char *body = "Body of the message.\r\n";
+	const char *rt1[] = { "<bob@dest.example>" };
+	const char *rt2[] = { "<carol@final.example>" };
+	uint64_t now = (uint64_t) time(NULL);
+	char *mi = NULL, *throwaway = NULL, *sig2 = NULL;
+	char *nd_sig = NULL;
+	dkim2_verify_result_t r;
+	dkim2_verify_opts_t vo;
+
+	ZN = 0;
+	zone_add("s1._domainkey.example.com", k1, alg);
+	zone_add("s2._domainkey.esp.example", k2, alg);
+	memset(&vo, 0, sizeof vo);
+	vo.vo_dns_txt = zone_lookup;
+
+	/* ── parse-level XOR checks (Section 8) ── */
+	{
+		/* nd= alongside mf=/rt= is rejected */
+		const char *both =
+		    "i=1; m=1; t=2; nd=esp.example; mf=x; rt=y; d=e; "
+		    "s=s1:rsa-sha256:z;";
+		dkim2_signature_t *s;
+
+		assert(dkim2_signature_parse(both, strlen(both)) == NULL);
+
+		/* nd= without mf=/rt= parses; mf/rt stay NULL and round-trips */
+		s = dkim2_signature_parse(
+		    "i=1; m=1; t=2; nd=esp.example; d=e; s=s1:rsa-sha256:z;",
+		    strlen("i=1; m=1; t=2; nd=esp.example; d=e; s=s1:rsa-sha256:z;"));
+		assert(s != NULL);
+		assert(s->sig_nd != NULL && strcmp(s->sig_nd, "esp.example") == 0);
+		assert(s->sig_mf == NULL && s->sig_rt == NULL);
+		{
+			char *fmt = dkim2_signature_format(s);
+
+			assert(fmt != NULL);
+			assert(strstr(fmt, "nd=esp.example") != NULL);
+			assert(strstr(fmt, "mf=") == NULL);
+			free(fmt);
+		}
+		dkim2_signature_free(s);
+	}
+
+	/* A normal originator sign yields a reusable m=1 Message-Instance (the
+	** envelope does not affect the MI); we keep the MI and build our own nd=
+	** signature over it, discarding the throwaway mf=/rt= signature. */
+	sign_hop("example.com", "s1", k1, alg, "<alice@example.com>", rt1, 1,
+	         hdrs, 4, body, &mi, &throwaway);
+	assert(mi != NULL);
+	free(throwaway);
+
+	nd_sig = build_nd_sig(mi, "esp.example", "example.com", "s1", k1, alg, now);
+
+	/* hop 2: a real hop signed by esp.example, whose d= the nd= points at */
+	{
+		const char *h2[] = { hdrs[0], hdrs[1], hdrs[2], hdrs[3], mi, nd_sig };
+		char *mi2 = NULL;
+
+		sign_hop("esp.example", "s2", k2, alg, "<bounce@esp.example>",
+		         rt2, 1, h2, 6, body, &mi2, &sig2);
+		assert(mi2 == NULL && sig2 != NULL);	/* core re-sign adds no MI */
+	}
+
+	/* ── valid nd= chain verifies ── */
+	{
+		const char *msg[] = { hdrs[0], hdrs[1], hdrs[2], hdrs[3],
+		                      mi, nd_sig, sig2 };
+
+		memset(&r, 0, sizeof r);
+		assert(dkim2_verify(msg, 7, body, strlen(body), &vo, &r) == 0);
+		assert(r.vr_state == DKIM2_V_PASS && r.vr_i == 2);
+		dkim2_verify_result_clear(&r);
+	}
+
+	/* ── nd= that does not match the next d= → PERMERROR ── */
+	{
+		/* fails at the chain-of-custody step (before crypto), so a dummy
+		** signature value suffices */
+		char *bad = NULL;
+
+		assert(asprintf(&bad,
+		    "DKIM2-Signature: i=1; m=1; t=%llu; nd=wrong.example; "
+		    "d=example.com; s=s1:%s:AAAA",
+		    (unsigned long long) now, dkim2_alg_name(alg)) >= 0);
+		{
+			const char *msg[] = { hdrs[0], hdrs[1], hdrs[2], hdrs[3],
+			                      mi, bad, sig2 };
+
+			memset(&r, 0, sizeof r);
+			assert(dkim2_verify(msg, 7, body, strlen(body), &vo, &r) == 0);
+			assert(r.vr_state == DKIM2_V_PERMERROR);
+			assert(strstr(r.vr_message, "nd=") != NULL);
+			dkim2_verify_result_clear(&r);
+		}
+		free(bad);
+	}
+
+	/* ── nd= on the highest signature (no real final hop) → PERMERROR ── */
+	{
+		const char *msg[] = { hdrs[0], hdrs[1], hdrs[2], hdrs[3],
+		                      mi, nd_sig };
+
+		memset(&r, 0, sizeof r);
+		assert(dkim2_verify(msg, 6, body, strlen(body), &vo, &r) == 0);
+		assert(r.vr_state == DKIM2_V_PERMERROR);
+		assert(strstr(r.vr_message, "nd=") != NULL);
+		dkim2_verify_result_clear(&r);
+	}
+
+	free(mi);
+	free(nd_sig);
+	free(sig2);
+	EVP_PKEY_free(k1);
+	EVP_PKEY_free(k2);
+	for (ZN--; ZN >= 0; ZN--)
+	{
+		free(ZONE[ZN].q);
+		free(ZONE[ZN].rec);
+	}
+	ZN = 0;
+}
+
+/* ── Delivered-To is excluded from the header hash (spec-03 Section 6.2) ──── */
+static void
+test_delivered_to(void)
+{
+	unsigned char d1[DKIM2_HASH_LEN], d2[DKIM2_HASH_LEN];
+	const char *with[] = {
+		"From: a@b", "Subject: x", "Delivered-To: bob@host.example",
+	};
+	const char *without[] = { "From: a@b", "Subject: x" };
+
+	assert(!dkim2_header_is_signed("Delivered-To"));
+
+	/* a Delivered-To field added in transit must not change the header hash */
+	assert(dkim2_header_hash(with, 3, d1) == 0);
+	assert(dkim2_header_hash(without, 2, d2) == 0);
+	assert(memcmp(d1, d2, DKIM2_HASH_LEN) == 0);
+}
+
 int
 main(void)
 {
@@ -745,6 +958,9 @@ main(void)
 	test_extended(DKIM2_ALG_ED25519_SHA256, 0);
 	test_flags(DKIM2_ALG_RSA_SHA256, 2048);
 	test_flags(DKIM2_ALG_ED25519_SHA256, 0);
+	test_nd(DKIM2_ALG_RSA_SHA256, 2048);
+	test_nd(DKIM2_ALG_ED25519_SHA256, 0);
+	test_delivered_to();
 	printf("t-dkim2-unit: PASS\n");
 	return 0;
 }

@@ -502,18 +502,53 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 		}
 	}
 
-	/* 10.4: chain of custody.  d= must align with mf= on every signature; the
-	** live envelope, if supplied, must match the top signature exactly. */
+	/* 10.4: chain of custody.  Each signature aligns d= with its own mf= (a
+	** real hop), or — with the spec-03 nd= tag — its nd= with the d= of the
+	** next signature in i= order (a forward-signing "imaginary hop").  The
+	** highest-numbered signature MUST be a real hop carrying mf=/rt=, since the
+	** live envelope is matched against it. */
+	if (sigs[nsig - 1].sig->sig_nd != NULL)
+	{
+		const dkim2_signature_t *top = sigs[nsig - 1].sig;
+
+		snprintf(msg, sizeof msg,
+		    "DKIM2-Signature i=%llu MAIL nd= does not match",
+		    (unsigned long long) top->sig_i);
+		rc = dkim2_result(out, DKIM2_V_PERMERROR, top->sig_i, msg);
+		goto cleanup;
+	}
 	for (k = 0; k < nsig; k++)
 	{
 		const dkim2_signature_t *s = sigs[k].sig;
-		char *mf = dkim2_b64_decode_str(s->sig_mf);
+		char *mf;
 		char *mfdom;
 
+		if (s->sig_nd != NULL)
+		{
+			/* forward-signing hop: nd= MUST exactly match the d= of the
+			** next signature in sequence (the final-hop rule above
+			** guarantees one exists). */
+			const dkim2_signature_t *next = sigs[k + 1].sig;
+
+			if (strcasecmp(s->sig_nd, next->sig_d) != 0)
+			{
+				snprintf(msg, sizeof msg,
+				    "DKIM2-Signature i=%llu MAIL nd= does not match",
+				    (unsigned long long) s->sig_i);
+				rc = dkim2_result(out, DKIM2_V_PERMERROR,
+				    s->sig_i, msg);
+				goto cleanup;
+			}
+			continue;
+		}
+
+		mf = dkim2_b64_decode_str(s->sig_mf);
 		if (mf == NULL)
 		{
-			rc = dkim2_result(out, DKIM2_V_PERMERROR, s->sig_i,
-			    "DKIM2-Signature mf= syntax error");
+			snprintf(msg, sizeof msg,
+			    "DKIM2-Signature i=%llu mf= syntax error",
+			    (unsigned long long) s->sig_i);
+			rc = dkim2_result(out, DKIM2_V_PERMERROR, s->sig_i, msg);
 			goto cleanup;
 		}
 		mfdom = dkim2_path_domain(mf);
@@ -526,8 +561,11 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			free(mfdom);
 			if (!ok)
 			{
+				snprintf(msg, sizeof msg,
+				    "DKIM2-Signature i=%llu MAIL FROM and d= "
+				    "do not match", (unsigned long long) s->sig_i);
 				rc = dkim2_result(out, DKIM2_V_PERMERROR,
-				    s->sig_i, "MAIL FROM and d= do not match");
+				    s->sig_i, msg);
 				goto cleanup;
 			}
 		}
@@ -542,8 +580,10 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 		free(mf);
 		if (!ok)
 		{
-			rc = dkim2_result(out, DKIM2_V_PERMERROR, top->sig_i,
-			    "MAIL FROM did not match");
+			snprintf(msg, sizeof msg,
+			    "DKIM2-Signature i=%llu MAIL FROM did not match",
+			    (unsigned long long) top->sig_i);
+			rc = dkim2_result(out, DKIM2_V_PERMERROR, top->sig_i, msg);
 			goto cleanup;
 		}
 
@@ -563,8 +603,11 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 			}
 			if (!found)
 			{
+				snprintf(msg, sizeof msg,
+				    "DKIM2-Signature i=%llu RCPT TO did not match",
+				    (unsigned long long) top->sig_i);
 				rc = dkim2_result(out, DKIM2_V_PERMERROR,
-				    top->sig_i, "RCPT TO did not match");
+				    top->sig_i, msg);
 				goto cleanup;
 			}
 		}
@@ -784,7 +827,7 @@ dkim2_verify(const char *const *headers, size_t nheaders,
 				    modmi->mi_m, msg);
 				goto cleanup;
 			}
-			if (rec->re_null)
+			if (rec->re_body_null)
 			{
 				/* irreversible: stop here, accept what was verified */
 				dkim2_recipe_free(rec);

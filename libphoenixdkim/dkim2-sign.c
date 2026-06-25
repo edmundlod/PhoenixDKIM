@@ -308,6 +308,16 @@ dkim2_sign(const dkim2_sign_params_t *p,
 
 				if (rg != NULL)
 				{
+					/* An irreversible body change is recorded
+					** as "b":null while the header diff stays
+					** reversible (spec-03 Section 5.1).  Only a
+					** body that actually changed is marked null;
+					** an unchanged body (re_body == NULL) stays
+					** absent, so a header-only modify is just
+					** {"h":{…}}.  Redundant re_body ops are
+					** ignored by format() and freed with rg. */
+					if (p->sp_body_null && rg->re_body != NULL)
+						rg->re_body_null = 1;
 					recipe_b64 = dkim2_recipe_format(rg);
 					dkim2_recipe_free(rg);
 				}
