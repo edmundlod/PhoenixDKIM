@@ -205,6 +205,32 @@ sign_hop(const char *domain, const char *selector, EVP_PKEY *key,
 	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), mi, sig) == 0);
 }
 
+/* Like sign_hop, but emits an imaginary forwarding hop: nd= instead of mf=/rt=
+** (spec-03 Section 8.7/9.3).  Exercises the real signing path's nd= emission. */
+static char *
+sign_hop_nd(const char *domain, const char *selector, EVP_PKEY *key,
+            dkim2_alg_t alg, const char *nd, const char *const *hdrs, size_t nh,
+            const char *body, uint64_t t, char **mi_out)
+{
+	dkim2_sign_params_t p;
+	char *mi = NULL, *sig = NULL;
+
+	memset(&p, 0, sizeof p);
+	p.sp_domain = domain;
+	p.sp_selector = selector;
+	p.sp_key = key;
+	p.sp_alg = alg;
+	p.sp_nd = nd;		/* mf=/rt= suppressed by the library */
+	p.sp_t = t;
+	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), &mi, &sig) == 0);
+	assert(sig != NULL);
+	/* the emitted field must carry nd= and omit mf=/rt= */
+	assert(strstr(sig, "nd=") != NULL);
+	assert(strstr(sig, "mf=") == NULL && strstr(sig, "rt=") == NULL);
+	*mi_out = mi;		/* originator's new Message-Instance */
+	return sig;
+}
+
 /* Like sign_hop, but stamps the DKIM2-Signature with f= flags. */
 static void
 sign_hop_f(const char *domain, const char *selector, EVP_PKEY *key,
@@ -750,50 +776,6 @@ test_flags(dkim2_alg_t alg, int bits)
 
 /* ── nd= forward-signing tag (spec-03 Section 8.7) ───────────────────────── */
 
-/*
-**  Build a complete i=1 nd= ("imaginary hop") DKIM2-Signature over a given
-**  Message-Instance field, signed by `key`.  nd= emission is not yet in
-**  dkim2_sign (deferred), so the test assembles and signs the field directly,
-**  mirroring the Section 8.5 input the verifier reconstructs: canon(MI) then
-**  canon(this signature with an empty s= value).
-*/
-static char *
-build_nd_sig(const char *mi, const char *nd, const char *d,
-             const char *selector, EVP_PKEY *key, dkim2_alg_t alg, uint64_t t)
-{
-	const char *algname = dkim2_alg_name(alg);
-	char *unsigned_field;
-	char *cmi;
-	char *csig;
-	char *input;
-	size_t ilen;
-	char *sigval;
-	char *full;
-
-	assert(asprintf(&unsigned_field,
-	    "DKIM2-Signature: i=1; m=1; t=%llu; nd=%s; d=%s; s=%s:%s:",
-	    (unsigned long long) t, nd, d, selector, algname) >= 0);
-
-	cmi = dkim2_canon_field_85(mi);
-	csig = dkim2_canon_field_85(unsigned_field);
-	assert(cmi != NULL && csig != NULL);
-	assert(asprintf(&input, "%s%s", cmi, csig) >= 0);
-	ilen = strlen(input);
-
-	sigval = dkim2_sign_data(alg, key, (const unsigned char *) input, ilen);
-	assert(sigval != NULL);
-
-	/* the signed bytes end at "s=sel:alg:"; append the value to complete it */
-	assert(asprintf(&full, "%s%s", unsigned_field, sigval) >= 0);
-
-	free(unsigned_field);
-	free(cmi);
-	free(csig);
-	free(input);
-	free(sigval);
-	return full;
-}
-
 static void
 test_nd(dkim2_alg_t alg, int bits)
 {
@@ -808,10 +790,9 @@ test_nd(dkim2_alg_t alg, int bits)
 		"Date: Mon, 23 Jun 2026 00:00:00 +0000",
 	};
 	const char *body = "Body of the message.\r\n";
-	const char *rt1[] = { "<bob@dest.example>" };
 	const char *rt2[] = { "<carol@final.example>" };
 	uint64_t now = (uint64_t) time(NULL);
-	char *mi = NULL, *throwaway = NULL, *sig2 = NULL;
+	char *mi = NULL, *sig2 = NULL;
 	char *nd_sig = NULL;
 	dkim2_verify_result_t r;
 	dkim2_verify_opts_t vo;
@@ -850,15 +831,12 @@ test_nd(dkim2_alg_t alg, int bits)
 		dkim2_signature_free(s);
 	}
 
-	/* A normal originator sign yields a reusable m=1 Message-Instance (the
-	** envelope does not affect the MI); we keep the MI and build our own nd=
-	** signature over it, discarding the throwaway mf=/rt= signature. */
-	sign_hop("example.com", "s1", k1, alg, "<alice@example.com>", rt1, 1,
-	         hdrs, 4, body, &mi, &throwaway);
+	/* The originator itself signs as an imaginary forwarding hop: dkim2_sign
+	** emits a new m=1 Message-Instance plus an i=1 DKIM2-Signature carrying nd=
+	** (and no mf=/rt=).  This exercises the real nd= emission path. */
+	nd_sig = sign_hop_nd("example.com", "s1", k1, alg, "esp.example",
+	                     hdrs, 4, body, now, &mi);
 	assert(mi != NULL);
-	free(throwaway);
-
-	nd_sig = build_nd_sig(mi, "esp.example", "example.com", "s1", k1, alg, now);
 
 	/* hop 2: a real hop signed by esp.example, whose d= the nd= points at */
 	{

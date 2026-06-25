@@ -9,11 +9,14 @@
 **  Usage:
 **    phoenixdkim2-sign --key FILE --domain D --selector S --mail-from "<a@b>" \
 **        [--alg rsa-sha256|ed25519-sha256] [--rcpt-to "<c@d>"]... [--time N] \
-**        [--orig FILE] [--recipe FILE] [--flags F] [--nonce N]
+**        [--orig FILE] [--recipe FILE] [--flags F] [--nonce N] [--nd DOMAIN]
 **
 **  --orig gives the pre-modification message so the signer records a reversible
 **  recipe in a new Message-Instance (extended profile); --recipe supplies a
 **  ready-made base64-JSON recipe instead and wins if both are given.
+**
+**  --nd DOMAIN emits an imaginary forwarding hop (spec-03 Section 8.7/9.3): the
+**  signature carries nd=DOMAIN and omits mf=/rt=, so --mail-from is optional.
 */
 
 #include <stdint.h>
@@ -59,7 +62,7 @@ main(int argc, char **argv)
 	const char *keyfile = NULL, *domain = NULL, *selector = NULL;
 	const char *mailfrom = NULL, *algname = NULL;
 	const char *origfile = NULL, *recipefile = NULL;
-	const char *flags = NULL, *nonce = NULL;
+	const char *flags = NULL, *nonce = NULL, *nextdom = NULL;
 	const char **rcpt = NULL;
 	size_t nrcpt = 0;
 	uint64_t t = 0;
@@ -104,6 +107,8 @@ main(int argc, char **argv)
 			flags = argv[++i];
 		else if (strcmp(argv[i], "--nonce") == 0 && i + 1 < argc)
 			nonce = argv[++i];
+		else if (strcmp(argv[i], "--nd") == 0 && i + 1 < argc)
+			nextdom = argv[++i];
 		else
 		{
 			fprintf(stderr, "phoenixdkim2-sign: unknown option '%s'\n",
@@ -113,13 +118,15 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* An imaginary forwarding hop (--nd) omits mf=/rt=, so --mail-from is not
+	** required in that case; otherwise it is. */
 	if (keyfile == NULL || domain == NULL || selector == NULL ||
-	    mailfrom == NULL)
+	    (mailfrom == NULL && nextdom == NULL))
 	{
 		fprintf(stderr, "usage: phoenixdkim2-sign --key FILE --domain D "
-		        "--selector S --mail-from \"<a@b>\" [--alg NAME] "
-		        "[--rcpt-to \"<c@d>\"]... [--time N] [--orig FILE] "
-		        "[--recipe FILE] [--flags F] [--nonce N]\n");
+		        "--selector S (--mail-from \"<a@b>\" | --nd DOMAIN) "
+		        "[--alg NAME] [--rcpt-to \"<c@d>\"]... [--time N] "
+		        "[--orig FILE] [--recipe FILE] [--flags F] [--nonce N]\n");
 		free(rcpt);
 		return 2;
 	}
@@ -206,6 +213,7 @@ main(int argc, char **argv)
 	p.sp_t = t;
 	p.sp_flags = flags;
 	p.sp_nonce = nonce;
+	p.sp_nd = nextdom;	/* imaginary hop: emit nd=, omit mf=/rt= */
 	if (recipe != NULL)
 		p.sp_recipe = recipe;
 	else if (origeml != NULL)

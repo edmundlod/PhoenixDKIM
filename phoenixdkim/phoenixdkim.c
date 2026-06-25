@@ -366,6 +366,7 @@ struct dkimf_config
 	char *		conf_dkim2nonce;	/* DKIM2 n= nonce to stamp on sign */
 	char *		conf_dkim2subjecttag;	/* deliberate-modifier Subject prefix */
 	char *		conf_dkim2footer;	/* deliberate-modifier body footer */
+	char *		conf_dkim2nodest;	/* nd= next-hop domain (imaginary hop) */
 	_Bool		conf_dkim2modifyirrev;	/* modifier records a null recipe */
 	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
 #endif /* USE_DKIM2 */
@@ -7894,6 +7895,9 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  sizeof conf->conf_dkim2subjecttag);
 		(void) config_get(data, "DKIM2Footer", &conf->conf_dkim2footer,
 		                  sizeof conf->conf_dkim2footer);
+		(void) config_get(data, "DKIM2NoDestination",
+		                  &conf->conf_dkim2nodest,
+		                  sizeof conf->conf_dkim2nodest);
 		(void) config_get(data, "DKIM2ModifyIrreversible",
 		                  &conf->conf_dkim2modifyirrev,
 		                  sizeof conf->conf_dkim2modifyirrev);
@@ -13500,6 +13504,12 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	p.sp_t = 0;
 	p.sp_nonce = conf->conf_dkim2nonce;	/* NULL when unset */
 	p.sp_flags = conf->conf_dkim2flags;	/* NULL when unset */
+	/*
+	**  Imaginary forwarding hop (spec-03 Section 8.7/9.3): when configured,
+	**  this signature carries nd=<next-hop domain> and the mf=/rt= envelope
+	**  is omitted.  The library suppresses mf=/rt= whenever sp_nd is set.
+	*/
+	p.sp_nd = conf->conf_dkim2nodest;	/* NULL when unset */
 
 	/*
 	**  Deliberate modifier: when a Subject tag or body footer is configured,

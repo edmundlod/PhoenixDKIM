@@ -478,6 +478,14 @@ revision lands, re-check §5 (hashing), §7 (tags), §8.5 (signing input), §10
 line/field-ordinal granularity, `"b":null` for an irreversible body) and §9.2
 (backward reconstruction / cross-instance verification), then re-run the CLIs
 against the interop harness. spec-03 deltas already absorbed: `nd=`
-forward-signing (verify only), `{"h":null}` forbidden, `Delivered-To` ignored in
-the header hash, `feedhere` flag. Still deferred: `nd=` emission and DSN
-propagation (§12).
+forward-signing (verify **and** emit), `{"h":null}` forbidden, `Delivered-To`
+ignored in the header hash, `feedhere` flag.
+
+`nd=` emission is the library primitive plus a knob: `dkim2_sign_params_t.sp_nd`
+makes `dkim2_build_sig_value()` emit `nd=` and suppress `mf=`/`rt=`; the daemon
+sets it from `DKIM2NoDestination`, and `phoenixdkim2-sign --nd DOMAIN` exercises
+it. This mirrors the reference `Signer.pm`'s single `NextDomain` parameter.
+**Deferred:** the full two-signature *delegated-key* forwarder orchestration —
+emitting an imaginary-hop `nd=` signature signed with a key for the inbound
+recipient domain *and* the real outward `mf=`/`rt=` signature in one pass
+(reference `Reflector::generate_brand`, draft §9.3). Still deferred: DSN (§12).
