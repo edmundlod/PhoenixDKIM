@@ -5544,9 +5544,39 @@ dkim_sig_process(DKIM *dkim, DKIM_SIGINFO *sig)
 			}
 			memset(ed, '\0', sizeof(struct dkim_ed25519));
 
-			ed->ed_pkey = EVP_PKEY_new_raw_public_key(
-			                  EVP_PKEY_ED25519, NULL,
-			                  sig->sig_key, sig->sig_keylen);
+			/*
+			**  RFC 8463 publishes the raw 32-byte key in p=, but
+			**  some signers publish a DER SubjectPublicKeyInfo
+			**  instead (as RSA does, and as "openssl pkey -pubout"
+			**  produces).  A verifier has no way to tell the sender
+			**  its key is the wrong shape, so accept either form
+			**  rather than fail the signature outright.
+			*/
+			if (sig->sig_keylen == 32)
+			{
+				ed->ed_pkey = EVP_PKEY_new_raw_public_key(
+				                  EVP_PKEY_ED25519, NULL,
+				                  sig->sig_key, sig->sig_keylen);
+			}
+			else
+			{
+				BIO *keybio;
+
+				keybio = BIO_new_mem_buf(sig->sig_key,
+				                         sig->sig_keylen);
+				if (keybio != NULL)
+				{
+					ed->ed_pkey = d2i_PUBKEY_bio(keybio,
+					                             NULL);
+					BIO_free(keybio);
+
+					/* a non-Ed25519 SPKI must not pass */
+					if (ed->ed_pkey != NULL &&
+					    EVP_PKEY_base_id(ed->ed_pkey) !=
+					    EVP_PKEY_ED25519)
+						EVP_CLOBBER(ed->ed_pkey);
+				}
+			}
 			if (ed->ed_pkey == NULL)
 			{
 				dkim_sig_load_ssl_errors(dkim, sig, 0);

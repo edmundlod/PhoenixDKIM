@@ -38,7 +38,8 @@ typedef struct dkim2_sign_params
 	const char	 *sp_nonce;	/* n= nonce (<=64 printable ASCII chars,
 					** no ';'), or NULL for none */
 	const char	 *sp_flags;	/* f= flags (comma-separated), or NULL for
-					** none, e.g. "donotmodify,donotexplode" */
+					** none, e.g. "donotmodify,donotexplode";
+					** carried opaquely (feedback/feedhere too) */
 
 	/* Extended profile (optional): inputs for a modifying re-signer that
 	** records a reversible diff in a new Message-Instance.  When neither is
@@ -49,6 +50,10 @@ typedef struct dkim2_sign_params
 	size_t		  sp_orig_bodylen;
 	const char	 *sp_recipe;		/* ready-made base64-JSON r=, wins
 						** over diffing sp_orig_* */
+	int		  sp_body_null;		/* force the generated recipe's body
+						** to "b":null (irreversible body
+						** change); headers stay reversible.
+						** Applies to the sp_orig_* path. */
 } dkim2_sign_params_t;
 
 /*

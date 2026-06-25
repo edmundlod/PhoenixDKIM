@@ -167,9 +167,9 @@ default build compiles the milter unchanged. Where it lives:
    also means we never verified it inbound (we only snapshot a pass), so we must
    not vouch for a chain we can neither reconstruct nor attest — matching
    `bin/dkim2-milter.pl`'s line ~346 refusal to extend a non-`pass` chain. (A
-   null/irreversible recipe `{"h":null}` is reserved for a future in-daemon
-   *deliberate* modifier, a different case; the library supports it, the milter
-   does not emit it. Open upstream question filed on `dkim2wg/interop` about the
+   body-irreversible recipe `{"b":null}` (spec-03: headers must stay restorable,
+   only bodies may be destroyed) is used by the in-daemon *deliberate* modifier
+   for an irreversible body change. Open upstream question filed on `dkim2wg/interop` about the
    no-recipe policy and the line-346-vs-snapshot-diff tension.) `dkim2-eml.c`
    moved into the library so the snapshot can be re-parsed. Unit test:
    `phoenixdkim/tests/t-dkim2store.c`.
@@ -207,7 +207,7 @@ in-milter engine and for anyone touching the recipe code.
 - **Missing-recipe PERMERROR is defensive, not test-reachable:** the recipe lives
   in a signed Message-Instance, so stripping `r=` breaks that hop's signature
   (checked at 10.6, before the 9.2 walk) and surfaces as FAIL. The unit test
-  therefore exercises the reachable paths — tamper → FAIL, `"h":null` → PASS — and
+  therefore exercises the reachable paths — tamper → FAIL, `"b":null` → PASS — and
   leaves the `mi_r == NULL` branch as a guard.
 
 The `r=` plumbing already existed: `dkim2_mi_t.mi_r`
@@ -253,13 +253,16 @@ integration* and `DKIM2SnapshotDirectory`. A self-applied footer/subject-tag
 engine (the daemon doing the rewrite itself) remains the only still-deferred
 piece, and it would feed the same `sp_orig_*` path.
 
-### Recipe semantics (draft-ietf-dkim-dkim2-spec-02, §4 / §9.2)
+### Recipe semantics (draft-ietf-dkim-dkim2-spec-03, §4 / §9.2)
 
 Tracked from the live draft; **not vendored** (re-check on each revision, and
 against the interop harness — read, don't copy).
 
 - A recipe is a JSON object: `{"h": {"<field-name>": [ops]}, "b": [ops]}`.
-  `"h": null` (or a null recipe) marks an **irreversible** modification.
+  Per spec-03 §5.1 headers must always be restorable: only the body may be
+  destroyed, so the lone legal null part is `{"b": null}` (the body is
+  irreversible). `{"h": null}` is invalid and rejected on parse. A header object
+  and `"b": null` may coexist: `{"h":{…},"b":null}`.
 - Operations are **line/field-ordinal based, not byte offsets**:
   - `{"c":[start,end]}` — **copy** field-instances (under `h`) or body **lines**
     (under `b`) numbered `start..end`, *inclusive*, from the *current* message.
@@ -309,7 +312,7 @@ typedef struct dkim2_recipe_hdr {          /* per-field-name ops */
     struct dkim2_recipe_hdr *rh_next;
 } dkim2_recipe_hdr_t;
 typedef struct dkim2_recipe {
-    int re_null;                           /* 1 = irreversible */
+    int re_body_null;                      /* 1 = body irreversible ("b":null) */
     dkim2_recipe_hdr_t *re_hdrs;           /* header recipes (NULL = unchanged) */
     dkim2_recipe_op_t  *re_body;           /* body ops      (NULL = unchanged) */
 } dkim2_recipe_t;
@@ -331,7 +334,7 @@ API:
   previous instance from the current one. Body is split on CRLF into 1-based
   lines; `c`/`d` ops rebuild it. Headers: only the field names listed in
   `re_hdrs` have their instance-sequence rebuilt; every other field is copied
-  through unchanged. Returns 0 ok, **1** when `re_null` (caller stops the
+  through unchanged. Returns 0 ok, **1** when `re_body_null` (caller stops the
   backward walk), -1 on error / out-of-range ordinal. Output arrays/buffers are
   freshly allocated and owned by the caller.
 - `dkim2_recipe_t *dkim2_recipe_generate(const char *const *old_hdrs,
@@ -357,7 +360,7 @@ that check passes, a backward loop over `k = nmi-1 … 1` (instances are already
 - `mis[k].mi->mi_r == NULL` while a lower instance exists → a modifying instance
   must carry a recipe (or an explicit null one) → `DKIM2_V_PERMERROR`,
   `vr_i = k+1`.
-- parse `mi_r` with `dkim2_recipe_parse`; if `re_null` → stop the walk (earlier
+- parse `mi_r` with `dkim2_recipe_parse`; if `re_body_null` → stop the walk (earlier
   instances are unreconstructable); leave the verified portion as PASS and note
   it in `vr_message`.
 - otherwise `dkim2_recipe_apply()` to reconstruct instance `k`'s headers+body
@@ -404,15 +407,18 @@ unchanged.
 
 Add a `test_recipe()` (and extend `test_components`) covering:
 
-- recipe parse↔format round-trip, including `"h":null`.
+- recipe parse↔format round-trip, including `"b":null` (and `"h":null` rejected).
 - inverse property: `apply(generate(old,new), new)` reproduces `old`, for body
   and headers.
 - full extended chain (reuse the existing `sign_hop` / `zone_add` /
   `dkim2_dns_override` harness): originator signs `m=1`; modify the body (+ a
   header) and re-sign with `sp_orig_*` to get `m=2` + recipe; `dkim2_verify` →
   PASS with the reconstructed `m=1` hashes matching. Then: tamper the recipe or
-  a body line → FAIL; drop the recipe on `m=2` → PERMERROR; `"h":null` →
-  PASS-with-note.
+  a body line → FAIL; drop the recipe on `m=2` → PERMERROR; `"b":null` →
+  PASS-with-note. spec-03 additions (`test_nd` / `test_delivered_to`): a valid
+  `nd=` chain verifies; an `nd=` that mismatches the next `d=`, or an `nd=` on
+  the top signature, → PERMERROR; `{"h":null}` rejected on parse; `Delivered-To`
+  excluded from the header hash.
 
 ### 6. Fuzzer — `libphoenixdkim/fuzz/`
 
@@ -463,10 +469,15 @@ as a recording list/gateway milter rather than a library a list/gateway calls.
 
 ## Spec drift watch
 
-Track `draft-ietf-dkim-dkim2-spec` (currently -02). The interop C/Go reference
-moved to it; the older `draft-clayton-dkim2-spec-08` differs (envelope was a
-JSON `m=` blob; the MI pointer tag was `v=`). When a new revision lands, re-check
-§5 (hashing), §7 (tags), §8.5 (signing input), §10 (verifier), and — for the
-extended work — §4 (recipe JSON: `c`/`d` ops, line/field-ordinal granularity,
-`null` for irreversible) and §9.2 (backward reconstruction / cross-instance
-verification), then re-run the CLIs against the interop harness.
+Track `draft-ietf-dkim-dkim2-spec` (currently -03; section numbers below are the
+-02 numbering this guide was written against, and shifted by ~1 in -03). The
+interop C/Go reference moved to it; the older `draft-clayton-dkim2-spec-08`
+differs (envelope was a JSON `m=` blob; the MI pointer tag was `v=`). When a new
+revision lands, re-check §5 (hashing), §7 (tags), §8.5 (signing input), §10
+(verifier), and — for the extended work — §4 (recipe JSON: `c`/`d` ops,
+line/field-ordinal granularity, `"b":null` for an irreversible body) and §9.2
+(backward reconstruction / cross-instance verification), then re-run the CLIs
+against the interop harness. spec-03 deltas already absorbed: `nd=`
+forward-signing (verify only), `{"h":null}` forbidden, `Delivered-To` ignored in
+the header hash, `feedhere` flag. Still deferred: `nd=` emission and DSN
+propagation (§12).

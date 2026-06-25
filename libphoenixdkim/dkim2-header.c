@@ -239,28 +239,49 @@ dkim2_signature_parse(const char *value, size_t len)
 		goto fail;
 
 	/* required string tags */
-	v = dkim2_taglist_get(tl, "mf");
-	if (v == NULL)
-		goto fail;
-	sig->sig_mf = strdup(v);
-
 	v = dkim2_taglist_get(tl, "d");
 	if (v == NULL)
 		goto fail;
 	sig->sig_d = strdup(v);
-
-	v = dkim2_taglist_get(tl, "rt");
-	if (v == NULL)
-		goto fail;
-	sig->sig_rt = dkim2_split(v, ',', &sig->sig_rt_count);
 
 	v = dkim2_taglist_get(tl, "s");
 	if (v == NULL)
 		goto fail;
 	sig->sig_s = dkim2_sigentry_parse(v);
 
-	if (sig->sig_mf == NULL || sig->sig_d == NULL ||
-	    sig->sig_rt == NULL || sig->sig_s == NULL)
+	/*
+	**  Destination tags (spec-03 Section 8): a signature carries either the
+	**  mf=/rt= envelope pair (a real hop) or nd= (a forward-signing
+	**  "imaginary hop"), never both and never neither.
+	*/
+	v = dkim2_taglist_get(tl, "nd");
+	if (v != NULL)
+	{
+		/* nd= present: mf=/rt= MUST be absent ("tag was unexpected"). */
+		if (dkim2_taglist_get(tl, "mf") != NULL ||
+		    dkim2_taglist_get(tl, "rt") != NULL)
+			goto fail;
+		if ((sig->sig_nd = strdup(v)) == NULL)
+			goto fail;
+	}
+	else
+	{
+		/* nd= absent: both mf= and rt= are required. */
+		v = dkim2_taglist_get(tl, "mf");
+		if (v == NULL)
+			goto fail;
+		sig->sig_mf = strdup(v);
+
+		v = dkim2_taglist_get(tl, "rt");
+		if (v == NULL)
+			goto fail;
+		sig->sig_rt = dkim2_split(v, ',', &sig->sig_rt_count);
+
+		if (sig->sig_mf == NULL || sig->sig_rt == NULL)
+			goto fail;
+	}
+
+	if (sig->sig_d == NULL || sig->sig_s == NULL)
 		goto fail;
 
 	/* optional tags */
@@ -303,14 +324,22 @@ dkim2_signature_format(const dkim2_signature_t *sig)
 	if (f == NULL)
 		return NULL;
 
-	fprintf(f, "i=%llu; m=%llu; t=%llu; mf=%s; rt=",
+	fprintf(f, "i=%llu; m=%llu; t=%llu; ",
 	        (unsigned long long) sig->sig_i,
 	        (unsigned long long) sig->sig_m,
-	        (unsigned long long) sig->sig_t,
-	        sig->sig_mf ? sig->sig_mf : "");
+	        (unsigned long long) sig->sig_t);
 
-	for (i = 0; i < sig->sig_rt_count; i++)
-		fprintf(f, "%s%s", i ? "," : "", sig->sig_rt[i]);
+	if (sig->sig_nd != NULL)
+	{
+		/* forward-signing form: nd= replaces the mf=/rt= pair */
+		fprintf(f, "nd=%s", sig->sig_nd);
+	}
+	else
+	{
+		fprintf(f, "mf=%s; rt=", sig->sig_mf ? sig->sig_mf : "");
+		for (i = 0; i < sig->sig_rt_count; i++)
+			fprintf(f, "%s%s", i ? "," : "", sig->sig_rt[i]);
+	}
 
 	fprintf(f, "; d=%s; s=", sig->sig_d ? sig->sig_d : "");
 
@@ -346,6 +375,7 @@ dkim2_signature_free(dkim2_signature_t *sig)
 
 	free(sig->sig_mf);
 	dkim2_free_array(sig->sig_rt, sig->sig_rt_count);
+	free(sig->sig_nd);
 	free(sig->sig_d);
 	free(sig->sig_n);
 	free(sig->sig_f);

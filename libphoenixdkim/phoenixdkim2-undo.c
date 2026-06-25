@@ -210,11 +210,11 @@ main(int argc, char **argv)
 			ret = 1;
 			goto done;
 		}
-		if (rec->re_null)
+		if (rec->re_body_null)
 		{
 			dkim2_recipe_free(rec);
 			fprintf(stderr, "phoenixdkim2-undo: Message-Instance m=%ld "
-			        "is irreversible\n", v);
+			        "has an irreversible body\n", v);
 			ret = 1;
 			goto done;
 		}

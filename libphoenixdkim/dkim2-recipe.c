@@ -370,15 +370,14 @@ dkim2_recipe_parse(const char *b64, size_t len)
 	h = cJSON_GetObjectItemCaseSensitive(json, "h");
 	b = cJSON_GetObjectItemCaseSensitive(json, "b");
 
-	/* A null part ("h":null or "b":null, or a null recipe) marks the
-	** modification irreversible for that part: the previous instance cannot be
-	** reconstructed, so a verifier stops the backward walk at this hop. */
-	if ((h != NULL && cJSON_IsNull(h)) || (b != NULL && cJSON_IsNull(b)))
-	{
-		r->re_null = 1;
-		cJSON_Delete(json);
-		return r;
-	}
+	/* spec-03 Section 5.1: headers must always be restorable, so "h":null is
+	** invalid -- reject it.  Only "b":null is legal, marking the body
+	** irreversible; the header object (if any) is still parsed normally, and a
+	** verifier stops the backward walk at this hop. */
+	if (h != NULL && cJSON_IsNull(h))
+		goto fail;
+	if (b != NULL && cJSON_IsNull(b))
+		r->re_body_null = 1;
 
 	if (h != NULL)
 	{
@@ -509,37 +508,37 @@ dkim2_recipe_format(const dkim2_recipe_t *r)
 	if (root == NULL)
 		return NULL;
 
-	if (r->re_null)
+	/* Headers (if changed) are always emitted as a reversible object; the body
+	** is either a reversible op list or, when irreversible, the "b":null marker.
+	** Both may appear together: {"h":{…},"b":null}. */
+	if (r->re_hdrs != NULL)
 	{
-		cJSON_AddNullToObject(root, "h");
+		cJSON *h = cJSON_CreateObject();
+		const dkim2_recipe_hdr_t *rh;
+
+		if (h == NULL)
+			goto fail;
+		cJSON_AddItemToObject(root, "h", h);
+		for (rh = r->re_hdrs; rh != NULL; rh = rh->rh_next)
+		{
+			cJSON *arr = ops_to_json(rh->rh_ops);
+
+			if (arr == NULL)
+				goto fail;
+			cJSON_AddItemToObject(h, rh->rh_name, arr);
+		}
 	}
-	else
+	if (r->re_body_null)
 	{
-		if (r->re_hdrs != NULL)
-		{
-			cJSON *h = cJSON_CreateObject();
-			const dkim2_recipe_hdr_t *rh;
+		cJSON_AddNullToObject(root, "b");
+	}
+	else if (r->re_body != NULL)
+	{
+		cJSON *b = ops_to_json(r->re_body);
 
-			if (h == NULL)
-				goto fail;
-			cJSON_AddItemToObject(root, "h", h);
-			for (rh = r->re_hdrs; rh != NULL; rh = rh->rh_next)
-			{
-				cJSON *arr = ops_to_json(rh->rh_ops);
-
-				if (arr == NULL)
-					goto fail;
-				cJSON_AddItemToObject(h, rh->rh_name, arr);
-			}
-		}
-		if (r->re_body != NULL)
-		{
-			cJSON *b = ops_to_json(r->re_body);
-
-			if (b == NULL)
-				goto fail;
-			cJSON_AddItemToObject(root, "b", b);
-		}
+		if (b == NULL)
+			goto fail;
+		cJSON_AddItemToObject(root, "b", b);
 	}
 
 	out = dkim2_json_b64_encode(root);
@@ -692,8 +691,8 @@ dkim2_recipe_apply(const dkim2_recipe_t *r,
 
 	if (r == NULL)
 		return -1;
-	if (r->re_null)
-		return 1;
+	if (r->re_body_null)
+		return 1;	/* body cannot be reconstructed; stop the walk */
 
 	/* ── body ── */
 	if (r->re_body == NULL)
