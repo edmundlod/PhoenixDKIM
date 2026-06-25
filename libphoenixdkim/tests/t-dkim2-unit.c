@@ -125,6 +125,48 @@ zone_add(const char *q, EVP_PKEY *k, dkim2_alg_t a)
 
 /* ── component sanity ────────────────────────────────────────────────────── */
 
+/*
+**  Body EOL normalization: a bare-LF body (as an MTA like Postfix hands a
+**  milter) must produce the same body hash as the on-the-wire CRLF form, since
+**  DKIM2 signatures are over CRLF.  Regression test for the verify-time
+**  "body hash did not match" against bare-LF inbound bodies.
+*/
+static void
+test_body_eol(void)
+{
+	const char *crlf = "Hello,\r\n\r\nfooter follows.\r\n-- \r\nsig\r\n";
+	const char *lf   = "Hello,\n\nfooter follows.\n-- \nsig\n";
+	const char *cr   = "Hello,\r\rfooter follows.\r-- \rsig\r";
+	unsigned char want[DKIM2_HASH_LEN], got[DKIM2_HASH_LEN];
+	char *norm;
+	size_t normlen;
+
+	/* reference hash is over the CRLF form */
+	assert(dkim2_body_hash(crlf, strlen(crlf), want) == 0);
+
+	/* bare LF normalizes to the same bytes -> same hash */
+	assert(dkim2_body_to_crlf(lf, strlen(lf), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	assert(dkim2_body_hash(norm, normlen, got) == 0);
+	assert(memcmp(want, got, DKIM2_HASH_LEN) == 0);
+	free(norm);
+
+	/* bare CR is normalized too */
+	assert(dkim2_body_to_crlf(cr, strlen(cr), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	free(norm);
+
+	/* idempotent on already-CRLF input */
+	assert(dkim2_body_to_crlf(crlf, strlen(crlf), &norm, &normlen) == 0);
+	assert(normlen == strlen(crlf) && memcmp(norm, crlf, normlen) == 0);
+	free(norm);
+
+	/* empty body is handled */
+	assert(dkim2_body_to_crlf(NULL, 0, &norm, &normlen) == 0);
+	assert(normlen == 0);
+	free(norm);
+}
+
 static void
 test_components(void)
 {
@@ -203,6 +245,32 @@ sign_hop(const char *domain, const char *selector, EVP_PKEY *key,
 	p.sp_rt_count = nrt;
 	p.sp_t = 0;	/* now */
 	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), mi, sig) == 0);
+}
+
+/* Like sign_hop, but emits an imaginary forwarding hop: nd= instead of mf=/rt=
+** (spec-03 Section 8.7/9.3).  Exercises the real signing path's nd= emission. */
+static char *
+sign_hop_nd(const char *domain, const char *selector, EVP_PKEY *key,
+            dkim2_alg_t alg, const char *nd, const char *const *hdrs, size_t nh,
+            const char *body, uint64_t t, char **mi_out)
+{
+	dkim2_sign_params_t p;
+	char *mi = NULL, *sig = NULL;
+
+	memset(&p, 0, sizeof p);
+	p.sp_domain = domain;
+	p.sp_selector = selector;
+	p.sp_key = key;
+	p.sp_alg = alg;
+	p.sp_nd = nd;		/* mf=/rt= suppressed by the library */
+	p.sp_t = t;
+	assert(dkim2_sign(&p, hdrs, nh, body, strlen(body), &mi, &sig) == 0);
+	assert(sig != NULL);
+	/* the emitted field must carry nd= and omit mf=/rt= */
+	assert(strstr(sig, "nd=") != NULL);
+	assert(strstr(sig, "mf=") == NULL && strstr(sig, "rt=") == NULL);
+	*mi_out = mi;		/* originator's new Message-Instance */
+	return sig;
 }
 
 /* Like sign_hop, but stamps the DKIM2-Signature with f= flags. */
@@ -750,50 +818,6 @@ test_flags(dkim2_alg_t alg, int bits)
 
 /* ── nd= forward-signing tag (spec-03 Section 8.7) ───────────────────────── */
 
-/*
-**  Build a complete i=1 nd= ("imaginary hop") DKIM2-Signature over a given
-**  Message-Instance field, signed by `key`.  nd= emission is not yet in
-**  dkim2_sign (deferred), so the test assembles and signs the field directly,
-**  mirroring the Section 8.5 input the verifier reconstructs: canon(MI) then
-**  canon(this signature with an empty s= value).
-*/
-static char *
-build_nd_sig(const char *mi, const char *nd, const char *d,
-             const char *selector, EVP_PKEY *key, dkim2_alg_t alg, uint64_t t)
-{
-	const char *algname = dkim2_alg_name(alg);
-	char *unsigned_field;
-	char *cmi;
-	char *csig;
-	char *input;
-	size_t ilen;
-	char *sigval;
-	char *full;
-
-	assert(asprintf(&unsigned_field,
-	    "DKIM2-Signature: i=1; m=1; t=%llu; nd=%s; d=%s; s=%s:%s:",
-	    (unsigned long long) t, nd, d, selector, algname) >= 0);
-
-	cmi = dkim2_canon_field_85(mi);
-	csig = dkim2_canon_field_85(unsigned_field);
-	assert(cmi != NULL && csig != NULL);
-	assert(asprintf(&input, "%s%s", cmi, csig) >= 0);
-	ilen = strlen(input);
-
-	sigval = dkim2_sign_data(alg, key, (const unsigned char *) input, ilen);
-	assert(sigval != NULL);
-
-	/* the signed bytes end at "s=sel:alg:"; append the value to complete it */
-	assert(asprintf(&full, "%s%s", unsigned_field, sigval) >= 0);
-
-	free(unsigned_field);
-	free(cmi);
-	free(csig);
-	free(input);
-	free(sigval);
-	return full;
-}
-
 static void
 test_nd(dkim2_alg_t alg, int bits)
 {
@@ -808,10 +832,9 @@ test_nd(dkim2_alg_t alg, int bits)
 		"Date: Mon, 23 Jun 2026 00:00:00 +0000",
 	};
 	const char *body = "Body of the message.\r\n";
-	const char *rt1[] = { "<bob@dest.example>" };
 	const char *rt2[] = { "<carol@final.example>" };
 	uint64_t now = (uint64_t) time(NULL);
-	char *mi = NULL, *throwaway = NULL, *sig2 = NULL;
+	char *mi = NULL, *sig2 = NULL;
 	char *nd_sig = NULL;
 	dkim2_verify_result_t r;
 	dkim2_verify_opts_t vo;
@@ -850,15 +873,12 @@ test_nd(dkim2_alg_t alg, int bits)
 		dkim2_signature_free(s);
 	}
 
-	/* A normal originator sign yields a reusable m=1 Message-Instance (the
-	** envelope does not affect the MI); we keep the MI and build our own nd=
-	** signature over it, discarding the throwaway mf=/rt= signature. */
-	sign_hop("example.com", "s1", k1, alg, "<alice@example.com>", rt1, 1,
-	         hdrs, 4, body, &mi, &throwaway);
+	/* The originator itself signs as an imaginary forwarding hop: dkim2_sign
+	** emits a new m=1 Message-Instance plus an i=1 DKIM2-Signature carrying nd=
+	** (and no mf=/rt=).  This exercises the real nd= emission path. */
+	nd_sig = sign_hop_nd("example.com", "s1", k1, alg, "esp.example",
+	                     hdrs, 4, body, now, &mi);
 	assert(mi != NULL);
-	free(throwaway);
-
-	nd_sig = build_nd_sig(mi, "esp.example", "example.com", "s1", k1, alg, now);
 
 	/* hop 2: a real hop signed by esp.example, whose d= the nd= points at */
 	{
@@ -950,6 +970,7 @@ test_delivered_to(void)
 int
 main(void)
 {
+	test_body_eol();
 	test_components();
 	test_chain(DKIM2_ALG_RSA_SHA256, 2048);
 	test_chain(DKIM2_ALG_ED25519_SHA256, 0);

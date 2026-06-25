@@ -56,6 +56,7 @@ struct configdef dkimf_config[] =
 	{ "DKIM2KeyFile",		CONFIG_TYPE_STRING,	FALSE },
 	{ "DKIM2Mode",			CONFIG_TYPE_STRING,	FALSE },
 	{ "DKIM2ModifyIrreversible",	CONFIG_TYPE_BOOLEAN,	FALSE },
+	{ "DKIM2NoDestination",		CONFIG_TYPE_STRING,	FALSE },
 	{ "DKIM2Nonce",			CONFIG_TYPE_STRING,	FALSE },
 	{ "DKIM2RejectOnFail",		CONFIG_TYPE_BOOLEAN,	FALSE },
 	{ "DKIM2Selector",		CONFIG_TYPE_STRING,	FALSE },

@@ -105,11 +105,15 @@ dkim2_b64_str(const char *s)
 }
 
 /* Build a DKIM2-Signature value; sig_b64 == "" yields the incomplete form.
-** flags, when non-NULL and non-empty, appends an f= tag; it is part of the
-** signed bytes, so it must be identical in the incomplete and complete forms. */
+** When nd (next-hop domain) is non-NULL/non-empty this is an imaginary
+** forwarding hop (spec-03 Section 8.7): emit nd= and omit mf=/rt=; otherwise
+** emit the ordinary mf=/rt= envelope.  flags, when non-NULL and non-empty,
+** appends an f= tag; it is part of the signed bytes, so it must be identical in
+** the incomplete and complete forms. */
 static char *
 dkim2_build_sig_value(uint64_t i, uint64_t m, uint64_t t,
                       const char *mf_b64, char *const *rt_b64, size_t rt_count,
+                      const char *nd,
                       const char *domain, const char *selector,
                       const char *alg, const char *sig_b64,
                       const char *nonce, const char *flags)
@@ -122,12 +126,19 @@ dkim2_build_sig_value(uint64_t i, uint64_t m, uint64_t t,
 	if (f == NULL)
 		return NULL;
 
-	fprintf(f, "i=%llu; m=%llu; t=%llu; mf=%s; rt=",
+	fprintf(f, "i=%llu; m=%llu; t=%llu;",
 	        (unsigned long long) i, (unsigned long long) m,
-	        (unsigned long long) t, mf_b64);
-	for (k = 0; k < rt_count; k++)
-		fprintf(f, "%s%s", k ? "," : "", rt_b64[k]);
-	fprintf(f, "; d=%s; s=%s:%s:%s;", domain, selector, alg, sig_b64);
+	        (unsigned long long) t);
+	if (nd != NULL && nd[0] != '\0')
+		fprintf(f, " nd=%s;", nd);
+	else
+	{
+		fprintf(f, " mf=%s; rt=", mf_b64);
+		for (k = 0; k < rt_count; k++)
+			fprintf(f, "%s%s", k ? "," : "", rt_b64[k]);
+		fprintf(f, ";");
+	}
+	fprintf(f, " d=%s; s=%s:%s:%s;", domain, selector, alg, sig_b64);
 	if (nonce != NULL && nonce[0] != '\0')
 		fprintf(f, " n=%s;", nonce);
 	if (flags != NULL && flags[0] != '\0')
@@ -365,7 +376,7 @@ dkim2_sign(const dkim2_sign_params_t *p,
 
 	/* Incomplete DKIM2-Signature (empty s= signature). */
 	incomplete = dkim2_build_sig_value(next_i, ref_m, t, mf_b64,
-	                                   rt_b64, rt_n, p->sp_domain,
+	                                   rt_b64, rt_n, p->sp_nd, p->sp_domain,
 	                                   p->sp_selector, algname, "",
 	                                   p->sp_nonce, p->sp_flags);
 	if (incomplete == NULL)
@@ -437,7 +448,7 @@ dkim2_sign(const dkim2_sign_params_t *p,
 		goto done;
 
 	complete = dkim2_build_sig_value(next_i, ref_m, t, mf_b64,
-	                                 rt_b64, rt_n, p->sp_domain,
+	                                 rt_b64, rt_n, p->sp_nd, p->sp_domain,
 	                                 p->sp_selector, algname, sigval,
 	                                 p->sp_nonce, p->sp_flags);
 	if (complete == NULL)

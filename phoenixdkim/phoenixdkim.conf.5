@@ -257,9 +257,10 @@ If set, when verifying DKIM2 the filter adds an
 field recording the chain result
 .RI ( dkim2=pass ", " fail ", etc.).
 Default is
-.IR no ,
-because adding the field counts as a message modification that a downstream
-DKIM2 signer would have to account for.
+.IR yes .
+Per draft\-ietf\-dkim\-dkim2\-spec Section 4.3, Authentication\-Results fields
+have purely local meaning and are excluded from the DKIM2 signed set, so adding
+one does not affect any downstream DKIM2 chain.
 
 .TP
 .I DKIM2Domain (string)
@@ -326,7 +327,19 @@ redaction, that a downstream verifier cannot and should not undo.  Default is
 .IR no
 (record a reversible recipe).
 .TP
-.I DKIM2Nonce (string)
+.I DKIM2NoDestination (string)
+When this host forwards a message on from a domain other than the one to which it
+arrived, set this to the domain that will sign the next hop.  The DKIM2 signature
+this host adds then carries an
+.I nd=
+tag with that domain instead of the
+.IR mf= " and " rt=
+envelope tags, providing the \(lqchain of custody\(rq for an imaginary forwarding
+hop (draft-ietf-dkim-dkim2-spec Section 8.7 and 9.3).  The value must exactly
+match the
+.I d=
+of the next DKIM2 signature in sequence.  Default is unset (an ordinary
+.IR mf= "/" rt= " signature)."
 An opaque value to place in the
 .I n=
 tag of every DKIM2 signature this host adds.  It has meaning only to this host

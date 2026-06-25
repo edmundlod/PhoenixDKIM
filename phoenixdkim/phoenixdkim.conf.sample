@@ -272,12 +272,13 @@
 # DKIM2RejectOnFail	No
 
 ##  DKIM2AuthResults { yes | no }
-##  	default "no"
+##  	default "yes"
 ##
 ##  When verifying, add an Authentication-Results field carrying the DKIM2
-##  chain result.  Off by default since it modifies the message.
+##  chain result.  On by default: per draft Section 4.3, A-R fields are not
+##  part of the signed set, so adding one does not affect any DKIM2 chain.
 
-# DKIM2AuthResults	No
+# DKIM2AuthResults	Yes
 
 ##  DKIM2SnapshotDirectory path
 ##  	default (none)

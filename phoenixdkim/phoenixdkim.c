@@ -366,6 +366,7 @@ struct dkimf_config
 	char *		conf_dkim2nonce;	/* DKIM2 n= nonce to stamp on sign */
 	char *		conf_dkim2subjecttag;	/* deliberate-modifier Subject prefix */
 	char *		conf_dkim2footer;	/* deliberate-modifier body footer */
+	char *		conf_dkim2nodest;	/* nd= next-hop domain (imaginary hop) */
 	_Bool		conf_dkim2modifyirrev;	/* modifier records a null recipe */
 	EVP_PKEY *	conf_dkim2key;		/* DKIM2 private key (owned) */
 #endif /* USE_DKIM2 */
@@ -7861,6 +7862,14 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 
 	conf->conf_dkim2mode = 0;
 
+	/*
+	**  Surfacing the DKIM2 verdict in Authentication-Results is safe to do by
+	**  default: per draft Section 4.3, A-R fields have purely local meaning and
+	**  are on the DKIM2 header ignore list (see dkim2_header_is_signed()), so
+	**  adding one is invisible to any downstream DKIM2 chain.
+	*/
+	conf->conf_dkim2addar = TRUE;
+
 	if (data != NULL)
 	{
 		(void) config_get(data, "DKIM2Mode", &conf->conf_dkim2modestr,
@@ -7894,6 +7903,9 @@ dkimf_config_load(struct config *data, struct dkimf_config *conf,
 		                  sizeof conf->conf_dkim2subjecttag);
 		(void) config_get(data, "DKIM2Footer", &conf->conf_dkim2footer,
 		                  sizeof conf->conf_dkim2footer);
+		(void) config_get(data, "DKIM2NoDestination",
+		                  &conf->conf_dkim2nodest,
+		                  sizeof conf->conf_dkim2nodest);
 		(void) config_get(data, "DKIM2ModifyIrreversible",
 		                  &conf->conf_dkim2modifyirrev,
 		                  sizeof conf->conf_dkim2modifyirrev);
@@ -12992,6 +13004,46 @@ dkimf_dkim2_rcpts(msgctx dfc, size_t *nout)
 }
 
 /*
+**  DKIMF_DKIM2_FIX_BODY_EOL -- normalize the accumulated DKIM2 body to canonical
+**  CRLF line endings in place.
+**
+**  An MTA hands a milter the body in its internal representation (Postfix
+**  presents bare LF); DKIM2 body hashes are over the on-the-wire CRLF form, so
+**  the body must be normalized before signing or verifying.  The transform
+**  lives in libphoenixdkim (dkim2_body_to_crlf) so it can be unit-tested;
+**  here we just apply it to the captured buffer.  Returns 0 on success, -1 on
+**  allocation failure.
+*/
+
+static int
+dkimf_dkim2_fix_body_eol(msgctx dfc)
+{
+	const u_char *in;
+	size_t len;
+	char *norm;
+	size_t normlen;
+
+	if (dfc->mctx_dkim2body == NULL)
+		return 0;
+
+	in = dkimf_dstring_get(dfc->mctx_dkim2body);
+	len = (size_t) dkimf_dstring_len(dfc->mctx_dkim2body);
+
+	if (dkim2_body_to_crlf((const char *) in, len, &norm, &normlen) != 0)
+		return -1;
+
+	dkimf_dstring_blank(dfc->mctx_dkim2body);
+	if (!dkimf_dstring_catn(dfc->mctx_dkim2body, (const u_char *) norm,
+	                        normlen))
+	{
+		free(norm);
+		return -1;
+	}
+	free(norm);
+	return 0;
+}
+
+/*
 **  DKIMF_DKIM2_BODY -- the accumulated body buffer and length (empty when no
 **  body was seen).
 */
@@ -13500,6 +13552,12 @@ dkimf_dkim2_sign_msg(SMFICTX *ctx, msgctx dfc, struct dkimf_config *conf)
 	p.sp_t = 0;
 	p.sp_nonce = conf->conf_dkim2nonce;	/* NULL when unset */
 	p.sp_flags = conf->conf_dkim2flags;	/* NULL when unset */
+	/*
+	**  Imaginary forwarding hop (spec-03 Section 8.7/9.3): when configured,
+	**  this signature carries nd=<next-hop domain> and the mf=/rt= envelope
+	**  is omitted.  The library suppresses mf=/rt= whenever sp_nd is set.
+	*/
+	p.sp_nd = conf->conf_dkim2nodest;	/* NULL when unset */
 
 	/*
 	**  Deliberate modifier: when a Subject tag or body footer is configured,
@@ -13865,9 +13923,11 @@ dkimf_dkim2_verify_msg(SMFICTX *ctx, connctx cc, msgctx dfc,
 	}
 
 	/*
-	**  Optionally record the result in an Authentication-Results field.  Note
-	**  that adding it counts as a message modification for any downstream
-	**  DKIM2 signer, hence default-off (DKIM2AuthResults).
+	**  Record the result in an Authentication-Results field (DKIM2AuthResults,
+	**  default on).  Unlike a covered header, this is safe: draft Section 4.3
+	**  places A-R fields outside the signed set -- they have purely local
+	**  meaning and sit on the DKIM2 header ignore list -- so writing one does
+	**  not perturb any downstream DKIM2 chain's header hash.
 	*/
 	if (conf->conf_dkim2addar && res.vr_state != DKIM2_V_NONE &&
 	    authservid != NULL)
@@ -13920,6 +13980,18 @@ dkimf_dkim2_eom(SMFICTX *ctx, connctx cc, msgctx dfc,
                 struct dkimf_config *conf, const char *authservid)
 {
 	sfsistat ret = SMFIS_CONTINUE;
+
+	/*
+	**  Normalize the captured body to CRLF before any DKIM2 hashing, so that an
+	**  MTA that hands us bare-LF bodies (e.g. Postfix) does not break body-hash
+	**  verification or produce signatures over non-wire bytes.
+	*/
+	if (dkimf_dkim2_fix_body_eol(dfc) != 0)
+	{
+		dkimf_log(conf, LOG_ERR, "%s: DKIM2 body normalization failed",
+		       dfc->mctx_jobid);
+		return SMFIS_TEMPFAIL;
+	}
 
 	if ((conf->conf_dkim2mode & DKIMF_DKIM2_VERIFY) != 0)
 	{

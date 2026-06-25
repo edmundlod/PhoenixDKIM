@@ -34,6 +34,10 @@ typedef struct dkim2_sign_params
 	const char	 *sp_mf;	/* SMTP reverse-path, e.g. "<a@b.com>" */
 	const char *const *sp_rt;	/* SMTP forward-paths */
 	size_t		  sp_rt_count;
+	const char	 *sp_nd;	/* nd= next-hop domain for an imaginary
+					** forwarding hop (spec-03 Section 8.7 /
+					** 9.3); when set, mf=/rt= are omitted.
+					** NULL = ordinary mf=/rt= signature. */
 	uint64_t	  sp_t;		/* timestamp; 0 means "use current time" */
 	const char	 *sp_nonce;	/* n= nonce (<=64 printable ASCII chars,
 					** no ';'), or NULL for none */

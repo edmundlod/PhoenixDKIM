@@ -85,6 +85,45 @@ dkim2_body_hash(const char *body, size_t bodylen,
 	return dkim2_sha256_final(ctx, digest);
 }
 
+/* Normalize a body to canonical CRLF line endings (see dkim2-hash.h).  Operates
+** on a complete buffer, so a CRLF that an MTA split across two milter chunks --
+** which the caller has already concatenated -- is rejoined correctly. */
+int
+dkim2_body_to_crlf(const char *in, size_t inlen, char **out, size_t *outlen)
+{
+	char *o;
+	size_t i, j = 0;
+
+	/* Worst case is every input octet being a lone CR or LF, each of which
+	** expands to two octets. */
+	o = malloc(inlen * 2 + 1);
+	if (o == NULL)
+		return -1;
+
+	for (i = 0; i < inlen; i++)
+	{
+		if (in[i] == '\r')
+		{
+			o[j++] = '\r';
+			o[j++] = '\n';
+			if (i + 1 < inlen && in[i + 1] == '\n')
+				i++;		/* CRLF: consume the LF */
+		}
+		else if (in[i] == '\n')
+		{
+			o[j++] = '\r';		/* lone LF -> CRLF */
+			o[j++] = '\n';
+		}
+		else
+			o[j++] = in[i];
+	}
+
+	o[j] = '\0';
+	*out = o;
+	*outlen = j;
+	return 0;
+}
+
 /* ── Header field canonicalization (Section 5.2) ─────────────────────────── */
 
 int
